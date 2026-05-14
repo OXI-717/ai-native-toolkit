@@ -1,0 +1,31 @@
+---
+project: "{{PROJECT}}"
+load_strategy: alpha
+---
+
+# {{PROJECT}}
+
+**Topic:** {{DESCRIPTION}}
+
+## Rules: format and language
+@./rules/language.md
+@./rules/dates.md
+
+## Rules: git and security
+@./rules/git.md
+@./rules/no-secrets.md
+@./rules/no-public-names.md
+
+## Rules: project stack and tooling
+@./rules/stack.md
+
+## Rules: tests and build
+@./rules/testing.md
+
+## Rules: boundaries — what not to touch and why
+@./rules/boundaries.md
+
+## Current focus
+@./rules/focus.md
+
+## Available ctx-* skills

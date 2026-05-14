@@ -1,0 +1,37 @@
+{
+  "name": "ai-native-toolkit",
+  "version": "0.1.0",
+  "description": "Open-source AI-native engineering plugins for Claude Code",
+  "plugins": {
+    "ctx": {
+      "version": "0.1.0",
+      "description": "Project context: AGENTS.md, rules, init, lint",
+      "path": "plugins/ctx"
+    },
+    "review": {
+      "version": "0.1.0",
+      "description": "Multi-agent code review with confidence-based filtering",
+      "path": "plugins/review"
+    },
+    "pentest": {
+      "version": "0.1.0",
+      "description": "Black-box security audit of web applications (L0-L3)",
+      "path": "plugins/pentest"
+    },
+    "context-handoff": {
+      "version": "0.1.0",
+      "description": "Preserve session context across /compact and /clear",
+      "path": "plugins/context-handoff"
+    },
+    "statusline": {
+      "version": "0.1.0",
+      "description": "Claude Code status bar with usage limits and context %",
+      "path": "plugins/statusline"
+    },
+    "gh-issues": {
+      "version": "0.1.0",
+      "description": "GitHub Issues as AI session memory with context save/load",
+      "path": "plugins/gh-issues"
+    }
+  }
+}
