@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Native Engineering: от вайб-кодинга к автономным агентам</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+  <style>
+    :root {
+      --r-background-color: #0d1117;
+      --r-main-color: #e6edf3;
+      --r-heading-color: #58a6ff;
+      --r-link-color: #58a6ff;
+    }
+    .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
+    .reveal h1 { font-size: 2.2em; }
+    .reveal h2 { font-size: 1.6em; }
+    .reveal h3 { font-size: 1.2em; }
+    .reveal pre { font-size: 0.55em; width: 95%; }
+    .reveal code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+    .reveal .small { font-size: 0.6em; color: #8b949e; }
+    .reveal .highlight { color: #f0883e; font-weight: bold; }
+    .reveal .green { color: #3fb950; }
+    .reveal .red { color: #f85149; }
+    .reveal .blue { color: #58a6ff; }
+    .reveal .yellow { color: #d29922; }
+    .level-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; font-size: 0.5em; }
+    .level-card { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 12px 14px; border-left: 4px solid; }
+    .level-card h3 { margin: 0 0 6px 0; }
+    .level-card p { margin: 0; }
+    .level-card.l1 { border-color: #f85149; }
+    .level-card.l2 { border-color: #d29922; }
+    .level-card.l3 { border-color: #58a6ff; }
+    .level-card.l4 { border-color: #3fb950; }
+    .pipeline-box { background: rgba(88,166,255,0.1); border: 1px solid #58a6ff; border-radius: 8px; padding: 15px; font-size: 0.65em; text-align: left; margin: 10px 0; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .stat { text-align: center; }
+    .stat .number { font-size: 2.5em; font-weight: bold; color: #58a6ff; }
+    .stat .label { font-size: 0.7em; color: #8b949e; }
+    table { font-size: 0.65em; }
+    table th { background: rgba(88,166,255,0.2); }
+    .fragment.fade-in-then-semi-out.visible:not(.current-fragment) { opacity: 0.3; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============ TITLE ============ -->
+<section>
+  <h1>AI-Native Engineering</h1>
+  <h3>От вайб-кодинга к автономным агентам</h3>
+  <br>
+  <p>Илья Голубев</p>
+  <p class="small">SPACE Community · 2026</p>
+</section>
+
+<!-- ============ INTRO: ПРОБЛЕМА ============ -->
+<section>
+  <h2>Знакомая картина?</h2>
+  <br>
+  <p class="fragment fade-in-then-semi-out">💬 «Перепиши на TypeScript»</p>
+  <p class="fragment fade-in-then-semi-out">🤖 AI пишет 200 строк</p>
+  <p class="fragment fade-in-then-semi-out">✅ Компилируется!</p>
+  <p class="fragment fade-in-then-semi-out">🚀 Деплоим в прод...</p>
+  <p class="fragment"><span class="red">💀 SQL injection, захардкоженные ключи, IDOR на каждом эндпоинте</span></p>
+</section>
+
+<section>
+  <h2>Проблема не в AI</h2>
+  <h3>Проблема в отсутствии процесса</h3>
+  <br>
+  <p>AI-модели становятся лучше каждый месяц.</p>
+  <p>Но без <span class="highlight">контекста, правил и верификации</span> — результат непредсказуем.</p>
+  <br>
+  <p class="fragment">Как мы строим мосты: не «нарисуй мост», а <br><span class="blue">чертежи → материалы → проверка → сдача</span></p>
+</section>
+
+<!-- ============ 4 УРОВНЯ ============ -->
+<section>
+  <h2>4 уровня AI-Native разработки</h2>
+  <div class="level-grid">
+    <div class="level-card l1">
+      <h3 class="red">Level 1: Вайб-кодинг</h3>
+      <p>Спросил ChatGPT → вставил код → надеешься что работает</p>
+    </div>
+    <div class="level-card l2">
+      <h3 class="yellow">Level 2: Контекст и правила</h3>
+      <p>AGENTS.md, CLAUDE.md, rules/ — AI помнит проект между сессиями</p>
+    </div>
+    <div class="level-card l3">
+      <h3 class="blue">Level 3: Верифицированная разработка</h3>
+      <p>Мульти-агентный code review, security audit, confidence filtering</p>
+    </div>
+    <div class="level-card l4">
+      <h3 class="green">Level 4: Автономные агенты</h3>
+      <p>Агенты запускают агентов, DAG-оркестрация, авто-восстановление</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Где находится большинство?</h2>
+  <br>
+  <div class="stats-grid">
+    <div class="stat">
+      <div class="number red">~70%</div>
+      <div class="label">Level 1<br>Вайб-кодинг</div>
+    </div>
+    <div class="stat">
+      <div class="number yellow">~20%</div>
+      <div class="label">Level 2<br>Контекст</div>
+    </div>
+    <div class="stat">
+      <div class="number blue">~10%</div>
+      <div class="label">Level 3–4<br>Верификация</div>
+    </div>
+  </div>
+  <br>
+  <p class="fragment">Сегодня покажу как перейти с Level 1 на Level 3 <span class="highlight">за 10 минут</span></p>
+</section>
+
+<!-- ============ LEVEL 2: КОНТЕКСТ ============ -->
+<section>
+  <h2 class="yellow">Level 2: Контекст</h2>
+  <h3>Проблема: AI забывает всё между сессиями</h3>
+  <br>
+  <p>Каждая новая сессия — как новый сотрудник на работе.</p>
+  <p>Без онбординга он будет делать по-своему.</p>
+  <br>
+  <p class="fragment"><span class="highlight">AGENTS.md</span> — онбординг-документ для AI-агентов.</p>
+  <p class="fragment">Один файл в корне проекта = постоянная память.</p>
+</section>
+
+<section>
+  <h2>Что внутри AGENTS.md</h2>
+  <pre><code class="language-markdown"># my-api
+
+**Тема:** FastAPI API для управления заказами
+
+## Правила: git и безопасность
+@./rules/git.md
+@./rules/no-secrets.md
+
+## Правила: стек
+@./rules/stack.md
+
+## Правила: тесты
+@./rules/testing.md</code></pre>
+  <p class="small">@-импорты — как #include: AI читает правила из отдельных файлов</p>
+</section>
+
+<section data-background-color="#161b22">
+  <h2>🔴 Demo: ctx-init</h2>
+  <br>
+  <pre><code class="language-bash"># Устанавливаем плагин
+/plugin marketplace add OXI-717/ai-native-toolkit
+/plugin install ctx@ai-native-toolkit
+
+# Создаём контекст за 10 секунд
+/ctx-init</code></pre>
+  <br>
+  <p>→ <span class="green">AGENTS.md</span> + <span class="green">CLAUDE.md</span> + <span class="green">rules/</span> (9 файлов)</p>
+  <p class="small">Каждая следующая AI-сессия стартует с полным контекстом проекта</p>
+</section>
+
+<!-- ============ LEVEL 3: ВЕРИФИКАЦИЯ ============ -->
+<section>
+  <h2 class="blue">Level 3: Верификация</h2>
+  <h3>«Доверяй, но проверяй» — для AI-кода</h3>
+  <br>
+  <p>AI написал код. Кто его ревьюит?</p>
+  <br>
+  <p class="fragment">Раньше: <span class="yellow">другой человек</span> (медленно, дорого)</p>
+  <p class="fragment">Сейчас: <span class="blue">другой AI-агент</span> (мгновенно, параллельно)</p>
+  <p class="fragment">Ключ: <span class="highlight">мульти-агентная архитектура</span></p>
+</section>
+
+<section>
+  <h2>Архитектура review-плагина</h2>
+  <div class="pipeline-box">
+    <strong>PHASE 1: REVIEW</strong><br>
+    TeamCreate → 5 Sonnet-агентов параллельно:<br>
+    <code>code-reviewer</code> · <code>bug-hunter</code> · <code>security-scanner</code> · <code>error-auditor</code> · <code>architecture-reviewer</code>
+  </div>
+  <div class="pipeline-box">
+    <strong>PHASE 2: SCORING</strong><br>
+    Haiku-скореры перепроверяют каждую находку → confidence 0-100<br>
+    Фильтр: только <span class="highlight">≥ 80</span> попадают в отчёт
+  </div>
+  <div class="pipeline-box">
+    <strong>PHASE 3: FIX → TEST → RE-REVIEW</strong><br>
+    Автофикс → сборка → тесты → повторный review (до 3 итераций)
+  </div>
+</section>
+
+<section>
+  <h2>Зачем мульти-агентность?</h2>
+  <br>
+  <table>
+    <tr><th>Один агент</th><th>5 параллельных агентов</th></tr>
+    <tr><td>Один ракурс</td><td>5 специализаций</td></tr>
+    <tr><td>Усталость модели на длинном контексте</td><td>Каждый видит свой кусок</td></tr>
+    <tr><td>Нет перепроверки</td><td>Haiku-скореры верифицируют</td></tr>
+    <tr><td>~60% покрытие</td><td class="green">~95% покрытие</td></tr>
+  </table>
+</section>
+
+<!-- ============ DEMO: VULNERABLE APP ============ -->
+<section>
+  <h2>Демо: уязвимое приложение</h2>
+  <br>
+  <p>Next.js + Supabase — типичный SaaS стартер.</p>
+  <p>12 файлов, ~400 строк кода.</p>
+  <br>
+  <p>Внутри: <span class="red">12 намеренных уязвимостей</span></p>
+  <p class="small">IDOR, XSS, mass assignment, hardcoded keys, wildcard CORS, no rate limiting...</p>
+  <br>
+  <p class="fragment">Вопрос: сколько найдёт наш review?</p>
+</section>
+
+<section data-background-color="#161b22">
+  <h2>🔴 Demo: /review full --no-fix</h2>
+  <br>
+  <pre><code class="language-bash"># Запускаем полный review проекта
+/review full --no-fix</code></pre>
+  <br>
+  <p class="fragment">5 Sonnet-агентов → 31 raw finding</p>
+  <p class="fragment">3 Haiku-скорера → дедупликация</p>
+  <p class="fragment"><span class="green">Результат: 25 уникальных находок</span></p>
+  <p class="fragment"><span class="highlight">18 Critical + 7 Important</span></p>
+</section>
+
+<section>
+  <h2>Что нашёл review</h2>
+  <br>
+  <table>
+    <tr><th>Категория</th><th>Кол-во</th><th>Пример</th></tr>
+    <tr><td>Broken Access Control</td><td class="red">6</td><td>IDOR, no auth, mass assignment</td></tr>
+    <tr><td>Injection</td><td class="red">3</td><td>XSS, SQL injection, URL injection</td></tr>
+    <tr><td>Security Misconfiguration</td><td class="yellow">4</td><td>CORS *, cookie flags, error leak</td></tr>
+    <tr><td>Auth Failures</td><td class="yellow">4</td><td>Enumeration, no rate limit, 30d session</td></tr>
+    <tr><td>Code Quality</td><td class="blue">5</td><td>any[], strict:false, missing handlers</td></tr>
+    <tr><td>Architecture</td><td class="blue">3</td><td>No middleware, no server-only guard</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Цепочка атаки</h2>
+  <h3>Account takeover за 4 запроса</h3>
+  <br>
+  <p class="fragment fade-in-then-semi-out">1️⃣ <code>POST /api/notes</code> — инжектим XSS (без авторизации)</p>
+  <p class="fragment fade-in-then-semi-out">2️⃣ Жертва открывает страницу → скрипт выполняется</p>
+  <p class="fragment fade-in-then-semi-out">3️⃣ Скрипт читает <code>document.cookie</code> (нет httpOnly) → крадёт JWT</p>
+  <p class="fragment">4️⃣ <code>PATCH /api/users</code> с <code>{"role":"admin"}</code> → <span class="red">полный контроль</span></p>
+  <br>
+  <p class="fragment small">Review нашёл эту цепочку автоматически, связав 4 отдельных бага</p>
+</section>
+
+<!-- ============ CODEX TEST ============ -->
+<section>
+  <h2>А голый AI поймёт репу?</h2>
+  <br>
+  <p>Тест: изолированный Codex (gpt-5.5)</p>
+  <p class="small">Чистый HOME, без плагинов, без кеша — только клон репозитория</p>
+  <br>
+  <pre><code class="language-bash">HOME=/tmp/clean codex exec \
+  "What is this repo? What plugins does it contain?"</code></pre>
+  <br>
+  <p class="fragment"><span class="green">За 15 секунд</span> — перечислил все 6 плагинов с описаниями</p>
+  <p class="fragment">Правильная структура = AI понимает проект мгновенно</p>
+</section>
+
+<section data-background-color="#161b22">
+  <h2>🔴 Demo: Codex на голом репо</h2>
+  <br>
+  <pre><code class="language-bash"># Клонируем в /tmp, подменяем HOME
+cd /tmp && git clone https://github.com/OXI-717/ai-native-toolkit.git
+HOME=/tmp/clean codex exec \
+  "Explain how the review plugin works. \
+   What agents does it run in parallel?"</code></pre>
+  <br>
+  <p class="fragment">Codex читает SKILL.md → описывает всю архитектуру:<br>
+  Sonnet-агенты → Haiku-скореры → confidence ≥80 → fix loop</p>
+</section>
+
+<!-- ============ TOOLKIT OVERVIEW ============ -->
+<section>
+  <h2>AI Native Toolkit</h2>
+  <h3>github.com/OXI-717/ai-native-toolkit</h3>
+  <br>
+  <table>
+    <tr><th>Плагин</th><th>Level</th><th>Что делает</th></tr>
+    <tr><td><code>ctx</code></td><td class="yellow">2</td><td>AGENTS.md, правила, scaffolding</td></tr>
+    <tr><td><code>review</code></td><td class="blue">3</td><td>Мульти-агентный code review</td></tr>
+    <tr><td><code>pentest</code></td><td class="blue">3</td><td>Security audit L0–L3</td></tr>
+    <tr><td><code>context-handoff</code></td><td class="yellow">2</td><td>Сохранение контекста при /compact</td></tr>
+    <tr><td><code>statusline</code></td><td class="yellow">2</td><td>Status bar с лимитами и контекстом</td></tr>
+    <tr><td><code>gh-issues</code></td><td class="yellow">2</td><td>GitHub Issues как AI-память</td></tr>
+  </table>
+  <pre style="font-size:0.5em"><code class="language-bash">/plugin marketplace add OXI-717/ai-native-toolkit
+/plugin install ctx@ai-native-toolkit</code></pre>
+</section>
+
+<!-- ============ ПРИНЦИПЫ ============ -->
+<section>
+  <h2>Принципы AI-Native Engineering</h2>
+  <br>
+  <p class="fragment fade-in-then-semi-out">📄 <strong>Контекст — это код.</strong> AGENTS.md коммитится в git, ревьюится в PR.</p>
+  <p class="fragment fade-in-then-semi-out">🔍 <strong>AI проверяет AI.</strong> Один агент пишет, другие ревьюят.</p>
+  <p class="fragment fade-in-then-semi-out">📊 <strong>Confidence > opinion.</strong> Числовая оценка вместо субъективного мнения.</p>
+  <p class="fragment fade-in-then-semi-out">🔄 <strong>Fix loop.</strong> Review → Fix → Test → Re-Review — до чистоты.</p>
+  <p class="fragment">🏗️ <strong>Инфраструктура масштабируется.</strong> Правила один раз, применяются в каждой сессии.</p>
+</section>
+
+<!-- ============ ROI ============ -->
+<section>
+  <h2>Практический эффект</h2>
+  <br>
+  <div class="stats-grid">
+    <div class="stat">
+      <div class="number green">10 сек</div>
+      <div class="label">ctx-init:<br>от нуля до контекста</div>
+    </div>
+    <div class="stat">
+      <div class="number green">25</div>
+      <div class="label">уязвимостей найдено<br>за 2 минуты review</div>
+    </div>
+    <div class="stat">
+      <div class="number green">0</div>
+      <div class="label">пропущенных<br>из 12 заложенных</div>
+    </div>
+  </div>
+  <br>
+  <p class="fragment">Solo-разработчик получает quality assurance уровня команды</p>
+</section>
+
+<!-- ============ ROADMAP ============ -->
+<section>
+  <h2>Что дальше: Level 4</h2>
+  <br>
+  <p>🔮 Агенты запускают агентов</p>
+  <p>🔮 DAG-оркестрация задач</p>
+  <p>🔮 Авто-восстановление при ошибках</p>
+  <p>🔮 CI/CD с AI-верификацией на каждом коммите</p>
+  <br>
+  <p class="fragment">Level 3 — фундамент. Без контекста и верификации<br>Level 4 — это просто дорогой вайб-кодинг в масштабе.</p>
+</section>
+
+<!-- ============ ИТОГО ============ -->
+<section>
+  <h2>Итого</h2>
+  <br>
+  <p>1. <strong>Контекст</strong> — AGENTS.md в каждый проект</p>
+  <p>2. <strong>Правила</strong> — rules/ коммитятся, не объясняются устно</p>
+  <p>3. <strong>Верификация</strong> — мульти-агентный review перед каждым PR</p>
+  <p>4. <strong>Измеримость</strong> — confidence scoring, не «мне кажется»</p>
+  <br>
+  <p class="fragment"><span class="highlight">AI не заменяет инженера. AI меняет что значит быть инженером.</span></p>
+</section>
+
+<!-- ============ CONTACTS ============ -->
+<section>
+  <h2>Спасибо!</h2>
+  <br>
+  <p>📦 <a href="https://github.com/OXI-717/ai-native-toolkit">github.com/OXI-717/ai-native-toolkit</a></p>
+  <p>📝 <a href="https://t.me/oxigen404">@oxigen404</a> — Telegram</p>
+  <p>💼 <a href="https://linkedin.com/in/oxigen717">linkedin.com/in/oxigen717</a></p>
+  <br>
+  <h3>Вопросы?</h3>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: true,
+    transition: 'slide',
+    height: 800,
+    plugins: [ RevealHighlight ]
+  });
+</script>
+</body>
+</html>
