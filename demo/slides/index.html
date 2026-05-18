@@ -55,6 +55,9 @@
   <br>
   <p>Илья Голубев</p>
   <p class="small">SPACE Community · 2026</p>
+  <aside class="notes">
+    [0:00 — 1 мин] Представиться. «Привет, я Илья. Занимаюсь full-stack разработкой и AI-инструментами. Сегодня покажу, как перестать вайб-кодить и начать инженерить с AI.»
+  </aside>
 </section>
 
 <!-- ============ INTRO: ПРОБЛЕМА ============ -->
@@ -66,6 +69,9 @@
   <p class="fragment fade-in-then-semi-out">✅ Компилируется!</p>
   <p class="fragment fade-in-then-semi-out">🚀 Деплоим в прод...</p>
   <p class="fragment"><span class="red">💀 SQL injection, захардкоженные ключи, IDOR на каждом эндпоинте</span></p>
+  <aside class="notes">
+    [1:00 — 2 мин] Прокликивать фрагменты по одному, пауза на каждом. «Знакомо? Кто так делал — поднимите руку.» На последнем — «А потом мы удивляемся, почему в проде дыры.»
+  </aside>
 </section>
 
 <section>
@@ -76,6 +82,9 @@
   <p>Но без <span class="highlight">контекста, правил и верификации</span> — результат непредсказуем.</p>
   <br>
   <p class="fragment">Как мы строим мосты: не «нарисуй мост», а <br><span class="blue">чертежи → материалы → проверка → сдача</span></p>
+  <aside class="notes">
+    [3:00 — 2 мин] «Модели улучшаются, но мусор на входе = мусор на выходе. Аналогия с мостом: никто не говорит строителю "сделай мост" без чертежа. А мы говорим AI "перепиши на TS" и надеемся.»
+  </aside>
 </section>
 
 <!-- ============ 4 УРОВНЯ ============ -->
@@ -99,6 +108,9 @@
       <p>Агенты запускают агентов, DAG-оркестрация, авто-восстановление</p>
     </div>
   </div>
+  <aside class="notes">
+    [5:00 — 2 мин] «Я выделяю 4 уровня. Пробежимся по ним быстро, потом глубже разберём 2 и 3.» Показать на каждую карточку. L1 — где все начинают. L4 — куда идём. Фокус доклада: как добраться до L3.
+  </aside>
 </section>
 
 <section>
@@ -120,18 +132,23 @@
   </div>
   <br>
   <p class="fragment">Сегодня покажу как перейти с Level 1 на Level 3 <span class="highlight">за 10 минут</span></p>
+  <aside class="notes">
+    [7:00 — 2 мин] «70% — это не приговор. Большинство просто не знают, что можно иначе. Сегодня покажу переход от L1 до L3 за 10 минут — на реальном проекте, не на слайдах.»
+  </aside>
 </section>
 
 <!-- ============ LEVEL 2: КОНТЕКСТ ============ -->
 <section>
   <h2 class="yellow">Level 2: Контекст</h2>
   <h3>Проблема: AI забывает всё между сессиями</h3>
-  <br>
   <p>Каждая новая сессия — как новый сотрудник на работе.</p>
   <p>Без онбординга он будет делать по-своему.</p>
   <br>
   <p class="fragment"><span class="highlight">AGENTS.md</span> — онбординг-документ для AI-агентов.</p>
   <p class="fragment">Один файл в корне проекта = постоянная память.</p>
+  <aside class="notes">
+    [9:00 — 2 мин] «Представьте: к вам в команду каждый день приходит новый джун. И каждый раз вы заново объясняете, где лежат тесты, какой стек, какие правила. AGENTS.md — это онбординг, который AI читает автоматически.»
+  </aside>
 </section>
 
 <section>
@@ -150,6 +167,9 @@
 ## Правила: тесты
 @./rules/testing.md</code></pre>
   <p class="small">@-импорты — как #include: AI читает правила из отдельных файлов</p>
+  <aside class="notes">
+    [11:00 — 2 мин] «@-импорты — как include в C. Один AGENTS.md, а правила разнесены по файлам. Можно шарить правила между проектами. git.md — одинаковый для всех моих репо.»
+  </aside>
 </section>
 
 <section data-background-color="#161b22">
@@ -164,6 +184,9 @@
   <br>
   <p>→ <span class="green">AGENTS.md</span> + <span class="green">CLAUDE.md</span> + <span class="green">rules/</span> (9 файлов)</p>
   <p class="small">Каждая следующая AI-сессия стартует с полным контекстом проекта</p>
+  <aside class="notes">
+    [13:00 — 3 мин] 🔴 LIVE DEMO. Переключиться в терминал. Показать: установку плагина, запуск /ctx-init, показать сгенерированные файлы. «10 секунд — и AI знает всё о проекте. Навсегда.»
+  </aside>
 </section>
 
 <!-- ============ LEVEL 3: ВЕРИФИКАЦИЯ ============ -->
@@ -176,6 +199,9 @@
   <p class="fragment">Раньше: <span class="yellow">другой человек</span> (медленно, дорого)</p>
   <p class="fragment">Сейчас: <span class="blue">другой AI-агент</span> (мгновенно, параллельно)</p>
   <p class="fragment">Ключ: <span class="highlight">мульти-агентная архитектура</span></p>
+  <aside class="notes">
+    [16:00 — 2 мин] «AI написал код — кто ревьюит? Раньше: другой человек — это медленно и дорого. Сейчас: другой AI-агент. Но не один — а пять параллельно, с разных ракурсов.»
+  </aside>
 </section>
 
 <section>
@@ -194,6 +220,9 @@
     <strong>PHASE 3: FIX → TEST → RE-REVIEW</strong><br>
     Автофикс → сборка → тесты → повторный review (до 3 итераций)
   </div>
+  <aside class="notes">
+    [18:00 — 3 мин] Подробно по фазам. «Phase 1: 5 Sonnet-агентов — каждый специалист. Один ищет баги, другой — security, третий — архитектуру. Phase 2: Haiku перепроверяет — дешёвая модель фильтрует шум. Только находки ≥80 confidence попадают в отчёт. Phase 3: автофикс + ретест.»
+  </aside>
 </section>
 
 <section>
@@ -206,6 +235,9 @@
     <tr><td>Нет перепроверки</td><td>Haiku-скореры верифицируют</td></tr>
     <tr><td>~60% покрытие</td><td class="green">~95% покрытие</td></tr>
   </table>
+  <aside class="notes">
+    [21:00 — 2 мин] «Почему не один агент? Три причины: специализация, изоляция контекста, перекрёстная проверка. Один агент на длинном контексте устаёт — начинает пропускать. 5 узких агентов + скореры = 95% покрытие.»
+  </aside>
 </section>
 
 <!-- ============ DEMO: VULNERABLE APP ============ -->
@@ -219,6 +251,9 @@
   <p class="small">IDOR, XSS, mass assignment, hardcoded keys, wildcard CORS, no rate limiting...</p>
   <br>
   <p class="fragment">Вопрос: сколько найдёт наш review?</p>
+  <aside class="notes">
+    [23:00 — 2 мин] «Я создал типичный SaaS-стартер — Next.js + Supabase. Как будто джун написал за вечер. 12 файлов, 400 строк. Внутри — 12 намеренных уязвимостей. Вопрос залу: как думаете, сколько найдёт наш review?»
+  </aside>
 </section>
 
 <section data-background-color="#161b22">
@@ -231,6 +266,9 @@
   <p class="fragment">3 Haiku-скорера → дедупликация</p>
   <p class="fragment"><span class="green">Результат: 25 уникальных находок</span></p>
   <p class="fragment"><span class="highlight">18 Critical + 7 Important</span></p>
+  <aside class="notes">
+    [25:00 — 5 мин] 🔴 LIVE DEMO. Переключиться в терминал с vulnerable-saas. Запустить /review full --no-fix. Пока агенты работают (~2 мин) — комментировать процесс: «Видите — 5 агентов стартовали параллельно. Каждый читает свой кусок кода.» Показать итоговый отчёт.
+  </aside>
 </section>
 
 <section>
@@ -245,6 +283,9 @@
     <tr><td>Code Quality</td><td class="blue">5</td><td>any[], strict:false, missing handlers</td></tr>
     <tr><td>Architecture</td><td class="blue">3</td><td>No middleware, no server-only guard</td></tr>
   </table>
+  <aside class="notes">
+    [30:00 — 2 мин] «25 находок из 12 файлов. Больше чем мы заложили — потому что агенты нашли ещё архитектурные и code quality проблемы. Обратите внимание: 6 Broken Access Control — это OWASP #1.»
+  </aside>
 </section>
 
 <section>
@@ -257,6 +298,9 @@
   <p class="fragment">4️⃣ <code>PATCH /api/users</code> с <code>{"role":"admin"}</code> → <span class="red">полный контроль</span></p>
   <br>
   <p class="fragment small">Review нашёл эту цепочку автоматически, связав 4 отдельных бага</p>
+  <aside class="notes">
+    [32:00 — 3 мин] Прокликивать фрагменты медленно. «Это не теория — все 4 шага выполнимы анонимно. POST без авторизации. Cookie без httpOnly. PATCH без проверки владельца. Полный account takeover.» Пауза. «И review нашёл эту цепочку сам, связав 4 бага.»
+  </aside>
 </section>
 
 <!-- ============ CODEX TEST ============ -->
@@ -271,6 +315,9 @@
   <br>
   <p class="fragment"><span class="green">За 15 секунд</span> — перечислил все 6 плагинов с описаниями</p>
   <p class="fragment">Правильная структура = AI понимает проект мгновенно</p>
+  <aside class="notes">
+    [35:00 — 2 мин] «А что если дать репу другому AI — без плагинов, без контекста? Мы взяли Codex (gpt-5.5), чистый HOME, ноль кеша — только git clone. За 15 секунд он описал все 6 плагинов. Почему? Потому что AGENTS.md + SKILL.md + правильная структура = AI понимает проект без дополнительных инструкций.»
+  </aside>
 </section>
 
 <section data-background-color="#161b22">
@@ -284,6 +331,9 @@ HOME=/tmp/clean codex exec \
   <br>
   <p class="fragment">Codex читает SKILL.md → описывает всю архитектуру:<br>
   Sonnet-агенты → Haiku-скореры → confidence ≥80 → fix loop</p>
+  <aside class="notes">
+    [37:00 — 3 мин] 🔴 LIVE DEMO. Показать в терминале: git clone в /tmp, подменить HOME, запустить codex exec. «Смотрите — Codex читает SKILL.md и описывает архитектуру пайплайна. Он никогда не видел этот код раньше.» Если нет времени — показать скриншот из теста.
+  </aside>
 </section>
 
 <!-- ============ TOOLKIT OVERVIEW ============ -->
@@ -302,6 +352,9 @@ HOME=/tmp/clean codex exec \
   </table>
   <pre style="font-size:0.5em"><code class="language-bash">/plugin marketplace add OXI-717/ai-native-toolkit
 /plugin install ctx@ai-native-toolkit</code></pre>
+  <aside class="notes">
+    [40:00 — 2 мин] «Всё что показал — это open-source. 6 плагинов, установка в 2 команды. ctx — контекст за 10 секунд. review — мульти-агентный review. pentest — security audit. Остальные 3 — утилиты для повседневной работы.»
+  </aside>
 </section>
 
 <!-- ============ ПРИНЦИПЫ ============ -->
@@ -313,6 +366,9 @@ HOME=/tmp/clean codex exec \
   <p class="fragment fade-in-then-semi-out">📊 <strong>Confidence > opinion.</strong> Числовая оценка вместо субъективного мнения.</p>
   <p class="fragment fade-in-then-semi-out">🔄 <strong>Fix loop.</strong> Review → Fix → Test → Re-Review — до чистоты.</p>
   <p class="fragment">🏗️ <strong>Инфраструктура масштабируется.</strong> Правила один раз, применяются в каждой сессии.</p>
+  <aside class="notes">
+    [42:00 — 1 мин] Прокликивать быстро. «5 принципов. Контекст — это код, он в git. AI проверяет AI. Числовая оценка. Fix loop. Правила масштабируются.»
+  </aside>
 </section>
 
 <!-- ============ ROI ============ -->
@@ -335,6 +391,9 @@ HOME=/tmp/clean codex exec \
   </div>
   <br>
   <p class="fragment">Solo-разработчик получает quality assurance уровня команды</p>
+  <aside class="notes">
+    [43:00 — 1 мин] «Три числа. 10 секунд — контекст. 25 уязвимостей за 2 минуты. 0 пропущенных из 12 заложенных. Solo-разработчик получает QA уровня команды.»
+  </aside>
 </section>
 
 <!-- ============ ROADMAP ============ -->
@@ -347,6 +406,9 @@ HOME=/tmp/clean codex exec \
   <p>🔮 CI/CD с AI-верификацией на каждом коммите</p>
   <br>
   <p class="fragment">Level 3 — фундамент. Без контекста и верификации<br>Level 4 — это просто дорогой вайб-кодинг в масштабе.</p>
+  <aside class="notes">
+    [44:00 — 1 мин] «Level 4 — это будущее, но фундамент — Level 3. Без контекста и верификации автономные агенты — это просто дорогой вайб-кодинг в масштабе.»
+  </aside>
 </section>
 
 <!-- ============ ИТОГО ============ -->
@@ -359,6 +421,9 @@ HOME=/tmp/clean codex exec \
   <p>4. <strong>Измеримость</strong> — confidence scoring, не «мне кажется»</p>
   <br>
   <p class="fragment"><span class="highlight">AI не заменяет инженера. AI меняет что значит быть инженером.</span></p>
+  <aside class="notes">
+    [45:00 — 1 мин] «Четыре шага. Контекст, правила, верификация, измеримость. AI не заменяет инженера — AI меняет что значит быть инженером. Инженер теперь — дирижёр оркестра агентов.»
+  </aside>
 </section>
 
 <!-- ============ CONTACTS ============ -->
@@ -370,6 +435,9 @@ HOME=/tmp/clean codex exec \
   <p>💼 <a href="https://linkedin.com/in/oxigen717">linkedin.com/in/oxigen717</a></p>
   <br>
   <h3>Вопросы?</h3>
+  <aside class="notes">
+    [46:00+] Q&amp;A. Ссылки на экране. «Всё open-source, всё в этом репо. Ставьте звезду, пробуйте, пишите issues. Вопросы?»
+  </aside>
 </section>
 
 </div>
@@ -377,13 +445,14 @@ HOME=/tmp/clean codex exec \
 
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
 <script>
   Reveal.initialize({
     hash: true,
     slideNumber: true,
     transition: 'slide',
-    height: 800,
-    plugins: [ RevealHighlight ]
+    height: 900,
+    plugins: [ RevealHighlight, RevealNotes ]
   });
 </script>
 </body>
