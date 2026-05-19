@@ -6,9 +6,10 @@
 set -e
 
 SUFFIX=$(head -c 4 /dev/urandom | xxd -p)
-DEMO_DIR="$HOME/demo-runs/ctx-init-$SUFFIX"
-CLEAN_HOME="$HOME/demo-runs/ctx-init-home-$SUFFIX"
-mkdir -p "$HOME/demo-runs"
+BASE="$PWD/demo-runs"
+DEMO_DIR="$BASE/ctx-init-$SUFFIX"
+CLEAN_HOME="$BASE/ctx-init-home-$SUFFIX"
+mkdir -p "$BASE"
 REPO_URL="https://github.com/OXI-717/ai-native-toolkit.git"
 
 echo "=== Demo 1: ctx-init ==="
