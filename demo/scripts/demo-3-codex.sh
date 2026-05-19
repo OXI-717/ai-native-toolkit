@@ -5,9 +5,10 @@
 set -e
 
 SUFFIX=$(head -c 4 /dev/urandom | xxd -p)
-DEMO_DIR="$HOME/demo-runs/codex-$SUFFIX"
-CLEAN_HOME="$HOME/demo-runs/codex-home-$SUFFIX"
-mkdir -p "$HOME/demo-runs"
+BASE="$PWD/demo-runs"
+DEMO_DIR="$BASE/codex-$SUFFIX"
+CLEAN_HOME="$BASE/codex-home-$SUFFIX"
+mkdir -p "$BASE"
 REPO_URL="https://github.com/OXI-717/ai-native-toolkit.git"
 
 echo "=== Demo 3: Codex на голом репо ==="

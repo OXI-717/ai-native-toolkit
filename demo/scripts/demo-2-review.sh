@@ -5,9 +5,10 @@
 set -e
 
 SUFFIX=$(head -c 4 /dev/urandom | xxd -p)
-DEMO_DIR="$HOME/demo-runs/review-$SUFFIX"
-CLEAN_HOME="$HOME/demo-runs/review-home-$SUFFIX"
-mkdir -p "$HOME/demo-runs"
+BASE="$PWD/demo-runs"
+DEMO_DIR="$BASE/review-$SUFFIX"
+CLEAN_HOME="$BASE/review-home-$SUFFIX"
+mkdir -p "$BASE"
 REPO_URL="https://github.com/OXI-717/ai-native-toolkit.git"
 
 echo "=== Demo 2: /review full --no-fix ==="
