@@ -4,8 +4,10 @@
 
 set -e
 
-DEMO_DIR="/tmp/demo-codex-$$"
-CLEAN_HOME="/tmp/codex-clean-home-$$"
+SUFFIX=$(head -c 4 /dev/urandom | xxd -p)
+DEMO_DIR="$HOME/demo-runs/codex-$SUFFIX"
+CLEAN_HOME="$HOME/demo-runs/codex-home-$SUFFIX"
+mkdir -p "$HOME/demo-runs"
 REPO_URL="https://github.com/OXI-717/ai-native-toolkit.git"
 
 echo "=== Demo 3: Codex на голом репо ==="
