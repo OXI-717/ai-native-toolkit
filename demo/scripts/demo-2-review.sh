@@ -1,10 +1,12 @@
 #!/bin/bash
 # Demo 2: /review full --no-fix на уязвимом приложении
-# Изолированный запуск: копирует vulnerable-saas в /tmp
+# Изолированный запуск: клонирует в ~/demo-runs/
 
 set -e
 
-DEMO_DIR="/tmp/demo-review-$$"
+SUFFIX=$(head -c 4 /dev/urandom | xxd -p)
+DEMO_DIR="$HOME/demo-runs/review-$SUFFIX"
+mkdir -p "$HOME/demo-runs"
 REPO_URL="https://github.com/OXI-717/ai-native-toolkit.git"
 
 echo "=== Demo 2: /review full --no-fix ==="

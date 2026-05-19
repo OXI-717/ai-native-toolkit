@@ -1,10 +1,12 @@
 #!/bin/bash
 # Demo 1: ctx-init — создание контекста за 10 секунд
-# Изолированный запуск: клонирует репу в /tmp, работает в чистой копии
+# Изолированный запуск: клонирует репу в ~/demo-runs/, работает в чистой копии
 
 set -e
 
-DEMO_DIR="/tmp/demo-ctx-init-$$"
+SUFFIX=$(head -c 4 /dev/urandom | xxd -p)
+DEMO_DIR="$HOME/demo-runs/ctx-init-$SUFFIX"
+mkdir -p "$HOME/demo-runs"
 REPO_URL="https://github.com/OXI-717/ai-native-toolkit.git"
 
 echo "=== Demo 1: ctx-init ==="
