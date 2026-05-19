@@ -1,0 +1,5 @@
+{
+  "name": "statusline",
+  "description": "Claude Code status bar with usage limits and context %",
+  "version": "0.1.0"
+}
