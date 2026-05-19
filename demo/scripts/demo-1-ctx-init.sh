@@ -31,7 +31,8 @@ cat > "$DEMO_DIR/.claude/settings.local.json" <<'EOF'
     }
   },
   "enabledPlugins": {
-    "ctx@ai-native-toolkit": true
+    "ctx@ai-native-toolkit": true,
+    "oxi-ctx@oxi-skills": false
   }
 }
 EOF

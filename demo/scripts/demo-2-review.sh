@@ -33,7 +33,9 @@ cat > "$VULN_DIR/.claude/settings.local.json" <<'EOF'
     }
   },
   "enabledPlugins": {
-    "review@ai-native-toolkit": true
+    "review@ai-native-toolkit": true,
+    "oxi-review@oxi-skills": false,
+    "oxi-code-review@oxi-skills": false
   }
 }
 EOF
