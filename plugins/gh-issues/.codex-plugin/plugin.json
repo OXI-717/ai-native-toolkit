@@ -1,0 +1,27 @@
+{
+  "name": "gh-issues",
+  "version": "0.1.0",
+  "description": "GitHub Issues as AI session memory with context save/load workflow. Persists session state in issues for cross-machine continuity.",
+  "author": {
+    "name": "OXI-717"
+  },
+  "homepage": "https://github.com/OXI-717/ai-native-toolkit",
+  "repository": "https://github.com/OXI-717/ai-native-toolkit",
+  "keywords": [
+    "github",
+    "issues",
+    "memory"
+  ],
+  "interface": {
+    "displayName": "AI-Native GH Issues",
+    "shortDescription": "GitHub Issues as AI session memory",
+    "longDescription": "GitHub Issues as AI session memory with context save/load workflow. Persists session state in issues for cross-machine continuity.",
+    "developerName": "OXI-717",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Save AI session to GitHub issue"
+    ]
+  },
+  "skills": "./skills/"
+}
