@@ -1,37 +1,66 @@
 {
   "name": "ai-native-toolkit",
-  "version": "0.1.0",
-  "description": "Open-source AI-native engineering plugins for Claude Code",
-  "plugins": {
-    "ctx": {
-      "version": "0.1.0",
+  "owner": {
+    "name": "OXI-717"
+  },
+  "metadata": {
+    "description": "Open-source AI-native engineering plugins for Claude Code",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "ctx",
       "description": "Project context: AGENTS.md, rules, init, lint",
-      "path": "plugins/ctx"
-    },
-    "review": {
+      "source": "./plugins/ctx/",
       "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "review",
       "description": "Multi-agent code review with confidence-based filtering",
-      "path": "plugins/review"
-    },
-    "pentest": {
+      "source": "./plugins/review/",
       "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "pentest",
       "description": "Black-box security audit of web applications (L0-L3)",
-      "path": "plugins/pentest"
-    },
-    "context-handoff": {
+      "source": "./plugins/pentest/",
       "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "context-handoff",
       "description": "Preserve session context across /compact and /clear",
-      "path": "plugins/context-handoff"
-    },
-    "statusline": {
+      "source": "./plugins/context-handoff/",
       "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "statusline",
       "description": "Claude Code status bar with usage limits and context %",
-      "path": "plugins/statusline"
-    },
-    "gh-issues": {
+      "source": "./plugins/statusline/",
       "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "gh-issues",
       "description": "GitHub Issues as AI session memory with context save/load",
-      "path": "plugins/gh-issues"
+      "source": "./plugins/gh-issues/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
     }
-  }
+  ]
 }

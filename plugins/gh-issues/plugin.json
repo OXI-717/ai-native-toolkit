@@ -1,0 +1,5 @@
+{
+  "name": "gh-issues",
+  "description": "GitHub Issues as AI session memory with context save/load",
+  "version": "0.1.0"
+}
