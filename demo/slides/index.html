@@ -364,15 +364,15 @@
 </section>
 
 <section data-background-color="#161b22">
-  <h2>🔴 Demo: /review full --no-fix</h2>
+  <h2>🔴 Demo: ревью в два прохода</h2>
   <br>
-  <pre><code class="language-bash"># Запускаем полный review проекта
-/review full --no-fix</code></pre>
+  <p class="fragment">Шаг 1 — обычный <code>/review full --no-fix</code></p>
+  <p class="fragment">→ <span class="yellow">~17 находок</span></p>
   <br>
-  <p class="fragment">5 Sonnet-агентов → 31 raw finding</p>
-  <p class="fragment">3 Haiku-скорера → дедупликация</p>
-  <p class="fragment"><span class="green">Результат: 25 уникальных находок</span></p>
-  <p class="fragment"><span class="highlight">18 Critical + 7 Important</span></p>
+  <p class="fragment">Шаг 2 — мульти-агентный (5 параллельных через <code>Agent</code>)</p>
+  <p class="fragment">→ <span class="green">~30 находок</span></p>
+  <br>
+  <p class="fragment"><span class="highlight">Прирост ~76%</span> — DTO, middleware, null-deref, CVE, error shapes</p>
   <aside class="notes">
     [25:00 — 5 мин] Живая демонстрация №2 — двухшаговое сравнительное демо.
 
@@ -399,13 +399,14 @@
   <br>
   <table>
     <tr><th>Категория</th><th>Кол-во</th><th>Пример</th></tr>
-    <tr><td>Broken Access Control</td><td class="red">6</td><td>IDOR, no auth, mass assignment</td></tr>
-    <tr><td>Injection</td><td class="red">3</td><td>XSS, SQL injection, URL injection</td></tr>
-    <tr><td>Security Misconfiguration</td><td class="yellow">4</td><td>CORS *, cookie flags, error leak</td></tr>
-    <tr><td>Auth Failures</td><td class="yellow">4</td><td>Enumeration, no rate limit, 30d session</td></tr>
-    <tr><td>Code Quality</td><td class="blue">5</td><td>any[], strict:false, missing handlers</td></tr>
-    <tr><td>Architecture</td><td class="blue">3</td><td>No middleware, no server-only guard</td></tr>
+    <tr><td>Broken Access Control</td><td class="red">~6</td><td>IDOR, no auth, mass assignment</td></tr>
+    <tr><td>Injection</td><td class="red">~3</td><td>XSS, SQL injection, URL injection</td></tr>
+    <tr><td>Security Misconfiguration</td><td class="yellow">~4</td><td>CORS *, cookie flags, error leak</td></tr>
+    <tr><td>Auth Failures</td><td class="yellow">~4</td><td>Enumeration, no rate limit, 30d session</td></tr>
+    <tr><td>Code Quality</td><td class="blue">~5</td><td>any[], strict:false, missing handlers</td></tr>
+    <tr><td>Architecture</td><td class="blue">~3</td><td>No middleware, no server-only guard</td></tr>
   </table>
+  <p class="small">примерные числа — варьируются от прогона к прогону</p>
   <aside class="notes">
     [30:00 — 2 мин] Разберём отчёт по категориям. Тут красиво ложится на стандартный каталог веб-уязвимостей.
 
@@ -572,12 +573,12 @@ HOME=/tmp/clean codex exec \
       <div class="label">ctx-init:<br>от нуля до контекста</div>
     </div>
     <div class="stat">
-      <div class="number green">25</div>
-      <div class="label">уязвимостей найдено<br>за 2 минуты review</div>
+      <div class="number green">~30</div>
+      <div class="label">находок за 2 минуты<br>мульти-агентного review</div>
     </div>
     <div class="stat">
-      <div class="number green">0</div>
-      <div class="label">пропущенных<br>из 12 заложенных</div>
+      <div class="number green">+76%</div>
+      <div class="label">прирост vs<br>одиночного агента</div>
     </div>
   </div>
   <br>
