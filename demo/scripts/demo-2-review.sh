@@ -52,29 +52,42 @@ echo ""
 echo "--permission-mode acceptEdits чтобы не запрашивал подтверждения и не блокировал Agent."
 echo "Плагин review@ai-native-toolkit подхватится автоматически — /plugin install не нужен."
 echo ""
-echo "--- Внутри claude ---"
-echo "Вставь промпт (не слэш-команда — Claude Code v2.1.150 ломает routing /review --no-fix"
-echo "в single-agent, поэтому идём через явный Agent tool):"
+echo "--- Внутри claude: ДВА ШАГА для сравнительного демо ---"
+echo ""
+echo "ШАГ 1 — single-agent baseline через слэш-команду:"
+echo ""
+echo "  /review full --no-fix"
+echo ""
+echo "  В v2.1.150 эта команда падает в single-agent режим (main-сессия сама"
+echo "  читает файлы и пишет отчёт). Это работает как контрольная точка."
+echo "  Ожидание: ~1-2 минуты, результат — около 17 находок."
+echo ""
+echo "ШАГ 2 — мульти-агентный прогон через Agent tool (вставь промпт):"
 echo ""
 cat <<'PROMPT'
-  Сделай мульти-агентный security audit этой папки. Через инструмент Agent
+  Теперь сделай тот же ревью, но мульти-агентный. Через инструмент Agent
   заспавни параллельно четырёх агентов с subagent_type:
-  - security-scanner (уязвимости OWASP, IDOR, XSS, mass assignment, secrets)
+  - security-scanner (уязвимости, IDOR, XSS, mass assignment, secrets)
   - code-reviewer (качество кода, конвенции, плохие практики)
   - bug-hunter (логические баги, race conditions, обработка null)
-  - architecture-reviewer (структура, циклические зависимости, separation of concerns)
-  Каждый ревьюит весь проект под своим углом. Собери результаты в единый
-  отчёт с категоризацией Critical (score >= 90) / Important (80-89).
+  - architecture-reviewer (структура, циклические зависимости, разделение ответственностей)
+  Каждый ревьюит весь проект под своим углом независимо. Собери результаты
+  в единый отчёт. Покажи прирост находок по сравнению с первым проходом.
 PROMPT
 echo ""
-echo "Ожидай ~2 минуты. Комментируй пока агенты работают:"
-echo "  • 4 Sonnet-агента стартовали параллельно"
-echo "  • Каждый специалист по своей теме"
-echo "  • Видны в правой панели Claude Code со счётчиками токенов"
-echo "  • После их завершения main-агент сведёт находки в один отчёт"
+echo "Ожидание: ~2-3 минуты."
+echo ""
+echo "Комментировать пока агенты работают:"
+echo "  • 4 Sonnet-агента стартовали параллельно — видны в правой панели"
+echo "  • Каждый специалист — свой угол зрения"
+echo "  • Они работают изолированно, главный агент собирает результаты"
 echo ""
 echo "--- Ожидаемый результат ---"
-echo "  ~25 уникальных находок: ~18 Critical + ~7 Important"
+echo "  Single-agent: ~17 находок"
+echo "  Multi-agent:  ~30 находок (6 Critical / 9 High / 11 Medium / 7 Low)"
+echo "  Прирост ~76% — за счёт architecture (DTO, middleware, service layer),"
+echo "  bug-hunter (null deref на session, optimistic delete), code-reviewer"
+echo "  (strict: false, target: es5, search || '')"
 echo ""
 echo "--- Cleanup после демо ---"
 echo "  rm -rf $BASE"
