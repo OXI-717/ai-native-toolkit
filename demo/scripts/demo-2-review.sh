@@ -66,11 +66,12 @@ echo "ШАГ 2 — мульти-агентный прогон через Agent t
 echo ""
 cat <<'PROMPT'
   Теперь сделай тот же ревью, но мульти-агентный. Через инструмент Agent
-  заспавни параллельно четырёх агентов с subagent_type:
-  - security-scanner (уязвимости, IDOR, XSS, mass assignment, secrets)
-  - code-reviewer (качество кода, конвенции, плохие практики)
-  - bug-hunter (логические баги, race conditions, обработка null)
-  - architecture-reviewer (структура, циклические зависимости, разделение ответственностей)
+  заспавни параллельно ПЯТЬ агентов с subagent_type:
+  - security-scanner (уязвимости, IDOR, XSS, mass assignment, secrets, CVE в зависимостях)
+  - code-reviewer (качество кода, strict false, any[], плохие практики)
+  - bug-hunter (логические баги, race conditions, null-dereference, обработка null)
+  - error-auditor (тихие проглатываемые исключения, отсутствие try/catch, inconsistent error shapes)
+  - architecture-reviewer (структура, DTO/middleware-слои, циклические зависимости, разделение ответственностей)
   Каждый ревьюит весь проект под своим углом независимо. Собери результаты
   в единый отчёт. Покажи прирост находок по сравнению с первым проходом.
 PROMPT
@@ -78,16 +79,19 @@ echo ""
 echo "Ожидание: ~2-3 минуты."
 echo ""
 echo "Комментировать пока агенты работают:"
-echo "  • 4 Sonnet-агента стартовали параллельно — видны в правой панели"
+echo "  • 5 Sonnet-агентов стартовали параллельно — видны в правой панели"
 echo "  • Каждый специалист — свой угол зрения"
 echo "  • Они работают изолированно, главный агент собирает результаты"
 echo ""
 echo "--- Ожидаемый результат ---"
 echo "  Single-agent: ~17 находок"
-echo "  Multi-agent:  ~30 находок (6 Critical / 9 High / 11 Medium / 7 Low)"
-echo "  Прирост ~76% — за счёт architecture (DTO, middleware, service layer),"
-echo "  bug-hunter (null deref на session, optimistic delete), code-reviewer"
-echo "  (strict: false, target: es5, search || '')"
+echo "  Multi-agent:  ~30 находок"
+echo "  Прирост ~76% — за счёт:"
+echo "    • architecture-reviewer: DTO/middleware/сервисный слой"
+echo "    • bug-hunter: null-dereference на session, optimistic delete"
+echo "    • code-reviewer: strict: false как root-cause всех null-багов, any[]"
+echo "    • security-scanner: конкретная CVE в next@14.2.5 (нужно 14.2.30+)"
+echo "    • error-auditor: bare await req.json() без try/catch, inconsistent error shapes"
 echo ""
 echo "--- Cleanup после демо ---"
 echo "  rm -rf $BASE"
