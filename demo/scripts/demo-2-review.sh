@@ -47,25 +47,38 @@ echo ""
 echo "--- Запуск ---"
 echo "Выполни:"
 echo ""
-echo "  cd $VULN_DIR && claude"
+echo "  cd $VULN_DIR && claude --permission-mode acceptEdits"
 echo ""
+echo "--permission-mode acceptEdits чтобы не запрашивал подтверждения и не блокировал Agent."
 echo "Плагин review@ai-native-toolkit подхватится автоматически — /plugin install не нужен."
 echo ""
 echo "--- Внутри claude ---"
-echo "  /review full --no-fix"
+echo "Вставь промпт (не слэш-команда — Claude Code v2.1.150 ломает routing /review --no-fix"
+echo "в single-agent, поэтому идём через явный Agent tool):"
+echo ""
+cat <<'PROMPT'
+  Сделай мульти-агентный security audit этой папки. Через инструмент Agent
+  заспавни параллельно четырёх агентов с subagent_type:
+  - security-scanner (уязвимости OWASP, IDOR, XSS, mass assignment, secrets)
+  - code-reviewer (качество кода, конвенции, плохие практики)
+  - bug-hunter (логические баги, race conditions, обработка null)
+  - architecture-reviewer (структура, циклические зависимости, separation of concerns)
+  Каждый ревьюит весь проект под своим углом. Собери результаты в единый
+  отчёт с категоризацией Critical (score >= 90) / Important (80-89).
+PROMPT
 echo ""
 echo "Ожидай ~2 минуты. Комментируй пока агенты работают:"
-echo "  • 5 Sonnet-агентов стартовали параллельно"
-echo "  • chunk-reviewers разбили файлы на группы"
-echo "  • arch-reviewer и security-scanner смотрят на всё целиком"
-echo "  • Haiku-скореры перепроверяют (confidence >=80)"
+echo "  • 4 Sonnet-агента стартовали параллельно"
+echo "  • Каждый специалист по своей теме"
+echo "  • Видны в правой панели Claude Code со счётчиками токенов"
+echo "  • После их завершения main-агент сведёт находки в один отчёт"
 echo ""
 echo "--- Ожидаемый результат ---"
-echo "  31 raw → 25 unique после dedup → 18 Critical + 7 Important"
+echo "  ~25 уникальных находок: ~18 Critical + ~7 Important"
 echo ""
 echo "--- Cleanup после демо ---"
 echo "  rm -rf $BASE"
 echo ""
 echo "==========================================="
-echo "  cd $VULN_DIR && claude"
+echo "  cd $VULN_DIR && claude --permission-mode acceptEdits"
 echo "==========================================="
