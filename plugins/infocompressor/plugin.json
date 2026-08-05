@@ -1,0 +1,5 @@
+{
+  "name": "infocompressor",
+  "description": "Compress documents into dense reference specs with 40-75% reduction",
+  "version": "0.1.0"
+}

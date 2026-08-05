@@ -14,12 +14,16 @@
 
 | Plugin | What it does |
 |--------|-------------|
+<!-- PLUGINS:BEGIN -->
 | ctx | Project context: AGENTS.md, rules, init, lint |
 | review | Multi-agent code review with confidence filtering |
 | pentest | Black-box security audit (L0-L3) |
 | context-handoff | Preserve context across /compact and /clear |
 | statusline | Claude Code status bar with usage limits |
 | gh-issues | GitHub Issues as AI session memory |
+| infocompressor | Dense reference specs from long documents |
+| deep-interview | Clarify vague tasks before planning |
+<!-- PLUGINS:END -->
 
 ## 4 Levels of AI-Native Development
 

@@ -61,6 +61,24 @@
       "author": {
         "name": "OXI-717"
       }
+    },
+    {
+      "name": "infocompressor",
+      "description": "Compress documents into dense reference specs with 40-75% reduction",
+      "source": "./plugins/infocompressor/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "deep-interview",
+      "description": "Focused task clarification interview - one question at a time, structured brief output for planning",
+      "source": "./plugins/deep-interview/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
     }
   ]
 }
