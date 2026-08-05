@@ -29,11 +29,11 @@
 
 **Level 1: Vibe Coding** — ask ChatGPT, paste code, hope it works
 
-**Level 2: Context & Rules** → `ctx` — AI remembers your project between sessions
+**Level 2: Context & Rules** → `ctx`, `context-handoff`, `infocompressor`, `deep-interview` — AI keeps your project and the task itself in focus between sessions
 
 **Level 3: Verified Development** → `review`, `pentest` — AI reviews and audits your code
 
-**Level 4: Autonomous Agents** — agents launch agents, auto-recovery, DAG orchestration
+**Level 4: Autonomous Agents** → `gh-issues`, `statusline` — session state and visibility for long autonomous runs
 
 ## License
 
