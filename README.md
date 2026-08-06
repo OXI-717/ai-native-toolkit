@@ -12,9 +12,9 @@
 
 ## Plugins
 
+<!-- PLUGINS:BEGIN -->
 | Plugin | What it does |
 |--------|-------------|
-<!-- PLUGINS:BEGIN -->
 | ctx | Project context: AGENTS.md, rules, init, lint |
 | review | Multi-agent code review with confidence filtering |
 | pentest | Black-box security audit (L0-L3) |
