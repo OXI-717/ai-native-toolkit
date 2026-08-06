@@ -80,7 +80,7 @@ This repo is AI Native Toolkit — open-source plugins for Claude Code/Codex.
 
 **Команда быстрого восстановления:**
 ```bash
-cd ~/cc/oxi/ai-native-toolkit/demo/slides
+cd <repo>/demo/slides
 python3 -m http.server 8765
 ```
 
@@ -90,10 +90,10 @@ python3 -m http.server 8765
 
 ## Pre-flight чеклист за 15 минут до выступления
 
-- [ ] `cd ~/cc/oxi/ai-native-toolkit/demo/slides && python3 -m http.server 8765` — слайды
+- [ ] `cd <repo>/demo/slides && python3 -m http.server 8765` — слайды
 - [ ] Открыть `http://localhost:8765/` в браузере, нажать `s` — speaker view
 - [ ] Зашерить через Zoom **окно с основными слайдами**, не speaker view
-- [ ] iTerm: открыть в `~/cc/_tmp/ainative-tests/demo-runs/...` для каждой demo-папки (3 вкладки)
+- [ ] iTerm: открыть в `/tmp/ainative-tests/demo-runs/...` для каждой demo-папки (3 вкладки)
 - [ ] Проверить что Claude Max лимиты не съедены (`/usage` в Claude)
 - [ ] Проверить интернет: пинг github.com
 - [ ] Скриншоты и review-report.md открыть в отдельной вкладке как backup
