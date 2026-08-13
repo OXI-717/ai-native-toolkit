@@ -1,0 +1,5 @@
+# Generated from plugins/notebooklm/skills/notebooklm/SKILL.md
+interface:
+  display_name: "Notebooklm:Notebooklm"
+  short_description: "Use this skill to query your Google NotebookLM notebooks directly from Claude Code for source-grounded, citation-back..."
+  default_prompt: "Use the `notebooklm` skill. Use this skill to query your Google NotebookLM notebooks directly from Claude Code for source-grounded, citation-backed answers from Gemini"

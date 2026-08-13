@@ -1,0 +1,25 @@
+{
+  "name": "notebooklm",
+  "version": "0.1.0",
+  "description": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
+  "author": {
+    "name": "OXI-717"
+  },
+  "homepage": "https://github.com/OXI-717/ai-native-toolkit",
+  "repository": "https://github.com/OXI-717/ai-native-toolkit",
+  "keywords": [
+    "notebooklm"
+  ],
+  "interface": {
+    "displayName": "Notebooklm",
+    "shortDescription": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
+    "longDescription": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
+    "developerName": "OXI-717",
+    "category": "Research",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Query Google NotebookLM notebooks with source-grounded, citat..."
+    ]
+  },
+  "skills": "./skills/"
+}

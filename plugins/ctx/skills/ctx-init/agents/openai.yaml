@@ -1,0 +1,5 @@
+# Generated from plugins/ctx/skills/ctx-init/SKILL.md
+interface:
+  display_name: "Ctx:Ctx Init"
+  short_description: "Initialize AGENTS.md + CLAUDE.md + rules/ in a code repo (fresh mode). Triggers on \"/ctx-init\", \"init context\", \"scaf..."
+  default_prompt: "Use the `ctx-init` skill. Initialize AGENTS.md + CLAUDE.md + rules/ in a code repo (fresh mode)"

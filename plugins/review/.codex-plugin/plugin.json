@@ -1,26 +1,24 @@
 {
   "name": "review",
   "version": "0.1.0",
-  "description": "Multi-agent code review with confidence-based filtering. Parallel agents (chunk-reviewer, arch-reviewer, security-scanner) + Haiku scorers (confidence ≥80) + dedup.",
+  "description": "Multi-agent code review with confidence-based filtering",
   "author": {
     "name": "OXI-717"
   },
   "homepage": "https://github.com/OXI-717/ai-native-toolkit",
   "repository": "https://github.com/OXI-717/ai-native-toolkit",
   "keywords": [
-    "review",
-    "code-review",
-    "multi-agent"
+    "review"
   ],
   "interface": {
-    "displayName": "AI-Native Review",
+    "displayName": "Review",
     "shortDescription": "Multi-agent code review with confidence-based filtering",
-    "longDescription": "Multi-agent code review with confidence-based filtering. Parallel agents (chunk-reviewer, arch-reviewer, security-scanner) + Haiku scorers (confidence ≥80) + dedup.",
+    "longDescription": "Multi-agent code review with confidence-based filtering",
     "developerName": "OXI-717",
     "category": "Coding",
     "capabilities": [],
     "defaultPrompt": [
-      "Run multi-agent code review with /review full"
+      "Run OXI code review"
     ]
   },
   "skills": "./skills/"

@@ -1,7 +1,7 @@
 ---
 name: review
 description: |
-  Use when the user invokes /review, asks for the team-based
+  Use when the user invokes /review, review, asks for the team-based
   code review workflow, wants multi-pass or multi-agent review, or wants the
   review → fix → build/test → re-review loop. Supports Codex by using native
   subagents only when the user explicitly asks for the multi-agent/team review
@@ -28,7 +28,7 @@ If the command file is not found, fall back to this SKILL.md.
 
 **Codex or portable skill mode:** follow this SKILL.md. If the user explicitly
 asked for `review`, `/review`, "multi-agent review", "team review",
-or equivalent delegation, use Codex subagents for independent
+"серия субагентов", or equivalent delegation, use Codex subagents for independent
 review roles when available. For a plain "review this" request, do not delegate;
 run the roles as local passes in this session.
 
@@ -87,6 +87,13 @@ Then run selected reviewer roles. Use parallel subagents only when explicitly
 permitted by the user request; otherwise run each role locally. Each role reports
 only actionable findings with confidence >= 80.
 
+**Refute-first stance (all roles):** the reviewer's job is to try to REJECT the
+change, not to confirm it. Assume the changed lines are broken until the code
+itself proves otherwise; "looks plausible" is not verification. For each changed
+behavior, name the input/state/timing that would make it produce a wrong result
+and check whether the code handles it. A verdict of "clean" is earned only after
+an honest failed attempt to refute — never as the default when nothing jumped out.
+
 Reviewer role prompts:
 
 - **code-reviewer:** local instructions, conventions, readability, API contract
@@ -135,8 +142,9 @@ test gaps or commands not run.
 
 ## Fix Loop
 
-Default behavior: fix findings unless the user passed `--no-fix` or the scope is
-a remote PR that should stay read-only. If `--ask` is present, ask before editing.
+Default behavior matches `/review`: fix findings unless the user passed
+`--no-fix` or the scope is a remote PR that should stay read-only. If `--ask` is
+present, ask before editing.
 
 When fixing:
 

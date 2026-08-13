@@ -1,0 +1,5 @@
+# Generated from plugins/openrouter-setup/commands/openrouter-setup.md
+interface:
+  display_name: "Openrouter Setup:Openrouter Setup"
+  short_description: "Configure OpenRouter as an OpenAI-compatible endpoint (OPENROUTER_API_KEY in env, never in code) for moonshotai/kimi-..."
+  default_prompt: "Use the `openrouter-setup` skill. Accept the same arguments as `/openrouter-setup` in Claude Code. Arguments: [model-slug] — smoke-test a specific model, e.g. z-ai/glm-4.6"

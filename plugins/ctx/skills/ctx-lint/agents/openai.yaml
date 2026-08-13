@@ -1,0 +1,5 @@
+# Generated from plugins/ctx/skills/ctx-lint/SKILL.md
+interface:
+  display_name: "Ctx:Ctx Lint"
+  short_description: "Validate @-imports across all ctx AGENTS.md files. Finds broken links, missing end markers. Supports auto-fix for tri..."
+  default_prompt: "Use the `ctx-lint` skill. Validate @-imports across all ctx AGENTS.md files"

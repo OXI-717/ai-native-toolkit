@@ -1,0 +1,5 @@
+# Generated from plugins/infocompressor/skills/infocompressor/SKILL.md
+interface:
+  display_name: "Infocompressor:Infocompressor"
+  short_description: "Use when the user needs to compress, condense, or summarize lengthy content while preserving ALL critical details. Tr..."
+  default_prompt: "Use the `infocompressor` skill. Use when the user needs to compress, condense, or summarize lengthy content while preserving ALL critical details"

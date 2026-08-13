@@ -1,0 +1,18 @@
+schemaVersion: "1"
+name: checkout-demo
+viewport: { width: 1280, height: auto }
+chrome: true
+lang: ru
+output: out/checkout-demo.mp4
+env: [BASE_URL]
+steps:
+  - caption: "1 · Магазин — выбор товара"
+  - goto: { url: "$BASE_URL/", waitFor: { heading: "Item B" } }
+  - caption: "Покупатель жмёт «Оплатить»"
+  - click: { role: button, name: "Оплатить", inArticle: "Item B", expectUrl: "/pay/", idempotent: false }
+  - caption: "2 · Платёжная страница"
+  - waitFor: { heading: "Имитация оплаты" }
+  - click: { role: button, name: "Подтвердить" }
+  - waitFor: { text: "Готово" }
+  - caption: "✓ Оплата подтверждена"
+  - waitMs: 1500

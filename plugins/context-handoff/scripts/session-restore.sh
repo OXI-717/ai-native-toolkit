@@ -3,12 +3,22 @@
 # SessionStart(compact|clear) Hook: Restore handoff context after compaction.
 #
 # Session isolation: each session writes to <session-id>.md.
-# On restore, looks for own session file first, falls back to HANDOFF.md
-# only with staleness check (prevents cross-session contamination).
+# On restore, looks for own session file first, then pane-scoped handoff.
+# HANDOFF.md is not restored because it is shared by concurrent sessions.
+# LFG_ROTATION_MARKER_V1: supports .lfg-rotation-request.env handoff_file.
 #
 
 LOG="/tmp/context-handoff.log"
 log() { echo "$(date +%Y-%m-%dT%H:%M:%S) SessionRestore: $*" >> "$LOG" 2>/dev/null; }
+die() {
+    echo "SessionRestore: $*" >&2
+    log "$*"
+    exit 1
+}
+
+if [ -z "${HOME:-}" ]; then
+    die "HOME is not set; cannot resolve ~/.claude/handoff"
+fi
 
 # Read hook input JSON from stdin
 input=$(cat)
@@ -27,7 +37,7 @@ if [ -z "$cwd" ]; then
     log "No cwd in input, using pwd: $cwd"
 fi
 
-# Build project hash: /home/user/project -> -home-user-project
+# Build the Claude project slug by replacing path separators with dashes.
 project_hash=$(echo "$cwd" | sed 's|/|-|g')
 HANDOFF_DIR="$HOME/.claude/handoff/${project_hash}"
 
@@ -37,42 +47,55 @@ log "session_id=$session_id cwd=$cwd project_hash=$project_hash"
 handoff_file=""
 handoff_source=""
 
-if [ -n "$session_id" ] && [ -f "$HANDOFF_DIR/${session_id}.md" ]; then
+read_marker_value() {
+    local file="$1" key="$2"
+    [ -f "$file" ] || return 1
+    awk -F= -v k="$key" '$1 == k {print substr($0, length(k) + 2); exit}' "$file" 2>/dev/null
+}
+
+# --- LFG rotation file (old tmux pane, new Claude session id) ---
+rotation_marker="$HANDOFF_DIR/.lfg-rotation-request.env"
+if [ -f "$rotation_marker" ]; then
+    marker_cwd=$(read_marker_value "$rotation_marker" "cwd")
+    marker_session=$(read_marker_value "$rotation_marker" "session")
+    marker_handoff=$(read_marker_value "$rotation_marker" "handoff_file")
+    marker_basename=$(basename "$marker_handoff" 2>/dev/null)
+    if [ "$marker_cwd" = "$cwd" ] && [ -n "$marker_session" ] \
+        && [ -n "$marker_handoff" ] && [ "$marker_handoff" = "$marker_basename" ] \
+        && [ -f "$HANDOFF_DIR/$marker_handoff" ]; then
+        handoff_file="$HANDOFF_DIR/$marker_handoff"
+        handoff_source="lfg-rotation (${marker_session})"
+        rm -f "$rotation_marker" 2>/dev/null || true
+        log "Found LFG rotation handoff: $handoff_file"
+    else
+        log "Ignoring LFG rotation marker: no matching session snapshot"
+    fi
+fi
+
+if [ -z "$handoff_file" ] && [ -n "$session_id" ] && [ -f "$HANDOFF_DIR/${session_id}.md" ]; then
     handoff_file="$HANDOFF_DIR/${session_id}.md"
     handoff_source="session-specific (${session_id})"
     log "Found session-specific handoff: $handoff_file"
 fi
 
-# --- Fallback: HANDOFF.md (for /clear or unknown session_id) ---
-if [ -z "$handoff_file" ] && [ -f "$HANDOFF_DIR/HANDOFF.md" ]; then
-    META_FILE="$HANDOFF_DIR/HANDOFF.meta.json"
-
-    # Check staleness: skip if older than 1 hour (prevents stale cross-session restore)
-    skip_fallback=false
-    if [ -f "$META_FILE" ]; then
-        saved_ts=$(jq -r '.timestamp // ""' "$META_FILE" 2>/dev/null)
-        if [ -n "$saved_ts" ]; then
-            saved_epoch=$(python3 -c "
-from datetime import datetime
-try:
-    dt = datetime.fromisoformat('$saved_ts')
-    print(int(dt.timestamp()))
-except:
-    print(0)
-" 2>/dev/null)
-            now_epoch=$(date +%s)
-            age=$((now_epoch - saved_epoch))
-            if [ "$age" -gt 3600 ]; then
-                log "Fallback HANDOFF.md too old (${age}s > 3600s), skipping"
-                skip_fallback=true
-            fi
-        fi
-    fi
-
-    if [ "$skip_fallback" = false ]; then
-        handoff_file="$HANDOFF_DIR/HANDOFF.md"
-        handoff_source="latest fallback (HANDOFF.md)"
-        log "Using fallback: $handoff_file"
+# --- Pane-scoped handoff (the /clear case) ---
+#
+# /clear mints a new session id, so the lookup above can never match. The tmux pane,
+# however, is the same one the operator is sitting in, and its handoff belongs to the
+# conversation that just ran here.
+#
+# The project-wide HANDOFF.md is deliberately NOT used as a fallback: two live sessions
+# in one directory is routine, so they all overwrite
+# that single file, and restoring a neighbour's handoff is worse than restoring nothing —
+# an empty context announces itself, a plausible wrong one does not.
+if [ -z "$handoff_file" ] && [ -n "${TMUX_PANE:-}" ]; then
+    pane_slug=$(printf '%s' "${TMUX_PANE}" | tr '%' 'p' | tr -cd 'A-Za-z0-9_-' | cut -c1-32)
+    if [ -n "$pane_slug" ] && [ -f "$HANDOFF_DIR/pane-${pane_slug}.md" ]; then
+        handoff_file="$HANDOFF_DIR/pane-${pane_slug}.md"
+        handoff_source="pane-scoped (${TMUX_PANE})"
+        log "Found pane handoff: $handoff_file"
+    else
+        log "No pane handoff for ${TMUX_PANE} in $HANDOFF_DIR"
     fi
 fi
 

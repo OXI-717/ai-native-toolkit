@@ -1,26 +1,24 @@
 {
   "name": "ctx",
   "version": "0.1.0",
-  "description": "Project context: AGENTS.md manifest, rules, init, lint. Bootstraps shared context for AI tools (Claude Code, Codex, etc).",
+  "description": "Project context: AGENTS.md, rules, init, lint",
   "author": {
     "name": "OXI-717"
   },
   "homepage": "https://github.com/OXI-717/ai-native-toolkit",
   "repository": "https://github.com/OXI-717/ai-native-toolkit",
   "keywords": [
-    "context",
-    "agents-md",
     "ctx"
   ],
   "interface": {
-    "displayName": "AI-Native Ctx",
+    "displayName": "Ctx",
     "shortDescription": "Project context: AGENTS.md, rules, init, lint",
-    "longDescription": "Project context: AGENTS.md manifest, rules, init, lint. Bootstraps shared context for AI tools (Claude Code, Codex, etc).",
+    "longDescription": "Project context: AGENTS.md, rules, init, lint",
     "developerName": "OXI-717",
-    "category": "Productivity",
+    "category": "Coding",
     "capabilities": [],
     "defaultPrompt": [
-      "Initialize project context with /ctx-init"
+      "Load project context"
     ]
   },
   "skills": "./skills/"

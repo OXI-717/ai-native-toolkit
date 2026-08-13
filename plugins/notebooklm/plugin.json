@@ -1,0 +1,5 @@
+{
+  "name": "notebooklm",
+  "description": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
+  "version": "0.1.0"
+}

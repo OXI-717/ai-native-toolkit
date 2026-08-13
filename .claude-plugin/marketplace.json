@@ -79,6 +79,51 @@
       "author": {
         "name": "OXI-717"
       }
+    },
+    {
+      "name": "screencast",
+      "description": "Record a demo video of a web-app flow: browser chrome, synthetic cursor, captions, mp4 from a declarative YAML scenario",
+      "source": "./plugins/screencast/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "agent-teams",
+      "description": "Multi-agent team coordination with shared tasks and messaging",
+      "source": "./plugins/agent-teams/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "notebooklm",
+      "description": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
+      "source": "./plugins/notebooklm/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "cc-analytics",
+      "description": "Claude Code usage analytics with HTML reports and ASCII charts",
+      "source": "./plugins/cc-analytics/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "openrouter-setup",
+      "description": "Configure OpenRouter as an OpenAI-compatible endpoint, API key in env only",
+      "source": "./plugins/openrouter-setup/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
     }
   ]
 }

@@ -1,0 +1,5 @@
+{
+  "name": "cc-analytics",
+  "description": "Claude Code usage analytics with HTML reports and ASCII charts",
+  "version": "0.1.0"
+}

@@ -1,0 +1,5 @@
+{
+  "name": "screencast",
+  "description": "Record a demo video of a web-app flow: browser chrome, synthetic cursor, captions, mp4 from a declarative YAML scenario",
+  "version": "0.1.0"
+}

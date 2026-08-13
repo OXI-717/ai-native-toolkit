@@ -1,0 +1,18 @@
+{
+  "name": "screencast-engine",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "oxlint .",
+    "lint:canary": "sh -c 'command -v oxlint >/dev/null || exit 127; tmp=.oxlint-canary.mjs; printf \"const unused = 1;\\n\" > \"$tmp\"; out=$(oxlint \"$tmp\" 2>&1); status=$?; rm -f \"$tmp\"; test \"$status\" -eq 1 && echo \"$out\" | grep -q \"no-unused-vars\"'",
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "playwright": "^1.49.0",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "oxlint": "^1.74.0"
+  }
+}

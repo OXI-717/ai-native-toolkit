@@ -1,0 +1,5 @@
+# Generated from plugins/review/commands/review.md
+interface:
+  display_name: "Review:Review"
+  short_description: "Teams-based code review with fix loop: Review → Fix → Build/Test → Re-Review"
+  default_prompt: "Use the `review` skill. Accept the same arguments as `/review` in Claude Code. Arguments: [scope] [aspects] [--ask] [--no-fix] — scope: staged|unstaged|last|pr|full|<files>. Default: auto-fix"

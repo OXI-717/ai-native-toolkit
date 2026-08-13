@@ -20,7 +20,11 @@ HANDOFF_DIR = Path.home() / ".claude" / "handoff"
 CLAUDE_PROJECTS = Path.home() / ".claude" / "projects"
 MAX_USER_MESSAGES = 20
 MAX_ASSISTANT_SNIPPETS = 15
-MAX_TRANSCRIPT_LINES = 2000
+# The heavy pass (snippets, files, commands) stays capped — those live in the recent
+# turns. User requests are cheap and define the whole arc of a session, so they are
+# collected across the ENTIRE transcript: with a 2000-line cap a long session silently
+# lost its own beginning, and nothing said so.
+MAX_TRANSCRIPT_LINES = 6000
 SNIPPET_MAX_CHARS = 300
 
 
@@ -33,8 +37,21 @@ def _log(msg):
         pass
 
 
+def pane_slug():
+    """Filesystem-safe id of the tmux pane this session runs in, or "" outside tmux.
+
+    The pane is the only identifier that survives /clear: the session id is regenerated,
+    while the operator stays in the same pane. TMUX_PANE looks like "%19".
+    """
+    raw = os.environ.get("TMUX_PANE", "").strip()
+    if not raw:
+        return ""
+    slug = re.sub(r"[^A-Za-z0-9_-]", "", raw.replace("%", "p"))
+    return slug[:32]
+
+
 def cwd_to_project_hash(cwd):
-    """Convert /home/user/project to -home-user-project."""
+    """Convert an absolute cwd path to Claude's project-directory slug."""
     return cwd.replace("/", "-")
 
 
@@ -77,16 +94,45 @@ def parse_transcript(path):
     tools_used = []
     bash_commands = []
 
-    # Read last N lines to cap processing
-    lines = []
+    all_lines = []
     try:
         with open(path, "r") as f:
-            lines = f.readlines()
-        if len(lines) > MAX_TRANSCRIPT_LINES:
-            lines = lines[-MAX_TRANSCRIPT_LINES:]
+            all_lines = f.readlines()
     except Exception as e:
         _log(f"Error reading transcript: {e}")
         return None
+
+    truncated = len(all_lines) > MAX_TRANSCRIPT_LINES
+    lines = all_lines[-MAX_TRANSCRIPT_LINES:] if truncated else all_lines
+    if truncated:
+        # Say it out loud: a silently clipped handoff looks complete but is not.
+        _log(f"transcript {len(all_lines)} lines > cap {MAX_TRANSCRIPT_LINES}; "
+             f"heavy pass limited to the last {MAX_TRANSCRIPT_LINES}")
+
+    # Cheap pre-pass over everything for user requests only. The substring test avoids
+    # json.loads on the bulk of the file, which is tool output.
+    early_requests = []
+    if truncated:
+        for line in all_lines[:-MAX_TRANSCRIPT_LINES]:
+            # Substring pre-filter to avoid json.loads on the bulk of the file (mostly
+            # tool output). Match just the value: the separator spacing depends on the
+            # writer, and keying on '"type":"user"' silently matched nothing the moment
+            # the JSON was written with spaces.
+            if '"user"' not in line:
+                continue
+            try:
+                entry = json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if entry.get("toolUseResult") or entry.get("isMeta"):
+                continue
+            message = entry.get("message")
+            if not isinstance(message, dict) or message.get("role") != "user":
+                continue
+            for t in _extract_texts(message.get("content", "")):
+                t = t.strip()
+                if len(t) > 5 and not t.startswith("<"):
+                    early_requests.append(t)
 
     for line in lines:
         line = line.strip()
@@ -182,6 +228,10 @@ def parse_transcript(path):
         f"{len(files_modified)} modified, {len(files_read)} read, "
         f"{len(tools_used)} tools, {len(bash_commands)} cmds"
     )
+
+    if early_requests:
+        # Oldest first, so the handoff reads as the arc of the session.
+        user_messages[:0] = _dedup(early_requests)[-MAX_USER_MESSAGES:]
 
     return {
         "user_messages": _dedup(user_messages[-MAX_USER_MESSAGES:]),
@@ -358,6 +408,17 @@ def main():
     # Per-session file
     (handoff_project_dir / f"{session_id}.md").write_text(handoff)
 
+    # Per-pane file. /clear mints a NEW session id, so a session-keyed file can never be
+    # found afterwards — but the tmux pane survives, and the next session in that pane is
+    # exactly the one entitled to this handoff. Without it, restore falls back to the
+    # project-wide HANDOFF.md, which a PARALLEL session in the same repo may have written
+    # (two live sessions per directory is routine here). Inheriting a neighbour's handoff
+    # is worse than inheriting none: an empty context is obvious, a plausible wrong one
+    # sends the session confidently down someone else's task.
+    pane = pane_slug()
+    if pane:
+        (handoff_project_dir / f"pane-{pane}.md").write_text(handoff)
+
     # Latest handoff for this project
     latest = handoff_project_dir / "HANDOFF.md"
     latest.write_text(handoff)
@@ -365,6 +426,7 @@ def main():
     # Metadata
     meta = {
         "session_id": session_id,
+        "pane": pane,
         "cwd": cwd,
         "branch": branch,
         "timestamp": datetime.now().isoformat(),

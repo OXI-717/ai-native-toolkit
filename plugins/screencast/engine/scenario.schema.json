@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["schemaVersion", "name", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "name": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+    "viewport": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "width": { "type": "integer", "minimum": 320 },
+        "height": { "oneOf": [{ "type": "integer", "minimum": 240 }, { "const": "auto" }] }
+      }
+    },
+    "chrome": { "type": "boolean" },
+    "theme": { "type": "object" },
+    "lang": { "type": "string" },
+    "output": { "type": "string" },
+    "env": { "type": "array", "items": { "type": "string" } },
+    "dnsOverride": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["from", "to"], "additionalProperties": false,
+        "properties": { "from": { "type": "string" }, "to": { "type": "string" } }
+      }
+    },
+    "httpAuth": {
+      "type": "object", "required": ["username", "password"], "additionalProperties": false,
+      "properties": { "username": { "type": "string" }, "password": { "type": "string" } }
+    },
+    "steps": { "type": "array", "items": { "type": "object" } }
+  }
+}

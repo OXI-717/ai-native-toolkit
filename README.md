@@ -53,6 +53,11 @@ and will not work — see [Runtime support](#runtime-support).
 | gh-issues | GitHub Issues as AI session memory |
 | infocompressor | Dense reference specs from long documents |
 | deep-interview | Clarify vague tasks before planning |
+| screencast | Screencast demo videos of web-app flows |
+| agent-teams | Multi-agent team coordination |
+| notebooklm | Source-grounded answers from NotebookLM |
+| cc-analytics | Claude Code usage analytics |
+| openrouter-setup | OpenRouter as an OpenAI-compatible endpoint |
 <!-- PLUGINS:END -->
 
 ## Runtime support

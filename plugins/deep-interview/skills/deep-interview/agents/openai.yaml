@@ -1,0 +1,5 @@
+# Generated from plugins/deep-interview/skills/deep-interview/SKILL.md
+interface:
+  display_name: "Deep Interview:Deep Interview"
+  short_description: "Focused clarification interview for vague tasks. Asks questions one at a time, explores codebase for context, outputs..."
+  default_prompt: "Use the `deep-interview` skill. Focused clarification interview for vague tasks"
