@@ -18,7 +18,7 @@ digraph when_to_use {
     "Need agents to communicate?" [shape=diamond];
     "Need shared task tracking?" [shape=diamond];
     "Single agent" [shape=box];
-    "Subagents (Task tool)" [shape=box];
+    "Subagents (Agent tool)" [shape=box];
     "Agent Teams" [shape=box];
 
     "Complex task?" -> "Single agent" [label="no"];
@@ -28,7 +28,7 @@ digraph when_to_use {
     "Need agents to communicate?" -> "Agent Teams" [label="yes"];
     "Need agents to communicate?" -> "Need shared task tracking?" [label="no"];
     "Need shared task tracking?" -> "Agent Teams" [label="yes"];
-    "Need shared task tracking?" -> "Subagents (Task tool)" [label="no - just results"];
+    "Need shared task tracking?" -> "Subagents (Agent tool)" [label="no - just results"];
 }
 ```
 
@@ -45,7 +45,7 @@ digraph when_to_use {
 
 ## Teams vs Subagents
 
-| Aspect | Subagents (Task) | Agent Teams (Teammate) |
+| Aspect | Subagents (plain `Agent`) | Agent Teams (named `Agent` + shared tasks) |
 |--------|-------------------|------------------------|
 | Context | Own, returns summary | Own, fully independent |
 | Communication | Only back to caller | Agents message each other |
@@ -56,15 +56,18 @@ digraph when_to_use {
 
 ## Lifecycle
 
-### 1. Create Team
+### 1. The team already exists
 
-```
-Teammate(operation="spawnTeam", team_name="my-feature", description="Building auth module")
-```
+There is no team-creation step and no `Teammate` tool. Every session has **one implicit
+team**: the first spawned agent joins it, the main conversation is its lead.
 
-Creates:
-- `~/.claude/teams/my-feature/config.json` — members registry
-- `.task-runner/tasks/my-feature/` — shared task list
+The runtime keeps the registry itself, keyed by session, not by a team name you choose:
+
+- `~/.claude/teams/session-<id>/config.json` — members (lead + teammates)
+- `~/.claude/teams/session-<id>/inboxes/<agent-name>.json` — per-agent mailbox
+
+The shared task list lives in the session, not in a project directory — nothing is
+written under `.task-runner/`.
 
 ### 2. Create Tasks
 
@@ -75,18 +78,17 @@ TaskCreate(subject="Write auth API tests", description="...", activeForm="Writin
 
 ### 3. Spawn Teammates
 
-Use `Task` tool with `team_name` and `name`:
+Use the `Agent` tool with `name` — the name is what makes the agent addressable later.
+Do **not** pass `team_name`: it is deprecated and ignored (one implicit team per session).
 
 ```
-Task(
+Agent(
     subagent_type="general-purpose",
-    team_name="my-feature",
     name="backend-dev",
     prompt="You are a backend developer. Check TaskList for your assignments."
 )
-Task(
+Agent(
     subagent_type="general-purpose",
-    team_name="my-feature",
     name="test-writer",
     prompt="You are a test specialist. Check TaskList for your assignments."
 )
@@ -101,20 +103,26 @@ TaskUpdate(taskId="2", owner="test-writer")
 
 ### 5. Monitor & Communicate
 
+`SendMessage` takes `to` / `message` / `summary`. There is no `type` field for ordinary
+messages and no broadcast — address teammates one by one.
+
 ```
-SendMessage(type="message", recipient="backend-dev", content="Use httpOnly cookies for tokens", summary="JWT storage guidance")
+SendMessage(to="backend-dev", message="Use httpOnly cookies for tokens", summary="JWT storage guidance")
 ```
 
 Teammates auto-notify you when idle (turn ended). This is normal — idle means waiting, not done.
 
 ### 6. Shutdown
 
+Teammates do not exit automatically when idle; they remain resident in the session waiting for messages. Once team work is complete or a teammate is genuinely no longer needed, send a `shutdown_request` to stop them:
+
 ```
-SendMessage(type="shutdown_request", recipient="backend-dev", content="Work complete")
-SendMessage(type="shutdown_request", recipient="test-writer", content="Work complete")
-# Wait for confirmations, then:
-Teammate(operation="cleanup")
+SendMessage(to="backend-dev", message={"type": "shutdown_request", "reason": "Work complete"}, summary="stop backend-dev")
 ```
+
+Shutting teammates down is the **lead's** call. A teammate never originates a
+`shutdown_request` on its own — it only answers one with `shutdown_response`
+(echo the `request_id`, set `approve`). Approving ends that teammate's process.
 
 ## Best Practices
 
@@ -157,15 +165,19 @@ Teammates DON'T inherit your conversation history. They get:
 
 **Lead → Teammate:** Direct message with context
 ```
-SendMessage(type="message", recipient="backend-dev",
-    content="The DB schema changed - users table now has 'role' column",
+SendMessage(to="backend-dev",
+    message="The DB schema changed - users table now has 'role' column",
     summary="Schema change notification")
 ```
 
-**Broadcast (use sparingly — sends to ALL):**
+**Teammate → Lead:** address the main conversation as `main` (background teammates only —
+a foreground agent returns its result to the caller instead)
 ```
-SendMessage(type="broadcast", content="Blocking bug found, pause work", summary="Stop all work")
+SendMessage(to="main", message="Middleware done, tests green", summary="JWT middleware ready")
 ```
+
+**No broadcast.** To reach everyone, send the same message to each teammate by name —
+which is a good reason to keep teams at 2-4 agents.
 
 **Plan approval:** Spawn teammate in plan mode, review their plan before they implement.
 
@@ -183,9 +195,9 @@ Teammates go idle after every turn. This is **normal behavior**, not an error:
 | Using teams for sequential work | Use single agent or subagents |
 | Not partitioning files by agent | Assign file ownership explicitly |
 | Sparse spawn prompts | Include full context, don't assume shared history |
-| Broadcasting routine messages | Use direct `message` to specific teammate |
+| Messaging everyone about routine progress | Mark it with `TaskUpdate` — teammates read the list themselves |
 | Reacting to every idle notification | Idle is normal, only respond when needed |
-| Forgetting cleanup | Always `shutdown_request` all → then `cleanup` |
+| Expecting to read results off the task list | Resolved tasks vanish — require a `SendMessage` report |
 | Starting code before teammates finish | Wait for results, verify, then integrate |
 | Too many teammates | 2-4 optimal, more = coordination overhead |
 
@@ -195,19 +207,19 @@ Teammates go idle after every turn. This is **normal behavior**, not an error:
 
 **Manager-only lead:** Don't just coordinate — the lead agent should also do work. Delegate mode is for complex orchestration only.
 
-**Over-communication:** Don't broadcast status updates. Use TaskUpdate to mark progress — teammates check TaskList themselves.
+**Over-communication:** Don't message every teammate with status updates. Use TaskUpdate to mark progress — teammates check TaskList themselves.
 
 ## Quick Reference
 
 | Tool | Purpose |
 |------|---------|
-| `Teammate(operation="spawnTeam")` | Create team |
-| `Task(team_name=..., name=...)` | Spawn teammate |
-| `TaskCreate` / `TaskList` / `TaskUpdate` | Manage shared tasks |
-| `SendMessage(type="message")` | DM a teammate |
-| `SendMessage(type="broadcast")` | Message all (use sparingly) |
-| `SendMessage(type="shutdown_request")` | Graceful shutdown |
-| `Teammate(operation="cleanup")` | Remove team resources |
+| `Agent(subagent_type=..., name=...)` | Spawn teammate (no `team_name` — deprecated) |
+| `TaskCreate` / `TaskList` / `TaskGet` / `TaskUpdate` | Manage shared tasks |
+| `SendMessage(to=..., message=..., summary=...)` | Message a teammate, or `to="main"` for the lead |
+| `SendMessage(to=..., message={"type": "shutdown_request"})` | Shut down a teammate when no longer needed |
+
+Gone in the current runtime: the `Teammate` tool (both `spawnTeam` and `cleanup`), the
+`team_name` argument, `type="message"` / `type="broadcast"` and `recipient=` / `content=`.
 
 ## Limitations (Current)
 
@@ -217,3 +229,8 @@ Teammates go idle after every turn. This is **normal behavior**, not an error:
 - Lead is fixed for lifecycle
 - Split panes need tmux/iTerm2 (not VS Code terminal)
 - Task status may lag — teammates sometimes forget to mark `completed`
+- A resolved task disappears: once it is `completed` it drops out of `TaskList` **and**
+  `TaskGet` answers "Task not found". Deleted tasks vanish the same way, so the list can't
+  tell you whether work was finished or thrown away — ask the teammate, or have it report
+  the result via `SendMessage` before resolving. Keep your own record if you need history:
+  IDs keep counting up, so a gap means a task existed and is gone.

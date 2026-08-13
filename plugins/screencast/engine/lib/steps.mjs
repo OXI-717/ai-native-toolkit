@@ -4,6 +4,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function target(engine) { return engine.currentFrame ?? engine.page; }
 
 async function caption(engine, text) {
+  // Remember the active caption: the overlay is rebuilt on every navigation, so record.mjs
+  // replays it from here (same as the url pill and the cursor).
+  engine.caption = text;
   await engine.page.evaluate(([p, t]) => window[p + 'caption']?.(t), [engine.prefix, text]).catch(() => {});
 }
 
@@ -47,7 +50,7 @@ async function doClick(engine, spec) {
   const loc = locate(engine, spec);
   const popupP = spec.followPopup ? engine.ctx.waitForEvent('page') : null;
   await cursorClick(engine, loc);
-  if (popupP) { const np = await popupP; await np.waitForLoadState('domcontentloaded'); engine.page = np; }
+  if (popupP) { const np = await popupP; await np.waitForLoadState('domcontentloaded'); await engine.selectPage(np); }
   if (spec.expectUrl) {
     const pat = new RegExp(spec.expectUrl);
     try {
@@ -121,7 +124,7 @@ async function runSwitchStep(engine, step) {
       : await engine.ctx.waitForEvent('page', { timeout: s.timeout ?? 15000 });
     await np.waitForLoadState('domcontentloaded');
     if (s.expectUrl) await np.waitForURL(new RegExp(s.expectUrl), { waitUntil: 'commit', timeout: s.timeout ?? 15000 });
-    engine.page = np; engine.currentFrame = null;
+    await engine.selectPage(np);
     return;
   }
   if ('switchToFrame' in step) {

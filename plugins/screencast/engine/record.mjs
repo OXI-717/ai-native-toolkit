@@ -57,13 +57,29 @@ async function main() {
   const page = await ctx.newPage();
   page.on('dialog', (d) => { console.error('dialog dismissed:', d.type(), d.message()); d.dismiss().catch(() => {}); });
   page.on('download', (d) => { console.error('download cancelled:', d.url()); d.cancel().catch(() => {}); });
-  const engine = { page, ctx, prefix, chrome, currentFrame: null, allowJs: args.allowJs, cursor: { x: width / 2, y: height / 2 } };
-  // auto-reinit overlay url pill + cursor on top-frame navigation
-  page.on('framenavigated', async (fr) => {
-    if (fr !== page.mainFrame()) return;
-    try { await page.evaluate(([p, u]) => window[p + 'seturl']?.(u, true), [prefix, page.url()]); } catch {}
-    try { await page.evaluate(([p, c]) => window[p + 'moveCursor']?.(c.x, c.y), [prefix, engine.cursor]); } catch {}
-  });
+  const engine = { page, ctx, prefix, chrome, currentFrame: null, allowJs: args.allowJs, cursor: { x: width / 2, y: height / 2 }, caption: '' };
+  const replayOverlay = async (targetPage) => {
+    try { await targetPage.evaluate(([p, u]) => window[p + 'seturl']?.(u, true), [prefix, targetPage.url()]); } catch {}
+    try { await targetPage.evaluate(([p, c]) => window[p + 'moveCursor']?.(c.x, c.y), [prefix, engine.cursor]); } catch {}
+    if (engine.caption) {
+      try { await targetPage.evaluate(([p, t]) => window[p + 'caption']?.(t), [prefix, engine.caption]); } catch {}
+    }
+  };
+  // auto-reinit overlay url pill + cursor + active caption on top-frame navigation
+  const attachNavigationReplay = (targetPage) => {
+    targetPage.on('framenavigated', async (fr) => {
+      if (fr !== targetPage.mainFrame()) return;
+      await replayOverlay(targetPage);
+    });
+  };
+  engine.selectPage = async (targetPage) => {
+    attachNavigationReplay(targetPage);
+    engine.page = targetPage;
+    engine.currentFrame = null;
+    // A popup/tab may have completed its first navigation before it is selected.
+    await replayOverlay(targetPage);
+  };
+  attachNavigationReplay(page);
 
   await runSteps(engine, scenario.steps);
 

@@ -28,12 +28,14 @@ Run this Python script to generate the report:
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-def get_git_info(path):
-    if not os.path.isdir(path) or not os.path.exists(os.path.join(path, '.git')):
-        return None, 0
+SKIP_DIRS = {'node_modules', '.venv', 'venv', '.worktrees', 'dist', 'build', '__pycache__'}
+
+def _repo_stats(path, week_ago):
+    """remote + commit count for a single git repo."""
     try:
         result = subprocess.run(['git', '-C', path, 'remote', 'get-url', 'origin'],
                                 capture_output=True, text=True, timeout=5)
@@ -41,13 +43,89 @@ def get_git_info(path):
         if remote:
             remote = remote.replace('git@github.com:', 'github.com/').replace('.git', '').replace('https://', '')
 
-        week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
         result = subprocess.run(['git', '-C', path, 'rev-list', '--count', f'--since={week_ago}', 'HEAD'],
                                 capture_output=True, text=True, timeout=5)
         commits = int(result.stdout.strip()) if result.returncode == 0 else 0
         return remote, commits
-    except:
+    except Exception:
         return None, 0
+
+def _nested_repos(path, depth=2):
+    """Git repos below a container directory (the project dir itself is not a repo)."""
+    found = []
+    def walk(cur, level):
+        if level > depth:
+            return
+        try:
+            entries = os.listdir(cur)
+        except OSError:
+            return
+        for name in entries:
+            if name.startswith('.') or name in SKIP_DIRS:
+                continue
+            sub = os.path.join(cur, name)
+            if not os.path.isdir(sub) or os.path.islink(sub):
+                continue
+            if os.path.exists(os.path.join(sub, '.git')):
+                found.append(sub)      # a repo's own subdirs are not scanned further
+            else:
+                walk(sub, level + 1)
+    walk(path, 1)
+    return found
+
+def assign_repos(projects):
+    """Map each container project to the repos it alone accounts for.
+
+    Containers nest (a work root holds a per-client folder, which holds the repos), so the same
+    repo is reachable from several projects and its commits would be counted once per
+    project. A repo belongs to the deepest container that sees it, and to no one if it is
+    a project in its own right — that project reports it directly.
+    """
+    own_repos = {os.path.realpath(p) for p in projects
+                 if os.path.exists(os.path.join(p, '.git'))}
+    owner = {}                             # repo realpath -> owning container
+    for project in projects:
+        if os.path.realpath(project) in own_repos:
+            continue
+        for repo in _nested_repos(project):
+            key = os.path.realpath(repo)
+            if key in own_repos:
+                continue
+            current = owner.get(key)
+            if current is None or len(project) > len(current):
+                owner[key] = project
+    assigned = defaultdict(list)
+    for repo, project in owner.items():
+        assigned[project].append(repo)
+    return assigned
+
+def get_git_info(path, container_repos=()):
+    """Commit stats for a project dir.
+
+    A project dir is often a container (several repos side by side) rather than a repo
+    itself — working from it used to report zero commits and hide the week's real work.
+    For containers, sum the commits of the repos assigned to it by `assign_repos`.
+    """
+    if not os.path.isdir(path):
+        return None, 0
+    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+
+    if os.path.exists(os.path.join(path, '.git')):
+        return _repo_stats(path, week_ago)
+
+    repos = list(container_repos)
+    if not repos:
+        return None, 0
+    # Two git calls per repo, all I/O-bound: sequential scanning of a large container
+    # takes minutes, threads bring it back to seconds.
+    total = 0
+    busiest = (None, -1)               # remote of the repo with the most commits
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        for remote, commits in pool.map(lambda r: _repo_stats(r, week_ago), repos):
+            total += commits
+            if commits > busiest[1]:
+                busiest = (remote, commits)
+    return busiest[0], total
 
 # Parse history
 history = []
@@ -80,8 +158,9 @@ def short_path(path):
 
 results = []
 total_commits = 0
+container_repos = assign_repos(projects)
 for project, data in projects.items():
-    remote, commits = get_git_info(project)
+    remote, commits = get_git_info(project, container_repos.get(project, ()))
     total_commits += commits
     results.append({
         'name': os.path.basename(project) or short_path(project),

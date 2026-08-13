@@ -1,5 +1,5 @@
 {
   "name": "agent-teams",
   "description": "Multi-agent team coordination with shared tasks and messaging",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
