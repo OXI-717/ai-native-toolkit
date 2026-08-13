@@ -1,6 +1,6 @@
 {
   "name": "openrouter-setup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Configure OpenRouter as an OpenAI-compatible endpoint, API key in env only",
   "author": {
     "name": "OXI-717"

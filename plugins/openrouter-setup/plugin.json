@@ -1,5 +1,5 @@
 {
   "name": "openrouter-setup",
   "description": "Configure OpenRouter as an OpenAI-compatible endpoint, API key in env only",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

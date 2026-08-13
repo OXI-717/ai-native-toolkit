@@ -22,7 +22,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from auth_manager import AuthManager
 from notebook_manager import NotebookLibrary
-from config import QUERY_INPUT_SELECTORS, RESPONSE_SELECTORS
+from config import (
+    QUERY_INPUT_SELECTORS,
+    RESPONSE_SELECTORS,
+    SHOW_BROWSER,
+    DEFAULT_NOTEBOOK_ID,
+)
 from browser_utils import BrowserFactory, StealthUtils
 
 
@@ -200,13 +205,15 @@ def main():
     # Resolve notebook URL
     notebook_url = args.notebook_url
 
-    if not notebook_url and args.notebook_id:
+    requested_id = args.notebook_id or (None if notebook_url else DEFAULT_NOTEBOOK_ID)
+
+    if not notebook_url and requested_id:
         library = NotebookLibrary()
-        notebook = library.get_notebook(args.notebook_id)
+        notebook = library.get_notebook(requested_id)
         if notebook:
             notebook_url = notebook['url']
         else:
-            print(f"❌ Notebook '{args.notebook_id}' not found")
+            print(f"❌ Notebook '{requested_id}' not found")
             return 1
 
     if not notebook_url:
@@ -235,7 +242,7 @@ def main():
     answer = ask_notebooklm(
         question=args.question,
         notebook_url=notebook_url,
-        headless=not args.show_browser
+        headless=not (args.show_browser or SHOW_BROWSER)
     )
 
     if answer:

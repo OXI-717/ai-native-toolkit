@@ -102,7 +102,7 @@
       "name": "notebooklm",
       "description": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
       "source": "./plugins/notebooklm/",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "OXI-717"
       }
@@ -120,7 +120,7 @@
       "name": "openrouter-setup",
       "description": "Configure OpenRouter as an OpenAI-compatible endpoint, API key in env only",
       "source": "./plugins/openrouter-setup/",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "OXI-717"
       }

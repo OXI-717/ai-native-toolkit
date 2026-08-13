@@ -9,7 +9,15 @@ import random
 from typing import Optional, List
 
 from patchright.sync_api import Playwright, BrowserContext, Page
-from config import BROWSER_PROFILE_DIR, STATE_FILE, BROWSER_ARGS, USER_AGENT
+from config import (
+    BROWSER_PROFILE_DIR,
+    STATE_FILE,
+    BROWSER_ARGS,
+    USER_AGENT,
+    STEALTH_ENABLED,
+    TYPING_WPM_MIN,
+    TYPING_WPM_MAX,
+)
 
 
 class BrowserFactory:
@@ -62,10 +70,23 @@ class StealthUtils:
     @staticmethod
     def random_delay(min_ms: int = 100, max_ms: int = 500):
         """Add random delay"""
+        if not STEALTH_ENABLED:
+            return
         time.sleep(random.uniform(min_ms / 1000, max_ms / 1000))
 
     @staticmethod
-    def human_type(page: Page, selector: str, text: str, wpm_min: int = 320, wpm_max: int = 480):
+    def _delay_bounds_ms(wpm_min: int, wpm_max: int) -> tuple:
+        """Per-character delay range for a words-per-minute range.
+
+        One "word" is the conventional five characters, so `wpm * 5` characters
+        per minute. The faster end of the WPM range is the shorter delay.
+        """
+        wpm_lo, wpm_hi = sorted((max(int(wpm_min), 1), max(int(wpm_max), 1)))
+        return 60_000 / (wpm_hi * 5), 60_000 / (wpm_lo * 5)
+
+    @staticmethod
+    def human_type(page: Page, selector: str, text: str,
+                   wpm_min: int = TYPING_WPM_MIN, wpm_max: int = TYPING_WPM_MAX):
         """Type with human-like speed"""
         element = page.query_selector(selector)
         if not element:
@@ -81,10 +102,15 @@ class StealthUtils:
 
         # Click to focus
         element.click()
-        
+
+        if not STEALTH_ENABLED:
+            element.type(text)          # no pacing, no pauses
+            return
+
         # Type
+        delay_min, delay_max = StealthUtils._delay_bounds_ms(wpm_min, wpm_max)
         for char in text:
-            element.type(char, delay=random.uniform(25, 75))
+            element.type(char, delay=random.uniform(delay_min, delay_max))
             if random.random() < 0.05:
                 time.sleep(random.uniform(0.15, 0.4))
 

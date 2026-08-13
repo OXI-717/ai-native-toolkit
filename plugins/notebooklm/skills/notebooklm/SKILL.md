@@ -219,19 +219,28 @@ All data stored in `~/.local/share/notebooklm/data/` by default:
 - `auth_info.json` - Authentication status
 - `browser_state/` - Browser cookies and session
 
-**Security:** Protected by `.gitignore`, never commit to git.
+**Security:** Cookies and library live outside the repository (under
+`~/.local/share/`), so git never sees them — nothing to commit by accident.
 
 ## Configuration
 
-Optional `.env` file in skill directory:
+Optional `.env` in the runtime root — `~/.local/share/notebooklm/.env`
+(the skill directory is also read, but it lives in a plugin cache that updates
+replace). Real environment variables take precedence over the file, and every
+setting has a working default, so the file is never required.
+
 ```env
-HEADLESS=false           # Browser visibility
-SHOW_BROWSER=false       # Default browser display
-STEALTH_ENABLED=true     # Human-like behavior
-TYPING_WPM_MIN=160       # Typing speed
-TYPING_WPM_MAX=240
-DEFAULT_NOTEBOOK_ID=     # Default notebook
+HEADLESS=false           # false shows the browser window (default: true)
+SHOW_BROWSER=false       # same thing, stated positively (default: false)
+STEALTH_ENABLED=true     # human-like typing and pauses (default: true)
+TYPING_WPM_MIN=320       # typing speed range (defaults: 320-480)
+TYPING_WPM_MAX=480
+DEFAULT_NOTEBOOK_ID=     # notebook to use when neither flag nor active one is set
 ```
+
+`--show-browser` overrides `HEADLESS`/`SHOW_BROWSER`; `--notebook-id` and
+`--notebook-url` override `DEFAULT_NOTEBOOK_ID`. A malformed number falls back
+to its default rather than failing the run.
 
 ## Decision Flow
 
@@ -290,4 +299,4 @@ Synthesize and respond to user
   - `troubleshooting.md` - Common issues and solutions
   - `usage_patterns.md` - Best practices and workflow examples
 - `~/.local/share/notebooklm/.venv/` - Isolated Python environment (auto-created on first run)
-- `.gitignore` - Protects sensitive data from being committed
+- `~/.local/share/notebooklm/.env` - Optional settings (see Configuration)

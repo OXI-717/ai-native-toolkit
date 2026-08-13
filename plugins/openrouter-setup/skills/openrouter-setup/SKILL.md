@@ -26,11 +26,20 @@ reading the key from the environment.
 | OpenRouter slug | Native provider | Notes |
 |-----------------|-----------------|-------|
 | `moonshotai/kimi-k3` | Moonshot (Kimi) | Kimi-K3, often waitlisted at platform.moonshot.cn |
-| `deepseek/deepseek-v4` | DeepSeek | DeepSeek-V4; verify current slug on openrouter.ai/models |
-| `z-ai/glm-4.6`, `z-ai/glm-4.5` | Zhipu (GLM/Z.AI) | GLM family; `z-ai/*` is the OpenRouter namespace for Zhipu |
+| `deepseek/deepseek-v4-pro`, `deepseek/deepseek-v4-flash` | DeepSeek | V4 ships as separate pro/flash slugs — plain `deepseek/deepseek-v4` does not exist and returns 404 |
+| `z-ai/glm-5.2`, `z-ai/glm-4.6` | Zhipu (GLM/Z.AI) | GLM family; `z-ai/*` is the OpenRouter namespace for Zhipu |
 
-Slugs evolve. Confirm live availability and pricing at
-https://openrouter.ai/models before relying on one.
+Slugs evolve, and a retired one fails only at request time. **Check against the
+live catalogue first — it is public and needs no key:**
+
+```bash
+curl -sS https://openrouter.ai/api/v1/models \
+  | python3 -c 'import json,sys; print("\n".join(sorted(m["id"] for m in json.load(sys.stdin)["data"] if sys.argv[1] in m["id"])))' moonshotai/
+```
+
+Pass the vendor prefix you care about (`moonshotai/`, `deepseek/`, `z-ai/`) — or
+a full slug to confirm one exists. Empty output means the slug is gone.
+Pricing is in the same response (`pricing` field) and on https://openrouter.ai/models.
 
 ## Security contract (hard rule)
 

@@ -192,20 +192,28 @@ data/
     └── state.json
 ```
 
-**Security:** Protected by `.gitignore`, never commit.
+**Security:** Stored outside the repository, so git never sees it.
 
 ## Environment Variables
 
-Optional `.env` file configuration:
+Read from the real environment, or from an optional `.env` in the runtime root
+(`~/.local/share/notebooklm/.env`); the skill directory is also checked.
+Environment wins over the file; each setting has a default.
 
 ```env
-HEADLESS=false           # Browser visibility
-SHOW_BROWSER=false       # Default display
-STEALTH_ENABLED=true     # Human behavior
-TYPING_WPM_MIN=160       # Typing speed
-TYPING_WPM_MAX=240
-DEFAULT_NOTEBOOK_ID=     # Default notebook
+HEADLESS=true            # false shows the browser window (default: true)
+SHOW_BROWSER=false       # same, stated positively (default: false)
+STEALTH_ENABLED=true     # human-like typing and pauses (default: true)
+TYPING_WPM_MIN=320       # typing speed range (defaults: 320-480)
+TYPING_WPM_MAX=480
+DEFAULT_NOTEBOOK_ID=     # fallback notebook id (default: none)
 ```
+
+CLI flags win over configuration: `--show-browser` over the visibility settings,
+`--notebook-id`/`--notebook-url` over `DEFAULT_NOTEBOOK_ID`.
+
+Paths are overridden separately: `NOTEBOOKLM_HOME`, `NOTEBOOKLM_DATA_DIR`,
+`NOTEBOOKLM_VENV_DIR`.
 
 ## Error Handling
 
