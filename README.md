@@ -3,6 +3,27 @@
 > Open-source plugins that turn vibe-coding into production-grade AI-native engineering.
 > Built for Claude Code; most plugins are runtime-agnostic and work in opencode too.
 
+![review finding 14 issues in a vulnerable Next.js app](docs/demo-review.gif)
+
+*One command on a deliberately vulnerable Next.js app: 14 findings, each scored and
+pinned to a file and line — hardcoded service-role key, IDOR, mass assignment,
+stored XSS, wildcard CORS. Unedited run of `/review:review full --no-fix`, sped up.*
+
+## Why
+
+An agent will happily write code that works and ships a service-role key with it.
+These plugins add the parts a coding agent does not do on its own:
+
+- **Find what review misses.** `review` and `pentest` go after the classes a
+  single pass skips — IDOR, mass assignment, privilege escalation, unsafe cookies —
+  and report severity with file and line, not vibes.
+- **Keep context across sessions.** `ctx` puts project rules where every agent
+  reads them; `context-handoff` survives `/compact` and `/clear`; `gh-issues`
+  turns GitHub Issues into session memory.
+- **Ask before building.** `deep-interview` clarifies a vague task into a brief
+  instead of guessing, and `infocompressor` turns long documents into specs an
+  agent can actually hold.
+
 ## Quick Start
 
 ### Claude Code
