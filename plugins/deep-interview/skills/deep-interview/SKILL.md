@@ -35,7 +35,7 @@ Clarify a vague task through focused one-at-a-time questions, then produce a str
 
 Before asking any questions:
 
-1. Read CLAUDE.md files in the project
+1. For the project root and every directory scoped to the task, discover and read each applicable `AGENTS.md`; where a scope has no `AGENTS.md`, read its `CLAUDE.md` fallback. Recursively read the relative files referenced by `@` imports in each manifest or imported rule before proceeding.
 2. Check git log for recent work context (last 10 commits)
 3. Scan project structure (top-level dirs, key config files)
 4. If task mentions specific areas — read those files

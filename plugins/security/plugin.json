@@ -1,0 +1,5 @@
+{
+  "name": "security",
+  "description": "Security hardening audit for VPS, WordPress, Next.js, and web applications",
+  "version": "0.1.0"
+}

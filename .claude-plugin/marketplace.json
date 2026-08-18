@@ -75,7 +75,7 @@
       "name": "deep-interview",
       "description": "Focused task clarification interview - one question at a time, structured brief output for planning",
       "source": "./plugins/deep-interview/",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "OXI-717"
       }
@@ -121,6 +121,24 @@
       "description": "Configure OpenRouter as an OpenAI-compatible endpoint, API key in env only",
       "source": "./plugins/openrouter-setup/",
       "version": "0.1.1",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "deep-research",
+      "description": "Multi-agent adversarial research with Exa AI, standard and deep ensemble workflows",
+      "source": "./plugins/deep-research/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "security",
+      "description": "Security hardening audit for VPS, WordPress, Next.js, and web applications",
+      "source": "./plugins/security/",
+      "version": "0.1.0",
       "author": {
         "name": "OXI-717"
       }

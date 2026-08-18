@@ -79,6 +79,8 @@ and will not work — see [Runtime support](#runtime-support).
 | notebooklm | Source-grounded answers from NotebookLM |
 | cc-analytics | Claude Code usage analytics |
 | openrouter-setup | OpenRouter as an OpenAI-compatible endpoint |
+| deep-research | Multi-agent adversarial research reports |
+| security | Security hardening audit checklist |
 <!-- PLUGINS:END -->
 
 ## Runtime support

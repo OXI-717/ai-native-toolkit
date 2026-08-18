@@ -1,0 +1,5 @@
+# Generated from plugins/security/skills/security-hardening/SKILL.md
+interface:
+  display_name: "Security:Security Hardening"
+  short_description: "Comprehensive security audit and hardening checklist for VPS servers, WordPress sites, and Next.js applications. Cove..."
+  default_prompt: "Use the `security-hardening` skill. Comprehensive security audit and hardening checklist for VPS servers, WordPress sites, and Next.js applications"
