@@ -45,8 +45,8 @@ This workflow is executed by the ORCHESTRATOR (you) after SKILL.md completes Ste
 
 #### Preparation
 
-1. Read scout prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/scout.md`
-2. Read domain config from `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/domains.md`
+1. Read scout prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/scout.md`
+2. Read domain config from `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/domains.md`
 3. Get stream assignments (5 streams for deep level)
 
 #### Assignments
@@ -83,8 +83,8 @@ To check: scan stream files for numerical claims (percentages, dollar amounts, s
 
 #### Preparation
 
-1. Read critic prompt: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/critic.md`
-2. Read statistician prompt: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/statistician.md`
+1. Read critic prompt: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/critic.md`
+2. Read statistician prompt: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/statistician.md`
 3. Set `{STREAM_FILES}` to all stream file paths
 4. Set `{REPORT_LANGUAGE}` to the selected report language
 
@@ -135,7 +135,7 @@ Write to `_PROGRESS_LOG.md`:
 
 #### Preparation
 
-1. Read deep-diver prompt: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/deep-diver.md`
+1. Read deep-diver prompt: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/deep-diver.md`
 2. From Reflection 1, select 2-3 gaps with highest expected value
 3. Prepare `{GAP_DESCRIPTION}` for each deep diver
 4. Set `{CONTEXT_FILES}` to relevant streams + critic review + methods review
@@ -187,7 +187,7 @@ Read all files (streams + deep dives + reviews). Write reflection to `_PROGRESS_
 
 #### Preparation
 
-1. Read synthesizer prompt: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/synthesizer.md`
+1. Read synthesizer prompt: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/synthesizer.md`
 2. Collect `{ALL_FILES}`: ALL streams + deep dives + critic + statistician + progress log
 
 #### Launch
@@ -210,7 +210,7 @@ Verify `{OUTPUT_DIR}/synthesis.md` exists.
 
 #### Preparation
 
-Read domain-reviewer prompt: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/domain-reviewer.md`
+Read domain-reviewer prompt: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/domain-reviewer.md`
 
 Set `{USER_PROFILE}` if health domain and profile exists. Pass `{REPORT_LANGUAGE}`.
 
@@ -238,7 +238,7 @@ Apply corrections to synthesis.md if needed.
 
 #### Preparation
 
-Read interaction-mapper prompt: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/interaction-mapper.md`
+Read interaction-mapper prompt: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/interaction-mapper.md`
 
 Set `{DEEP_DIVE_FILES}` to all deep dive file paths. Pass `{REPORT_LANGUAGE}`.
 

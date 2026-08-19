@@ -116,7 +116,7 @@ Always tell user which scope was auto-detected:
 - **`adversarial`** — adversarial-reviewer (challenges assumptions, tradeoffs, architectural decisions)
 - **`all`** (default) — all agents except adversarial (must be explicitly requested)
 
-Multiple: `/review staged code bugs errors`
+Multiple: `/team-review staged code bugs errors`
 
 ## Step 2: Gather Changes
 
@@ -479,7 +479,7 @@ gh issue create \
   --body "$(cat <<'EOF'
 ## Auto-Review Finding
 
-**Source**: automated code review (`/review`)
+**Source**: automated code review (`/team-review`)
 **Agent**: <agent-name> (confidence: <score>)
 **File**: `<file:line>`
 **Severity**: <CRITICAL/IMPORTANT>
@@ -540,27 +540,27 @@ EOF
 # EXAMPLES
 
 ```
-/review                          # Auto-detect scope, all agents, auto-fix (default)
-/review --ask                    # Auto-detect scope, all agents, ask before fixing
-/review --no-fix                 # Auto-detect scope, all agents, report only
-/review staged                   # Staged changes, all agents, auto-fix
-/review staged code bugs         # Staged, only code-reviewer + bug-hunter, auto-fix
-/review last                     # Last commit, auto-fix
-/review last --ask               # Last commit, ask before fixing
-/review pr                       # Current PR, all agents (read-only, no fix)
-/review pr 42                    # PR #42
-/review full                     # Full project review — all files, architecture + security
-/review full --no-fix            # Full project review, report only
-/review project bugs errors      # Full project, only bug-hunter + error-auditor
-/review src/api/ tests/          # Specific directories
-/review src/app.py bugs errors   # Specific file, bug-hunter + error-auditor
-/review all                      # Staged + unstaged, auto-fix everything
+/team-review                          # Auto-detect scope, all agents, auto-fix (default)
+/team-review --ask                    # Auto-detect scope, all agents, ask before fixing
+/team-review --no-fix                 # Auto-detect scope, all agents, report only
+/team-review staged                   # Staged changes, all agents, auto-fix
+/team-review staged code bugs         # Staged, only code-reviewer + bug-hunter, auto-fix
+/team-review last                     # Last commit, auto-fix
+/team-review last --ask               # Last commit, ask before fixing
+/team-review pr                       # Current PR, all agents (read-only, no fix)
+/team-review pr 42                    # PR #42
+/team-review full                     # Full project review — all files, architecture + security
+/team-review full --no-fix            # Full project review, report only
+/team-review project bugs errors      # Full project, only bug-hunter + error-auditor
+/team-review src/api/ tests/          # Specific directories
+/team-review src/app.py bugs errors   # Specific file, bug-hunter + error-auditor
+/team-review all                      # Staged + unstaged, auto-fix everything
 ```
 
 ### Auto-detect flow:
 
 ```
-/review
+/team-review
   ↓ git diff --name-only → files? → review unstaged
   ↓ git diff --cached --name-only → files? → review staged
   ↓ git rev-list @{u}..HEAD → ahead? → review unpushed commits

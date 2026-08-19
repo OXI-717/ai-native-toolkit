@@ -18,15 +18,6 @@
       }
     },
     {
-      "name": "review",
-      "description": "Multi-agent code review with confidence-based filtering",
-      "source": "./plugins/review/",
-      "version": "0.1.0",
-      "author": {
-        "name": "OXI-717"
-      }
-    },
-    {
       "name": "pentest",
       "description": "Black-box security audit of web applications (L0-L3)",
       "source": "./plugins/pentest/",
@@ -126,18 +117,27 @@
       }
     },
     {
-      "name": "deep-research",
-      "description": "Multi-agent adversarial research with Exa AI, standard and deep ensemble workflows",
-      "source": "./plugins/deep-research/",
+      "name": "security",
+      "description": "Security hardening audit for VPS, WordPress, Next.js, and web applications",
+      "source": "./plugins/security/",
       "version": "0.1.0",
       "author": {
         "name": "OXI-717"
       }
     },
     {
-      "name": "security",
-      "description": "Security hardening audit for VPS, WordPress, Next.js, and web applications",
-      "source": "./plugins/security/",
+      "name": "team-review",
+      "description": "Multi-agent code review with confidence-based filtering",
+      "source": "./plugins/team-review/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "research-ensemble",
+      "description": "Multi-agent adversarial research with Exa AI, standard and deep ensemble workflows",
+      "source": "./plugins/research-ensemble/",
       "version": "0.1.0",
       "author": {
         "name": "OXI-717"

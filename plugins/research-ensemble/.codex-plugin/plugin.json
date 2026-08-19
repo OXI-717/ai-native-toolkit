@@ -1,0 +1,26 @@
+{
+  "name": "research-ensemble",
+  "version": "0.1.0",
+  "description": "Multi-agent adversarial research with Exa AI, standard and deep ensemble workflows",
+  "author": {
+    "name": "OXI-717"
+  },
+  "homepage": "https://github.com/OXI-717/ai-native-toolkit",
+  "repository": "https://github.com/OXI-717/ai-native-toolkit",
+  "keywords": [
+    "ensemble",
+    "research"
+  ],
+  "interface": {
+    "displayName": "Research Ensemble",
+    "shortDescription": "Multi-agent adversarial research with Exa AI, standard and deep ensemble workflows",
+    "longDescription": "Multi-agent adversarial research with Exa AI, standard and deep ensemble workflows",
+    "developerName": "OXI-717",
+    "category": "Research",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Use research ensemble to research this topic"
+    ]
+  },
+  "skills": "./skills/"
+}

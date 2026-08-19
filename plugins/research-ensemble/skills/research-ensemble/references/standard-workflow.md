@@ -12,8 +12,8 @@ This workflow is executed by the ORCHESTRATOR (you) after SKILL.md completes Ste
 
 ### Preparation
 
-1. Read scout prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/scout.md`
-2. Read domain config from `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/domains.md` for current {DOMAIN}
+1. Read scout prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/scout.md`
+2. Read domain config from `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/domains.md` for current {DOMAIN}
 3. Get stream assignments for the domain (3 streams for standard level)
 
 ### Assignments
@@ -70,7 +70,7 @@ Expected: `stream_a_*.md`, `stream_b_*.md`, `stream_c_*.md`
 
 ### Preparation
 
-1. Read critic prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/critic.md`
+1. Read critic prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/critic.md`
 2. Collect list of all stream files: `{STREAM_FILES}`
 
 ### Launch
@@ -118,7 +118,7 @@ For standard level, almost always proceed to synthesis. Only abort if scouts ret
 
 ### Preparation
 
-1. Read synthesizer prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/synthesizer.md`
+1. Read synthesizer prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/synthesizer.md`
 2. Collect `{ALL_FILES}`: all stream files + critic review + progress log
 
 ### Launch
@@ -141,7 +141,7 @@ Verify `{OUTPUT_DIR}/synthesis.md` exists and is non-empty.
 
 ### Preparation
 
-1. Read fact-checker prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/fact-checker.md`
+1. Read fact-checker prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/fact-checker.md`
 
 ### Launch
 

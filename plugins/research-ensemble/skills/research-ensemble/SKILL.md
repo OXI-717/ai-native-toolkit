@@ -1,5 +1,5 @@
 ---
-name: deep-research
+name: research-ensemble
 description: |
   Multi-agent adversarial research with Exa AI. Two levels: standard (3-5 agents,
   30-60 min) and deep (10-15 agents, full ensemble with 3 cycles).
@@ -15,13 +15,13 @@ Conduct autonomous multi-agent research on topic: **$ARGUMENTS**
 
 ## Argument Parsing
 
-Format: `/deep-research [topic]` or `/deep-research [topic] [level] [domain]`
+Format: `/research-ensemble [topic]` or `/research-ensemble [topic] [level] [domain]`
 
 Examples:
-- `/deep-research kubernetes vs nomad` → standard, auto-domain (tech)
-- `/deep-research creatine safety deep` → deep, auto-domain (health)
-- `/deep-research creatine safety deep health` → deep, health
-- `/deep-research market analysis for SaaS standard business` → standard, business
+- `/research-ensemble kubernetes vs nomad` → standard, auto-domain (tech)
+- `/research-ensemble creatine safety deep` → deep, auto-domain (health)
+- `/research-ensemble creatine safety deep health` → deep, health
+- `/research-ensemble market analysis for SaaS standard business` → standard, business
 
 **Defaults:** level=standard, domain=auto-detect, report_language=English
 
@@ -78,16 +78,16 @@ research_output/{topic_slug}/
 **Output:** research_output/{topic_slug}/
 ```
 
-6. Read domain configuration: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/domains.md`
-7. Read Exa search guide: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/exa-search-guide.md`
+6. Read domain configuration: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/domains.md`
+7. Read Exa search guide: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/exa-search-guide.md`
 8. If domain=health AND level=deep: check for user profile at `./research_profiles/my_profile.md`. If not found, research runs in universal mode without personalization.
 
 ### Step 1: Dispatch Workflow
 
 Based on `{LEVEL}`:
 
-- **standard** → Read and follow `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/standard-workflow.md`
-- **deep** → Read and follow `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/deep-workflow.md`
+- **standard** → Read and follow `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/standard-workflow.md`
+- **deep** → Read and follow `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/deep-workflow.md`
 
 ### Step 2: Finalization
 
@@ -98,7 +98,7 @@ After workflow completes:
 3. Generate PDF report (same language as the report files; default English):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/generate-pdf-report.py" \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/generate-pdf-report.py" \
   "research_output/{topic_slug}" "{TOPIC}" "{LEVEL}" "{DOMAIN}" "{REPORT_LANGUAGE}"
 ```
 
@@ -143,7 +143,7 @@ The script outputs the absolute path to the generated PDF. Save it as `{PDF_PATH
 
 To dispatch an agent:
 
-1. Read the agent prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/deep-research/references/agent-prompts/{role}.md`
+1. Read the agent prompt template: `${CLAUDE_PLUGIN_ROOT}/skills/research-ensemble/references/agent-prompts/{role}.md`
 2. Read domain-specific config from `domains.md` for the current `{DOMAIN}`
 3. Substitute all `{VARIABLES}` in the template with actual values
 4. Launch via Agent tool with the substituted prompt

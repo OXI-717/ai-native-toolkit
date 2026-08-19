@@ -1,0 +1,5 @@
+# Generated from plugins/research-ensemble/skills/research-ensemble/SKILL.md
+interface:
+  display_name: "Research Ensemble:Research Ensemble"
+  short_description: "Multi-agent adversarial research with Exa AI. Two levels: standard (3-5 agents, 30-60 min) and deep (10-15 agents, fu..."
+  default_prompt: "Use the `research-ensemble` skill. Multi-agent adversarial research with Exa AI"

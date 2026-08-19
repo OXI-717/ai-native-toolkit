@@ -1,7 +1,7 @@
 ---
-name: review
+name: team-review
 description: |
-  Use when the user invokes /review, review, asks for the team-based
+  Use when the user invokes /team-review, team-review, asks for the team-based
   code review workflow, wants multi-pass or multi-agent review, or wants the
   review → fix → build/test → re-review loop. Supports Codex by using native
   subagents only when the user explicitly asks for the multi-agent/team review
@@ -22,12 +22,12 @@ Run a rigorous code review with optional fix loop:
 
 ## Runtime Selection
 
-**Claude Code:** if the slash command `/review` is available, it remains the
-canonical implementation — follow `${CLAUDE_PLUGIN_ROOT}/commands/review.md`.
+**Claude Code:** if the slash command `/team-review` is available, it remains the
+canonical implementation — follow `${CLAUDE_PLUGIN_ROOT}/commands/team-review.md`.
 If the command file is not found, fall back to this SKILL.md.
 
 **Codex or portable skill mode:** follow this SKILL.md. If the user explicitly
-asked for `review`, `/review`, "multi-agent review", "team review",
+asked for `team-review`, `/team-review`, "multi-agent review", "team review",
 "серия субагентов", or equivalent delegation, use Codex subagents for independent
 review roles when available. For a plain "review this" request, do not delegate;
 run the roles as local passes in this session.
@@ -36,7 +36,7 @@ Do not use Claude-only TeamCreate/TaskCreate/AskUserQuestion APIs in Codex.
 
 ## Arguments
 
-Accept the same user-facing shape as `/review`:
+Accept the same user-facing shape as `/team-review`:
 
 ```text
 review [scope] [aspects] [--ask] [--no-fix]
@@ -142,7 +142,7 @@ test gaps or commands not run.
 
 ## Fix Loop
 
-Default behavior matches `/review`: fix findings unless the user passed
+Default behavior matches `/team-review`: fix findings unless the user passed
 `--no-fix` or the scope is a remote PR that should stay read-only. If `--ask` is
 present, ask before editing.
 
@@ -156,7 +156,7 @@ When fixing:
 
 If a finding cannot be fixed safely in the loop, leave it as remaining risk and
 explain why. Create GitHub issues only when the repository has `gh` configured
-and the user asked for issue creation or the original `/review` workflow clearly
+and the user asked for issue creation or the original `/team-review` workflow clearly
 requires it.
 
 ## Full Project Mode

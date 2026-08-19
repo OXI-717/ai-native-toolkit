@@ -3,18 +3,18 @@
 > Open-source plugins that turn vibe-coding into production-grade AI-native engineering.
 > Built for Claude Code; most plugins are runtime-agnostic and work in opencode too.
 
-![review finding 14 issues in a vulnerable Next.js app](docs/demo-review.gif)
+![team-review finding 14 issues in a vulnerable Next.js app](docs/demo-review.gif)
 
 *One command on a deliberately vulnerable Next.js app: 14 findings, each scored and
 pinned to a file and line — hardcoded service-role key, IDOR, mass assignment,
-stored XSS, wildcard CORS. Unedited run of `/review:review full --no-fix`, sped up.*
+stored XSS, wildcard CORS. Unedited run of `/team-review:team-review full --no-fix`, sped up.*
 
 ## Why
 
 An agent will happily write code that works and ships a service-role key with it.
 These plugins add the parts a coding agent does not do on its own:
 
-- **Find what review misses.** `review` and `pentest` go after the classes a
+- **Find what review misses.** `team-review` and `pentest` go after the classes a
   single pass skips — IDOR, mass assignment, privilege escalation, unsafe cookies —
   and report severity with file and line, not vibes.
 - **Keep context across sessions.** `ctx` puts project rules where every agent
@@ -47,7 +47,7 @@ git clone https://github.com/OXI-717/ai-native-toolkit.git ~/ai-native-toolkit
 {
   "skills": {
     "paths": [
-      "~/ai-native-toolkit/plugins/review",
+      "~/ai-native-toolkit/plugins/team-review",
       "~/ai-native-toolkit/plugins/pentest",
       "~/ai-native-toolkit/plugins/gh-issues",
       "~/ai-native-toolkit/plugins/infocompressor",
@@ -67,7 +67,6 @@ and will not work — see [Runtime support](#runtime-support).
 | Plugin | What it does |
 |--------|-------------|
 | ctx | Project context: AGENTS.md, rules, init, lint |
-| review | Multi-agent code review with confidence filtering |
 | pentest | Black-box security audit (L0-L3) |
 | context-handoff | Preserve context across /compact and /clear |
 | statusline | Claude Code status bar with usage limits |
@@ -79,8 +78,9 @@ and will not work — see [Runtime support](#runtime-support).
 | notebooklm | Source-grounded answers from NotebookLM |
 | cc-analytics | Claude Code usage analytics |
 | openrouter-setup | OpenRouter as an OpenAI-compatible endpoint |
-| deep-research | Multi-agent adversarial research reports |
 | security | Security hardening audit checklist |
+| team-review | Multi-agent code review with confidence filtering |
+| research-ensemble | Multi-agent adversarial research reports |
 <!-- PLUGINS:END -->
 
 ## Runtime support
@@ -91,7 +91,7 @@ comes from lifecycle hooks degrades or stops working.
 
 | Plugin | Claude Code | opencode | Note |
 |--------|-------------|----------|------|
-| review | full | full | Skill plus `gh` CLI, no runtime-specific APIs |
+| team-review | full | full | Skill plus `gh` CLI, no runtime-specific APIs |
 | pentest | full | full | Recon needs a Playwright MCP server, configured separately |
 | gh-issues | full | full | `gh` CLI and plain files only |
 | infocompressor | full | full | Pure skill |
@@ -110,7 +110,7 @@ exported.
 
 **Level 2: Context & Rules** → `ctx`, `context-handoff`, `infocompressor`, `deep-interview` — AI keeps your project and the task itself in focus between sessions
 
-**Level 3: Verified Development** → `review`, `pentest` — AI reviews and audits your code
+**Level 3: Verified Development** → `team-review`, `pentest` — AI reviews and audits your code
 
 **Level 4: Autonomous Agents** → `gh-issues`, `statusline` — session state and visibility for long autonomous runs (`statusline` is Claude Code only)
 

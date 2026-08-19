@@ -1,5 +1,5 @@
 {
-  "name": "review",
+  "name": "team-review",
   "version": "0.1.0",
   "description": "Multi-agent code review with confidence-based filtering",
   "author": {
@@ -8,10 +8,11 @@
   "homepage": "https://github.com/OXI-717/ai-native-toolkit",
   "repository": "https://github.com/OXI-717/ai-native-toolkit",
   "keywords": [
-    "review"
+    "review",
+    "team"
   ],
   "interface": {
-    "displayName": "Review",
+    "displayName": "Team Review",
     "shortDescription": "Multi-agent code review with confidence-based filtering",
     "longDescription": "Multi-agent code review with confidence-based filtering",
     "developerName": "OXI-717",

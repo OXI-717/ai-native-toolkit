@@ -1,5 +1,5 @@
 {
-  "name": "review",
+  "name": "team-review",
   "description": "Multi-agent code review with confidence-based filtering",
   "version": "0.1.0"
 }
