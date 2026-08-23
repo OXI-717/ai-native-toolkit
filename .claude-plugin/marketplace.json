@@ -142,6 +142,15 @@
       "author": {
         "name": "OXI-717"
       }
+    },
+    {
+      "name": "context-runbooks",
+      "description": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
+      "source": "./plugins/context-runbooks/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
     }
   ]
 }

@@ -1,0 +1,5 @@
+{
+  "name": "context-runbooks",
+  "description": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
+  "version": "0.1.0"
+}

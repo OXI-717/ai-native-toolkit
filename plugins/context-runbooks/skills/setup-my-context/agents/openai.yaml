@@ -1,0 +1,5 @@
+# Generated from plugins/context-runbooks/commands/setup-my-context.md
+interface:
+  display_name: "Context Runbooks:Setup My Context"
+  short_description: "Interview the user and generate a personal/team Claude Code context structure"
+  default_prompt: "Use the `setup-my-context` skill. Accept the same arguments as `/setup-my-context` in Claude Code. Arguments: [workspace path or project path]"

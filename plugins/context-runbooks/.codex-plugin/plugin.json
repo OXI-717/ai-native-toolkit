@@ -1,0 +1,26 @@
+{
+  "name": "context-runbooks",
+  "version": "0.1.0",
+  "description": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
+  "author": {
+    "name": "OXI-717"
+  },
+  "homepage": "https://github.com/OXI-717/ai-native-toolkit",
+  "repository": "https://github.com/OXI-717/ai-native-toolkit",
+  "keywords": [
+    "context",
+    "runbooks"
+  ],
+  "interface": {
+    "displayName": "Context Runbooks",
+    "shortDescription": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
+    "longDescription": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
+    "developerName": "OXI-717",
+    "category": "Coding",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Runbooks and bootstrap skill for building a personal or team..."
+    ]
+  },
+  "skills": "./skills/"
+}

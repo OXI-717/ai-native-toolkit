@@ -81,6 +81,7 @@ and will not work — see [Runtime support](#runtime-support).
 | security | Security hardening audit checklist |
 | team-review | Multi-agent code review with confidence filtering |
 | research-ensemble | Multi-agent adversarial research reports |
+| context-runbooks | Bootstrap runbooks for AGENTS.md, rules, memory, delegation, and PR flow |
 <!-- PLUGINS:END -->
 
 ## Runtime support
