@@ -15,13 +15,17 @@ install exposes this skill but does not install the nested Python package:
 
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-<installed-plugin-root>}}"
-command -v oxi-seo >/dev/null 2>&1 || uv tool install --editable "$PLUGIN_ROOT/cli"
+uv tool install --force "$PLUGIN_ROOT/cli"
 ```
+
+Install a regular package, not an editable link: plugin cache directories can
+be removed during updates. Reinstall from the current plugin root after each
+plugin update; `--force` also replaces earlier editable installations.
 
 Follow this CLI order:
 
 ```bash
-uv tool install --editable "$PLUGIN_ROOT/cli"
+uv tool install --force "$PLUGIN_ROOT/cli"
 oxi-seo doctor --json --config <path>
 oxi-seo projects --json --config <path>
 oxi-seo status --project <id> --json --config <path>
@@ -31,6 +35,10 @@ oxi-seo opportunities --project <id> --run <run_id> --json --config <path>
 oxi-seo outcomes --project <id> --json --config <path>
 oxi-seo export --project <id> --run <run_id> --format observer-actions --json --config <path>
 ```
+
+A successful `doctor` without a registry only confirms that the CLI starts.
+Require `checks.config.status = "ready"` for project setup; provider connectivity
+and evidence availability require a successful read-only import.
 
 Do not pass `--live`. Do not trigger paid tools, deploy services, publish
 reports, execute generated actions, or invent report data. Do not claim live

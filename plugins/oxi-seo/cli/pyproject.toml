@@ -1,6 +1,6 @@
 [project]
 name = "oxi-seo"
-version = "0.1.18"
+version = "0.1.20"
 description = "Read-only SEO intelligence hub CLI"
 requires-python = ">=3.11"
 dependencies = ["PyJWT[crypto]>=2.10.1,<3"]

@@ -5,7 +5,7 @@ run a read-only import, read reports, inspect opportunities/outcomes, then
 export local handoff files.
 
 ```bash
-uv tool install --editable plugins/oxi-seo/cli
+uv tool install --force plugins/oxi-seo/cli
 oxi-seo doctor --json
 oxi-seo projects --json --config config/oxi-seo.toml
 oxi-seo status --project example --json --config config/oxi-seo.toml
@@ -23,7 +23,7 @@ publish content, send outreach, or mutate provider state.
 ## Setup
 
 Create the portable layout from `references/project-bootstrap.md`, install the
-editable CLI, then run `oxi-seo doctor --json --config config/oxi-seo.toml`.
+CLI package, then run `oxi-seo doctor --json --config config/oxi-seo.toml`.
 Secret env files must be regular files with mode `0600`; do not commit
 credentials or paste credential values into reports.
 
@@ -54,9 +54,9 @@ owner-only operational step.
 
 ## Update
 
-Update source, reinstall the plugin from the marketplace, reinstall the editable
-CLI if needed, run `doctor`, then run a zero-cost read-only smoke against
-existing evidence.
+Update source, reinstall the plugin from the marketplace, reinstall the CLI
+package with `uv tool install --force "$PLUGIN_ROOT/cli"`, run `doctor`, then
+run a zero-cost read-only smoke against existing evidence.
 
 ## Rollback
 

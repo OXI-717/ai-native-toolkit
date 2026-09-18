@@ -17,7 +17,7 @@ not this release.
 ## CLI
 
 ```bash
-uv tool install --editable plugins/oxi-seo/cli
+uv tool install --force plugins/oxi-seo/cli
 oxi-seo doctor --json
 oxi-seo --json projects --config plugins/oxi-seo/examples/registry.toml
 oxi-seo status --project example --json --config config/oxi-seo.toml
@@ -29,6 +29,16 @@ oxi-seo export --project example --run run_... --format observer-actions --json 
 ```
 
 `--json` and `--config` are accepted before or after subcommands.
+
+For a marketplace installation, use `uv tool install --force "$PLUGIN_ROOT/cli"`
+with the installed plugin directory. This copies the package into the tool
+environment rather than linking it to a versioned cache directory. Repeat after
+plugin updates. Avoid editable installs from plugin caches or temporary clones.
+
+`doctor` without a registry is an installation smoke check only: top-level
+`ok: true` can accompany `checks.config.status: "not_ready"`. Project setup
+requires a configured registry and `checks.config.status: "ready"`; successful
+read-only imports verify provider readiness.
 
 ## Registry
 
