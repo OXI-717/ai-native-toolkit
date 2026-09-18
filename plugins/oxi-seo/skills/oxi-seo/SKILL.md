@@ -1,35 +1,35 @@
 ---
-name: oxy-seo
+name: oxi-seo
 description: Use for the read-only SEO Hub CLI, project registry validation, secret env-file checks, and existing SEO evidence routing.
 ---
 
-# oxy-seo
+# oxi-seo
 
 Use this skill when the user asks about SEO Hub projects, registry setup, CLI
 doctor output, or read-only routing for existing SEO/AI-search evidence. The
 MVP is read-only.
 
 Resolve the plugin root through the runtime-provided environment first, then make
-sure the `oxy-seo` CLI is installed before calling it — a fresh marketplace
+sure the `oxi-seo` CLI is installed before calling it — a fresh marketplace
 install exposes this skill but does not install the nested Python package:
 
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-<installed-plugin-root>}}"
-command -v oxy-seo >/dev/null 2>&1 || uv tool install --editable "$PLUGIN_ROOT/cli"
+command -v oxi-seo >/dev/null 2>&1 || uv tool install --editable "$PLUGIN_ROOT/cli"
 ```
 
 Follow this CLI order:
 
 ```bash
 uv tool install --editable "$PLUGIN_ROOT/cli"
-oxy-seo doctor --json --config <path>
-oxy-seo projects --json --config <path>
-oxy-seo status --project <id> --json --config <path>
-oxy-seo run --project <id> --mode full --json --config <path>
-oxy-seo report --project <id> --run <run_id> --json --config <path>
-oxy-seo opportunities --project <id> --run <run_id> --json --config <path>
-oxy-seo outcomes --project <id> --json --config <path>
-oxy-seo export --project <id> --run <run_id> --format observer-actions --json --config <path>
+oxi-seo doctor --json --config <path>
+oxi-seo projects --json --config <path>
+oxi-seo status --project <id> --json --config <path>
+oxi-seo run --project <id> --mode full --json --config <path>
+oxi-seo report --project <id> --run <run_id> --json --config <path>
+oxi-seo opportunities --project <id> --run <run_id> --json --config <path>
+oxi-seo outcomes --project <id> --json --config <path>
+oxi-seo export --project <id> --run <run_id> --format observer-actions --json --config <path>
 ```
 
 Do not pass `--live`. Do not trigger paid tools, deploy services, publish

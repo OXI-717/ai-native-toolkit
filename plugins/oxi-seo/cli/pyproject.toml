@@ -1,5 +1,5 @@
 [project]
-name = "oxy-seo"
+name = "oxi-seo"
 version = "0.1.18"
 description = "Read-only SEO intelligence hub CLI"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ dev = [
 ]
 
 [project.scripts]
-oxy-seo = "seo_hub.cli:main"
+oxi-seo = "seo_hub.cli:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]

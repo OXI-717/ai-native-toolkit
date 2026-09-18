@@ -18,7 +18,7 @@ from seo_hub.registry import Registry, RegistryError, load_registry
 from seo_hub.store import StoreError
 
 
-DEFAULT_CONFIG_NAMES = (Path("oxy-seo.toml"), Path(".oxy-seo") / "oxy-seo.toml")
+DEFAULT_CONFIG_NAMES = (Path("oxi-seo.toml"), Path(".oxi-seo") / "oxi-seo.toml")
 
 
 class _JsonAwareArgumentParser(argparse.ArgumentParser):
@@ -33,7 +33,7 @@ class _JsonAwareArgumentParser(argparse.ArgumentParser):
 def _common_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
-    common.add_argument("--config", default=argparse.SUPPRESS, help="path to oxy-seo.toml")
+    common.add_argument("--config", default=argparse.SUPPRESS, help="path to oxi-seo.toml")
     return common
 
 
@@ -48,7 +48,7 @@ def _discover_config(args: argparse.Namespace) -> Path:
         candidate = Path.cwd() / name
         if candidate.exists():
             return candidate
-    user_config = Path.home() / ".oxy-seo" / "oxy-seo.toml"
+    user_config = Path.home() / ".oxi-seo" / "oxi-seo.toml"
     if user_config.exists():
         return user_config
     return Path.cwd() / DEFAULT_CONFIG_NAMES[0]
@@ -154,10 +154,10 @@ def _doctor(args: argparse.Namespace) -> int:
             }
     payload = {
         "ok": config_check["ok"] or not config_check["exists"],
-        "cli": "oxy-seo",
+        "cli": "oxi-seo",
         "version": __version__,
         "checks": {
-            "cli": {"ok": True, "binary": "oxy-seo", "package": "oxy-seo"},
+            "cli": {"ok": True, "binary": "oxi-seo", "package": "oxi-seo"},
             "config": config_check,
         },
     }
@@ -165,7 +165,7 @@ def _doctor(args: argparse.Namespace) -> int:
         _dump(payload, stream=sys.stdout)
     else:
         status = payload["checks"]["config"]["status"]
-        print(f"oxy-seo {__version__}: config {status}")
+        print(f"oxi-seo {__version__}: config {status}")
     return 0 if payload["ok"] else 2
 
 

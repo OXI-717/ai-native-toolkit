@@ -1,7 +1,7 @@
-# oxy-seo
+# oxi-seo
 
-`oxy-seo` is a read-only SEO intelligence hub. It provides the
-installable `oxy-seo` CLI, a strict project registry parser, safe secret env-file
+`oxi-seo` is a read-only SEO intelligence hub. It provides the
+installable `oxi-seo` CLI, a strict project registry parser, safe secret env-file
 loading, local run manifests, read-only evidence adapters, and draft-only
 exports.
 
@@ -17,15 +17,15 @@ not this release.
 ## CLI
 
 ```bash
-uv tool install --editable plugins/oxy-seo/cli
-oxy-seo doctor --json
-oxy-seo --json projects --config plugins/oxy-seo/examples/registry.toml
-oxy-seo status --project example --json --config config/oxy-seo.toml
-oxy-seo run --project example --mode full --json --config config/oxy-seo.toml
-oxy-seo report --project example --run run_... --json --config config/oxy-seo.toml
-oxy-seo opportunities --project example --run run_... --json --config config/oxy-seo.toml
-oxy-seo outcomes --project example --json --config config/oxy-seo.toml
-oxy-seo export --project example --run run_... --format observer-actions --json --config config/oxy-seo.toml
+uv tool install --editable plugins/oxi-seo/cli
+oxi-seo doctor --json
+oxi-seo --json projects --config plugins/oxi-seo/examples/registry.toml
+oxi-seo status --project example --json --config config/oxi-seo.toml
+oxi-seo run --project example --mode full --json --config config/oxi-seo.toml
+oxi-seo report --project example --run run_... --json --config config/oxi-seo.toml
+oxi-seo opportunities --project example --run run_... --json --config config/oxi-seo.toml
+oxi-seo outcomes --project example --json --config config/oxi-seo.toml
+oxi-seo export --project example --run run_... --format observer-actions --json --config config/oxi-seo.toml
 ```
 
 `--json` and `--config` are accepted before or after subcommands.
@@ -52,9 +52,15 @@ The opportunities endpoint is excluded because it can generate provider work.
 Empty native projects do not provide AI visibility or ranking evidence.
 
 Observer snapshot/report imports read existing verified audit artifacts and
-read-only SQLite summaries through the installed Observer API. Original source
-dates and incomplete coverage are preserved; report generation time does not
-make source data fresh. Imports do not approve baselines or refresh providers.
+read-only SQLite summaries through the installed Observer API. The Observer is
+a prerequisite, not a dependency: `baseline` and `full` runs and every
+existing-evidence import invoke the separately installed `seo-observer`
+console tool (a Python console-script installation exposing the `seo_observer`
+API). The CLI package does not install it, and without that executable those
+paths fail with `OBSERVER_API_UNAVAILABLE`; provision the Observer tool before
+relying on Observer evidence. Original source dates and incomplete coverage
+are preserved; report generation time does not make source data fresh. Imports
+do not approve baselines or refresh providers.
 
 JSON data and action-draft exports use distinct filenames even when their
 profiles share an output directory.
@@ -76,7 +82,9 @@ delta.
 ## Operations
 
 Setup, add-project, export, backup, auth, update, and rollback are summarized in
-`references/commands.md`, `references/project-bootstrap.md`, `references/runbook.md`,
-and `references/deployment.md`. These docs contain no credentials. Owner-only
+`references/commands.md`, `references/project-bootstrap.md`, and
+`references/runbook.md`. Owner-only Docker/Tunnel deployment notes live in
+`references/deployment.md`, which ships with the source tree and is not part of
+the published plugin package. These docs contain no credentials. Owner-only
 Tunnel/Access setup and zero-cost native cross-check stay in the post-orchestrate
 checklist; worker sessions do not run them.

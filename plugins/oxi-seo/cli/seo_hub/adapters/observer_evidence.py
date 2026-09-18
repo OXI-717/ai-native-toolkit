@@ -19,10 +19,23 @@ from typing import Any
 MAX_JSON_BYTES = 32_000_000
 STALE_AFTER_DAYS = 14
 
+# Exact identifiers only: the public schema name and the legacy prefixed form
+# the Observer emits. A suffix match accepted arbitrary prefixed schemas
+# (`evil-seo-observer.…`) as the Observer contract. The legacy literals clear
+# the public-export gates as reviewed allowedOutputForms entries in the
+# export denylist.
+SERP_EXTRACT_SCHEMAS = frozenset({
+    "seo-observer.serp_extract.v1",
+    "oxi-seo-observer.serp_extract.v1",
+})
+COMPETITOR_METRICS_SCHEMAS = frozenset({
+    "seo-observer.competitor_metrics.v1",
+    "oxi-seo-observer.competitor_metrics.v1",
+})
 
-def _schema_matches(value: object, public_name: str) -> bool:
-    text = str(value or "")
-    return text == public_name or text.endswith(public_name)
+
+def _schema_matches(value: object, accepted: frozenset[str]) -> bool:
+    return str(value or "") in accepted
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -122,7 +135,7 @@ def _manifest_entries(path: Path, project: str) -> list[dict[str, Any]]:
     provenance = {"manifest_path": str(path), "manifest_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     if "serp-extract.json" in by_name:
         serp = _json(_verified(path, by_name["serp-extract.json"]))
-        if not _schema_matches(serp.get("schema"), "seo-observer.serp_extract.v1"):
+        if not _schema_matches(serp.get("schema"), SERP_EXTRACT_SCHEMAS):
             raise ValueError("unsupported SERP schema")
         rows = serp.get("serp_rows", [])
         # Observer adapters persist __pending__ in normalized SERP rows; the
@@ -138,7 +151,7 @@ def _manifest_entries(path: Path, project: str) -> list[dict[str, Any]]:
         if "competitor-metrics.json" in by_name:
             descriptor = by_name["competitor-metrics.json"]
             metrics = _json(_verified(path, descriptor))
-            if not _schema_matches(metrics.get("schema"), "seo-observer.competitor_metrics.v1"):
+            if not _schema_matches(metrics.get("schema"), COMPETITOR_METRICS_SCHEMAS):
                 raise ValueError("unsupported competitor metrics schema")
             privacy = manifest.get("privacy", {})
             public_metrics = (descriptor.get("privacy_class") == "public_report_artifact"
@@ -268,7 +281,7 @@ def read_existing_evidence(config: Path, *, home: Path | None = None,
     entries = sorted(latest.values(), key=lambda item: (item["kind"], item["source"], item.get("keyword_set_id", ""), item.get("reporting_period_id", "")))
     dated = [item for item in entries if item["quality"] != "missing"]
     quality = "missing" if not dated else "stale" if all(item["quality"] == "stale" for item in dated) else "partial"
-    return {"ok": True, "schema": "oxy-seo.observer_evidence.v1", "project": project,
+    return {"ok": True, "schema": "oxi-seo.observer_evidence.v1", "project": project,
             "quality": quality, "evidence": entries,
             "privacy": {"private_rows_omitted": True, "exact_local_business_values": False},
             "source_status": {"mode": "existing_evidence", "stale_after_days": STALE_AFTER_DAYS,
