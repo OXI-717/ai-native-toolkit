@@ -12,7 +12,7 @@ dev = [
 ]
 
 [project.scripts]
-seo-hub = "seo_hub.cli:main"
+oxyseo = "seo_hub.cli:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]

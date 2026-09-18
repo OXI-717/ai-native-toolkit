@@ -1,7 +1,7 @@
 {
   "name": "oxyseo",
-  "version": "0.1.0",
-  "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and seo-hub CLI. Imports existing evidence only; no live paid provider calls.",
+  "version": "0.1.1",
+  "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxyseo CLI. Imports existing evidence only; no live paid provider calls.",
   "author": {
     "name": "OXI-717"
   },
@@ -12,8 +12,8 @@
   ],
   "interface": {
     "displayName": "Oxyseo",
-    "shortDescription": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and seo-hub CLI. Imports existing ev...",
-    "longDescription": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and seo-hub CLI. Imports existing evidence only; no live paid provider calls.",
+    "shortDescription": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxyseo CLI. Imports existing evi...",
+    "longDescription": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxyseo CLI. Imports existing evidence only; no live paid provider calls.",
     "developerName": "OXI-717",
     "category": "Productivity",
     "capabilities": [],

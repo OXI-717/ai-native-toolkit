@@ -1,7 +1,7 @@
 # oxyseo
 
 `oxyseo` is a read-only SEO intelligence hub. It provides the
-installable `seo-hub` CLI, a strict project registry parser, safe secret env-file
+installable `oxyseo` CLI, a strict project registry parser, safe secret env-file
 loading, local run manifests, read-only evidence adapters, and draft-only
 exports.
 
@@ -18,14 +18,14 @@ not this release.
 
 ```bash
 uv tool install --editable plugins/oxyseo/cli
-seo-hub doctor --json
-seo-hub --json projects --config plugins/oxyseo/examples/registry.toml
-seo-hub status --project example --json --config config/seo-hub.toml
-seo-hub run --project example --mode full --json --config config/seo-hub.toml
-seo-hub report --project example --run run_... --json --config config/seo-hub.toml
-seo-hub opportunities --project example --run run_... --json --config config/seo-hub.toml
-seo-hub outcomes --project example --json --config config/seo-hub.toml
-seo-hub export --project example --run run_... --format observer-actions --json --config config/seo-hub.toml
+oxyseo doctor --json
+oxyseo --json projects --config plugins/oxyseo/examples/registry.toml
+oxyseo status --project example --json --config config/oxyseo.toml
+oxyseo run --project example --mode full --json --config config/oxyseo.toml
+oxyseo report --project example --run run_... --json --config config/oxyseo.toml
+oxyseo opportunities --project example --run run_... --json --config config/oxyseo.toml
+oxyseo outcomes --project example --json --config config/oxyseo.toml
+oxyseo export --project example --run run_... --format observer-actions --json --config config/oxyseo.toml
 ```
 
 `--json` and `--config` are accepted before or after subcommands.

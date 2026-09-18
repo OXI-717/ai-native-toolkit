@@ -6,13 +6,13 @@ ports for `hub`, `elmo-web`, `openseo`, or `postgres`.
 
 ## Layout
 
-Run `deploy/scripts/init-layout.sh /srv/seo-hub` on the target host and copy the
+Run `deploy/scripts/init-layout.sh /srv/oxyseo` on the target host and copy the
 tracked `deploy/compose.yaml` plus edited examples into that directory:
 
 ```text
-seo-hub/
+oxyseo/
   compose.yaml
-  config/seo-hub.toml
+  config/oxyseo.toml
   projects/<project>/project.toml
   secrets/<project>.env
   data/hub/
@@ -63,7 +63,7 @@ for PostgreSQL and each service-native export for application artifacts.
 ## Update And Rollback
 
 For update, deploy the new source, reinstall the CLI/plugin package, regenerate
-Codex manifests from source of truth, and run `seo-hub doctor --json` before a
+Codex manifests from source of truth, and run `oxyseo doctor --json` before a
 read-only smoke. For rollback, stop services, restore the last config/data/export
 backup, reinstall the previous package version, and re-run `doctor`. Do not
 publish origin ports and do not disable Access as a rollback shortcut.

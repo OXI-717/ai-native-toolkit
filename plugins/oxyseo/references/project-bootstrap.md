@@ -7,11 +7,11 @@ paths.
 ## Layout
 
 Use one portable root and keep every registry path relative to
-`config/seo-hub.toml`:
+`config/oxyseo.toml`:
 
 ```text
-seo-hub/
-  config/seo-hub.toml
+oxyseo/
+  config/oxyseo.toml
   projects/example/project.toml
   secrets/example.env
   data/
@@ -46,8 +46,8 @@ when they reveal private deployment details.
 1. Create `projects/<id>/project.toml` for observer config.
 2. Create `secrets/<id>.env` on the host with mode `0600`.
 3. Add one `[[projects]]` table and optional export profiles.
-4. Run `seo-hub doctor --json --config config/seo-hub.toml`.
-5. Run `seo-hub projects --json --config config/seo-hub.toml`.
+4. Run `oxyseo doctor --json --config config/oxyseo.toml`.
+5. Run `oxyseo projects --json --config config/oxyseo.toml`.
 
 Do not commit credentials, private service tokens, or real provider payloads.
 
@@ -55,7 +55,7 @@ Do not commit credentials, private service tokens, or real provider payloads.
 
 Each project uses the same `credentials_env_file` flow. Put only the env names
 required by the observer project config in `secrets/<id>.env`, then verify with
-`seo-hub doctor --config config/seo-hub.toml --json`. Do not export these values
+`oxyseo doctor --config config/oxyseo.toml --json`. Do not export these values
 globally for hub runs.
 
 ## Relative-Path Repair
@@ -63,14 +63,14 @@ globally for hub runs.
 If a project was previously registered with paths that only worked from one
 checkout, rewrite them to the portable layout above. The observer project file
 must resolve relative to `projects/<id>/`, while the hub registry resolves its
-path from `config/seo-hub.toml`.
+path from `config/oxyseo.toml`.
 
 ## Read-Only Run Check
 
 After native collectors have existing evidence, run a zero-cost import:
 
 ```bash
-seo-hub run --project example --mode baseline --json
+oxyseo run --project example --mode baseline --json
 ```
 
 The run must create `<data_dir>/example/runs/<run_id>/manifest.json` with

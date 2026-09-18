@@ -10,26 +10,26 @@ doctor output, or read-only routing for existing SEO/AI-search evidence. The
 MVP is read-only.
 
 Resolve the plugin root through the runtime-provided environment first, then make
-sure the `seo-hub` CLI is installed before calling it — a fresh marketplace
+sure the `oxyseo` CLI is installed before calling it — a fresh marketplace
 install exposes this skill but does not install the nested Python package:
 
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-<installed-plugin-root>}}"
-command -v seo-hub >/dev/null 2>&1 || uv tool install --editable "$PLUGIN_ROOT/cli"
+command -v oxyseo >/dev/null 2>&1 || uv tool install --editable "$PLUGIN_ROOT/cli"
 ```
 
 Follow this CLI order:
 
 ```bash
 uv tool install --editable "$PLUGIN_ROOT/cli"
-seo-hub doctor --json --config <path>
-seo-hub projects --json --config <path>
-seo-hub status --project <id> --json --config <path>
-seo-hub run --project <id> --mode full --json --config <path>
-seo-hub report --project <id> --run <run_id> --json --config <path>
-seo-hub opportunities --project <id> --run <run_id> --json --config <path>
-seo-hub outcomes --project <id> --json --config <path>
-seo-hub export --project <id> --run <run_id> --format observer-actions --json --config <path>
+oxyseo doctor --json --config <path>
+oxyseo projects --json --config <path>
+oxyseo status --project <id> --json --config <path>
+oxyseo run --project <id> --mode full --json --config <path>
+oxyseo report --project <id> --run <run_id> --json --config <path>
+oxyseo opportunities --project <id> --run <run_id> --json --config <path>
+oxyseo outcomes --project <id> --json --config <path>
+oxyseo export --project <id> --run <run_id> --format observer-actions --json --config <path>
 ```
 
 Do not pass `--live`. Do not trigger paid tools, deploy services, publish
