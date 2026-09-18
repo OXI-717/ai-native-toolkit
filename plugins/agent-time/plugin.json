@@ -1,0 +1,5 @@
+{
+  "name": "agent-time",
+  "description": "Install, diagnose, and report local ActivityWatch human and AI agent time",
+  "version": "0.1.0"
+}

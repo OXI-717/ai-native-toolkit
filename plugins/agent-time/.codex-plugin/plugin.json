@@ -1,0 +1,26 @@
+{
+  "name": "agent-time",
+  "version": "0.1.0",
+  "description": "Install, diagnose, and report local ActivityWatch human and AI agent time",
+  "author": {
+    "name": "OXI-717"
+  },
+  "homepage": "https://github.com/OXI-717/ai-native-toolkit",
+  "repository": "https://github.com/OXI-717/ai-native-toolkit",
+  "keywords": [
+    "agent",
+    "time"
+  ],
+  "interface": {
+    "displayName": "Agent Time",
+    "shortDescription": "Install, diagnose, and report local ActivityWatch human and AI agent time",
+    "longDescription": "Install, diagnose, and report local ActivityWatch human and AI agent time",
+    "developerName": "OXI-717",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Install, diagnose, and report local ActivityWatch human and A..."
+    ]
+  },
+  "skills": "./skills/"
+}

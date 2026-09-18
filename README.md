@@ -83,6 +83,7 @@ and will not work — see [Runtime support](#runtime-support).
 | research-ensemble | Multi-agent adversarial research reports |
 | context-runbooks | Bootstrap runbooks for AGENTS.md, rules, memory, delegation, and PR flow |
 | oxi-seo | Read-only SEO hub CLI over existing OpenSEO/Elmo/Observer evidence |
+| agent-time | Local physical work, AI engagement, and autonomous agent time |
 <!-- PLUGINS:END -->
 
 ## Runtime support

@@ -160,6 +160,15 @@
       "author": {
         "name": "OXI-717"
       }
+    },
+    {
+      "name": "agent-time",
+      "description": "Install, diagnose, and report local ActivityWatch human and AI agent time",
+      "source": "./plugins/agent-time/",
+      "version": "0.1.0",
+      "author": {
+        "name": "OXI-717"
+      }
     }
   ]
 }

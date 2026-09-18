@@ -1,0 +1,5 @@
+# Generated from plugins/agent-time/skills/agent-time/SKILL.md
+interface:
+  display_name: "Agent Time:Agent Time"
+  short_description: "Use when installing or diagnosing aw-agent-time, or reporting ActivityWatch physical work, AI engagement, and autonom..."
+  default_prompt: "Use `agent-time`."
