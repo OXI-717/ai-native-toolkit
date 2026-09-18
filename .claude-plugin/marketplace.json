@@ -153,10 +153,10 @@
       }
     },
     {
-      "name": "oxyseo",
-      "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxyseo CLI. Imports existing evidence only; no live paid provider calls.",
-      "source": "./plugins/oxyseo/",
-      "version": "0.1.1",
+      "name": "oxy-seo",
+      "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxy-seo CLI. Imports existing evidence only; no live paid provider calls.",
+      "source": "./plugins/oxy-seo/",
+      "version": "0.1.0",
       "author": {
         "name": "OXI-717"
       }

@@ -151,7 +151,7 @@ def _table(headings: tuple[str, ...], rows: list[str]) -> str:
 
 
 def _evidence_entries(report: Any) -> list[dict[str, Any]]:
-    entries = report.get("evidence") if isinstance(report, dict) and report.get("schema") == "oxyseo.observer_evidence.v1" else None
+    entries = report.get("evidence") if isinstance(report, dict) and report.get("schema") == "oxy-seo.observer_evidence.v1" else None
     return [entry for entry in entries if isinstance(entry, dict)] if isinstance(entries, list) else []
 
 

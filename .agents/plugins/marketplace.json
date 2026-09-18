@@ -125,10 +125,10 @@
       "category": "Coding"
     },
     {
-      "name": "oxyseo",
+      "name": "oxy-seo",
       "source": {
         "source": "local",
-        "path": "./plugins/oxyseo"
+        "path": "./plugins/oxy-seo"
       },
       "policy": {
         "installation": "AVAILABLE",

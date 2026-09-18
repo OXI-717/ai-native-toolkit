@@ -8,9 +8,9 @@ publish reports, or execute generated actions from this MVP flow.
 ## Daily Smoke
 
 ```bash
-oxyseo doctor --json --config config/oxyseo.toml
-oxyseo projects --json --config config/oxyseo.toml
-oxyseo status --project example --json --config config/oxyseo.toml
+oxy-seo doctor --json --config config/oxy-seo.toml
+oxy-seo projects --json --config config/oxy-seo.toml
+oxy-seo status --project example --json --config config/oxy-seo.toml
 ```
 
 If config readiness is not green, fix paths or file permissions first. Secret
@@ -19,9 +19,9 @@ files must stay mode `0600`; do not commit credentials.
 ## Read-Only Full Run
 
 ```bash
-oxyseo run --project example --mode full --json --config config/oxyseo.toml
-oxyseo report --project example --run run_... --json --config config/oxyseo.toml
-oxyseo export --project example --run run_... --format observer-actions --json --config config/oxyseo.toml
+oxy-seo run --project example --mode full --json --config config/oxy-seo.toml
+oxy-seo report --project example --run run_... --json --config config/oxy-seo.toml
+oxy-seo export --project example --run run_... --format observer-actions --json --config config/oxy-seo.toml
 ```
 
 The expected result is a local run manifest, local observer artifacts, and
@@ -40,7 +40,7 @@ After acceptance, the owner can run these on the deployment host:
 
 ```bash
 docker compose -f compose.yaml ps
-oxyseo doctor --json --config config/oxyseo.toml
+oxy-seo doctor --json --config config/oxy-seo.toml
 ```
 
 Then verify Cloudflare Access in the browser and with a service token from the

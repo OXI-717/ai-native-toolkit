@@ -91,7 +91,7 @@ class HTTPMCPClient:
                            "Accept": "application/json, text/event-stream"}
         result, session = self._request("initialize", {
             "protocolVersion": "2024-11-05", "capabilities": {},
-            "clientInfo": {"name": "oxyseo", "version": "1"},
+            "clientInfo": {"name": "oxy-seo", "version": "1"},
         }, 1, request_headers, deadline)
         version = result.get("protocolVersion")
         if version not in {"2024-11-05", "2025-03-26", "2025-06-18"}:

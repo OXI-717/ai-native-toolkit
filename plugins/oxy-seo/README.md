@@ -1,7 +1,7 @@
-# oxyseo
+# oxy-seo
 
-`oxyseo` is a read-only SEO intelligence hub. It provides the
-installable `oxyseo` CLI, a strict project registry parser, safe secret env-file
+`oxy-seo` is a read-only SEO intelligence hub. It provides the
+installable `oxy-seo` CLI, a strict project registry parser, safe secret env-file
 loading, local run manifests, read-only evidence adapters, and draft-only
 exports.
 
@@ -17,15 +17,15 @@ not this release.
 ## CLI
 
 ```bash
-uv tool install --editable plugins/oxyseo/cli
-oxyseo doctor --json
-oxyseo --json projects --config plugins/oxyseo/examples/registry.toml
-oxyseo status --project example --json --config config/oxyseo.toml
-oxyseo run --project example --mode full --json --config config/oxyseo.toml
-oxyseo report --project example --run run_... --json --config config/oxyseo.toml
-oxyseo opportunities --project example --run run_... --json --config config/oxyseo.toml
-oxyseo outcomes --project example --json --config config/oxyseo.toml
-oxyseo export --project example --run run_... --format observer-actions --json --config config/oxyseo.toml
+uv tool install --editable plugins/oxy-seo/cli
+oxy-seo doctor --json
+oxy-seo --json projects --config plugins/oxy-seo/examples/registry.toml
+oxy-seo status --project example --json --config config/oxy-seo.toml
+oxy-seo run --project example --mode full --json --config config/oxy-seo.toml
+oxy-seo report --project example --run run_... --json --config config/oxy-seo.toml
+oxy-seo opportunities --project example --run run_... --json --config config/oxy-seo.toml
+oxy-seo outcomes --project example --json --config config/oxy-seo.toml
+oxy-seo export --project example --run run_... --format observer-actions --json --config config/oxy-seo.toml
 ```
 
 `--json` and `--config` are accepted before or after subcommands.
