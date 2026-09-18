@@ -3,8 +3,8 @@
 # SessionStart(compact|clear) Hook: Restore handoff context after compaction.
 #
 # Session isolation: each session writes to <session-id>.md.
-# On restore, looks for own session file first, then pane-scoped handoff.
-# HANDOFF.md is not restored because it is shared by concurrent sessions.
+# On restore, looks for own session file first, then pane-scoped handoff, then the
+# newest per-session archive with an explicit foreign-session warning.
 # LFG_ROTATION_MARKER_V1: supports .lfg-rotation-request.env handoff_file.
 #
 
@@ -46,6 +46,7 @@ log "session_id=$session_id cwd=$cwd project_hash=$project_hash"
 # --- Session-specific file (best match: same session after compact) ---
 handoff_file=""
 handoff_source=""
+allow_foreign_fallback=1
 
 read_marker_value() {
     local file="$1" key="$2"
@@ -68,6 +69,7 @@ if [ -f "$rotation_marker" ]; then
         rm -f "$rotation_marker" 2>/dev/null || true
         log "Found LFG rotation handoff: $handoff_file"
     else
+        allow_foreign_fallback=0
         log "Ignoring LFG rotation marker: no matching session snapshot"
     fi
 fi
@@ -84,10 +86,6 @@ fi
 # however, is the same one the operator is sitting in, and its handoff belongs to the
 # conversation that just ran here.
 #
-# The project-wide HANDOFF.md is deliberately NOT used as a fallback: two live sessions
-# in one directory is routine, so they all overwrite
-# that single file, and restoring a neighbour's handoff is worse than restoring nothing —
-# an empty context announces itself, a plausible wrong one does not.
 if [ -z "$handoff_file" ] && [ -n "${TMUX_PANE:-}" ]; then
     pane_slug=$(printf '%s' "${TMUX_PANE}" | tr '%' 'p' | tr -cd 'A-Za-z0-9_-' | cut -c1-32)
     if [ -n "$pane_slug" ] && [ -f "$HANDOFF_DIR/pane-${pane_slug}.md" ]; then
@@ -96,6 +94,82 @@ if [ -z "$handoff_file" ] && [ -n "${TMUX_PANE:-}" ]; then
         log "Found pane handoff: $handoff_file"
     else
         log "No pane handoff for ${TMUX_PANE} in $HANDOFF_DIR"
+    fi
+fi
+
+# --- Freshest usable session archive (explicitly foreign) ---
+#
+# A new session may have neither the old session id nor a stable tmux pane. Do not use
+# HANDOFF.md to guess silently: select the newest durable per-session archive for this
+# cwd, ranked by its immutable `saved` header instead of mtime (which enrichment changes).
+# Ignore empty, unreadable, and malformed archives; a damaged new save must not mask an
+# older usable context. The shell re-reads candidates below so a failure during selection
+# also falls through to the next one.
+if [ -z "$handoff_file" ] && [ "$allow_foreign_fallback" = 1 ] && [ -d "$HANDOFF_DIR" ]; then
+    while IFS= read -r candidate; do
+        [ -n "$candidate" ] || continue
+        if candidate_content=$(cat "$candidate" 2>/dev/null) && [ -n "$candidate_content" ]; then
+            handoff_file="$candidate"
+            break
+        fi
+    done < <(python3 - "$HANDOFF_DIR" "$cwd" <<'PY'
+import sys
+from datetime import datetime
+from pathlib import Path
+
+root = Path(sys.argv[1])
+cwd = sys.argv[2]
+candidates = []
+
+
+def header_value(content, key):
+    prefix = f"- {key}:"
+    for line in content.splitlines():
+        if line.startswith(prefix):
+            return line[len(prefix):].strip()
+    return None
+
+
+try:
+    for path in root.glob("*.md"):
+        if path.name == "HANDOFF.md" or path.name.startswith("pane-") or not path.is_file():
+            continue
+        try:
+            content = path.read_text(errors="replace")
+            saved = header_value(content, "saved")
+            if not content.strip() or header_value(content, "cwd") != cwd or not saved:
+                continue
+            saved_at = datetime.fromisoformat(saved.replace("Z", "+00:00")).timestamp()
+            candidates.append((saved_at, path.name, path))
+        except (OSError, ValueError):
+            continue
+except OSError:
+    pass
+
+for _, _, path in sorted(candidates, reverse=True):
+    print(path)
+PY
+)
+    if [ -n "$handoff_file" ] && [ -f "$handoff_file" ]; then
+        foreign_owner=$(basename "$handoff_file" .md)
+        handoff_source="foreign-session (${foreign_owner}; requested ${session_id:-unknown})"
+        log "No matching handoff; using newest usable foreign session archive: $handoff_file"
+    else
+        handoff_file=""
+    fi
+fi
+
+# Compatibility for handoffs written before per-session archives existed (and manual
+# handoffs made by older plugin versions). Ownership is still stated as foreign/unknown.
+if [ -z "$handoff_file" ] && [ "$allow_foreign_fallback" = 1 ] && [ -f "$HANDOFF_DIR/HANDOFF.md" ]; then
+    legacy_owner=$(jq -r '.session_id // "unknown"' "$HANDOFF_DIR/HANDOFF.meta.json" 2>/dev/null)
+    legacy_cwd=$(jq -r '.cwd // empty' "$HANDOFF_DIR/HANDOFF.meta.json" 2>/dev/null)
+    if [ "$legacy_cwd" = "$cwd" ]; then
+        handoff_file="$HANDOFF_DIR/HANDOFF.md"
+        handoff_source="foreign-session (${legacy_owner:-unknown}; legacy project fallback; requested ${session_id:-unknown})"
+        log "No session archive; using legacy project handoff: $handoff_file"
+    else
+        log "Ignoring legacy project handoff with missing or mismatched cwd"
     fi
 fi
 

@@ -1,5 +1,5 @@
 # Generated from plugins/gh-issues/skills/gh-issues/SKILL.md
 interface:
   display_name: "GH Issues:GH Issues"
-  short_description: "Use when creating, searching, updating, or managing GitHub issues via CLI. Triggers: \"issue\", \"create issue\", \"gh iss..."
-  default_prompt: "Use the `gh-issues` skill. Use when creating, searching, updating, or managing GitHub issues via CLI"
+  short_description: "Use when managing GitHub issues via CLI. Triggers — \"create issue\", \"gh issue\", \"task tracking\", \"resume task\", \"save..."
+  default_prompt: "Use `gh-issues`."

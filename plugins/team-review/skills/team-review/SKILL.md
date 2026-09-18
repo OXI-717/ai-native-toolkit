@@ -1,11 +1,6 @@
 ---
 name: team-review
-description: |
-  Use when the user invokes /team-review, team-review, asks for the team-based
-  code review workflow, wants multi-pass or multi-agent review, or wants the
-  review → fix → build/test → re-review loop. Supports Codex by using native
-  subagents only when the user explicitly asks for the multi-agent/team review
-  behavior; otherwise run the same reviewer roles locally.
+description: Use when the user requests /team-review, multi-pass or team code review, or a review-fix-test-review cycle.
 ---
 
 # Review

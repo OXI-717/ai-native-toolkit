@@ -1,9 +1,9 @@
 ---
-name: setup-my-context
-description: "Build a personal or team Claude Code/Codex working structure through an interview: workspace, AGENTS.md, rules, memory habits, delegation, and delivery pipeline. Triggers on setup my context, set up AGENTS.md, собери структуру Claude Code, настрой рабочую директорию, создай правила для агентов, L0-L4 runbooks."
+name: context-runbooks
+description: Use when designing a Codex/Claude workspace and context rules. Triggers — "настрой рабочую директорию", "создай правила для агентов".
 ---
 
-# setup-my-context
+# context-runbooks
 
 Use this skill when a user wants to create or improve their own agent-working
 structure. The result is not a clone of someone else's setup. The result is a
@@ -37,8 +37,9 @@ Use when the user is starting from scratch or says "set up my context".
 3. Identify the target level:
    - L0-L2 for non-technical users or teams that mainly need repeatable context.
    - L0-L4 for technical users who want delegated implementation and PR flow.
-4. Generate concrete files or patches in the target workspace.
-5. End with the "done when" checks for every completed level.
+4. Read each applicable level reference file (`l0-workspace.md`, `l1-project-context.md`, etc., up through the chosen target level) to load concrete templates, steps, and rules.
+5. Generate concrete files or patches in the target workspace based on those level references.
+6. End with the "done when" checks for every completed level.
 
 ### Improve Existing Setup
 
@@ -67,6 +68,7 @@ convention:
 ```text
 <workspace>/
 ├── AGENTS.md
+├── CLAUDE.md
 ├── rules/
 │   ├── git.md
 │   ├── no-secrets.md
@@ -74,12 +76,13 @@ convention:
 ├── MEMORY.md
 └── <project>/
     ├── AGENTS.md
+    ├── CLAUDE.md
     └── rules/
 ```
 
-For a narrow single-project setup, create only the project `AGENTS.md` and
-`rules/` files. Do not create a workspace umbrella when the user explicitly wants
-one repository only.
+Whenever creating or updating an `AGENTS.md` file (at workspace or project level), also create a thin `CLAUDE.md` wrapper containing `@AGENTS.md` so Claude Code automatically loads the unified context.
+
+For a narrow single-project setup, create only the project `AGENTS.md`, `CLAUDE.md` wrapper, and `rules/` files. Do not create a workspace umbrella when the user explicitly wants one repository only.
 
 ## Safety Boundaries
 

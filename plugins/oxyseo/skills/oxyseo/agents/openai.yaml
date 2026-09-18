@@ -1,0 +1,5 @@
+# Generated from plugins/oxyseo/skills/oxyseo/SKILL.md
+interface:
+  display_name: "Oxyseo:Oxyseo"
+  short_description: "Use for the read-only SEO Hub CLI, project registry validation, secret env-file checks, and existing SEO evidence rou..."
+  default_prompt: "Use `oxyseo`."

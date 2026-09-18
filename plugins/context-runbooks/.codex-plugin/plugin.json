@@ -1,6 +1,6 @@
 {
   "name": "context-runbooks",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
   "author": {
     "name": "OXI-717"

@@ -11,7 +11,7 @@ rules, memory habits, delegation patterns, and delivery pipeline.
 Use the bootstrap command/skill:
 
 ```bash
-/setup-my-context
+/context-runbooks
 ```
 
 It guides the user through L0-L4:

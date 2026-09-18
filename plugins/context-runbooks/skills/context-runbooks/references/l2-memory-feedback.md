@@ -16,11 +16,11 @@ Use a simple `MEMORY.md` when no richer memory system exists:
 
 | Date | Scope | Lesson | Rule File |
 |---|---|---|---|
-| 2026-08-23 | git | Worktrees stay inside the repo | rules/git.md |
+| <date> | <scope> | <lesson> | <rule file> |
 
 ## Decisions
 
-- 2026-08-23: <decision> because <reason>.
+- <date>: <decision> because <reason>.
 
 ## Retired
 

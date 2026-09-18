@@ -1,0 +1,5 @@
+# Generated from plugins/context-runbooks/commands/context-runbooks.md
+interface:
+  display_name: "Context Runbooks:Context Runbooks"
+  short_description: "Interview the user and generate a personal/team Claude Code context structure"
+  default_prompt: "Use `context-runbooks`."

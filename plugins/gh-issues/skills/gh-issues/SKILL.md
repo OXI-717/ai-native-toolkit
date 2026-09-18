@@ -1,12 +1,6 @@
 ---
 name: gh-issues
-description: >-
-  Use when creating, searching, updating, or managing GitHub issues via CLI.
-  Triggers: "issue", "create issue", "gh issue", "task tracking",
-  "context", "handoff", "resume task", "session context", "save progress",
-  "active tasks", "in-progress", "my tasks", "open issues".
-  Covers: gh commands, bulk operations, JSON/jq, search filters, issue-to-PR workflow,
-  AI session context storage, task workflow with labels.
+description: Use when managing GitHub issues via CLI. Triggers — "create issue", "gh issue", "task tracking", "resume task", "save progress", "active tasks".
 ---
 
 # GitHub Issues CLI

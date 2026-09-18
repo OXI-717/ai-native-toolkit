@@ -1,10 +1,6 @@
 ---
 name: infocompressor
-description: |
-  Use when the user needs to compress, condense, or summarize lengthy content while preserving ALL
-  critical details. Triggers: "compress this", "make it shorter but keep everything", "create a
-  cheat sheet", "dense summary", "reference format", "compact version", "information-dense". NOT
-  for casual summaries—only when user explicitly wants maximum density with zero data loss.
+description: Use for lossless dense summaries. Triggers — "compress this", "make it shorter but keep everything", "cheat sheet", "dense summary", "compact version".
 ---
 # Text Compression Skill
 

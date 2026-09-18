@@ -1,6 +1,6 @@
 ---
 name: openrouter-setup
-description: "Configure OpenRouter as an OpenAI-compatible endpoint (OPENROUTER_API_KEY in env, never in code) for waitlist-gated models: moonshotai/kimi-k3, deepseek/deepseek-v4, z-ai/glm-*"
+description: Use when configuring OpenRouter as an OpenAI-compatible endpoint for gated third-party models.
 argument-hint: "[model-slug] — smoke-test a specific model, e.g. z-ai/glm-4.6"
 allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob"]
 ---

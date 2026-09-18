@@ -99,10 +99,14 @@ Optional: `export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=70` to compact earlier (at 70%
 
 ## On Save (`/handoff`)
 
-After writing HANDOFF.md, Claude MUST confirm to user:
+Write the durable copy to `~/.claude/handoff/<hash>/<session-id>.md`, where `<hash>` is
+cwd with `/` replaced by `-`. If no session id is available, use
+`manual-<UTC timestamp>.md`. Then copy the same content to `HANDOFF.md` as the
+project-wide convenience pointer, and write `HANDOFF.meta.json` with the session id,
+timestamp, cwd, and `manual` method. Claude MUST then confirm to user:
 
 ```
-Context saved to ~/.claude/handoff/<hash>/HANDOFF.md
+Context saved to ~/.claude/handoff/<hash>/<session-id-or-manual-timestamp>.md
 - Sections: Goal, Files Modified, Decisions, Key Context, Current State, Errors Resolved
 - Size: N lines, M bytes
 - Method: manual
@@ -255,12 +259,12 @@ Saved per session (`<session-id>.md`), per tmux pane (`pane-<pane>.md`) and per 
 1. `<session-id>.md` — the `/compact` case, where the id is preserved;
 2. `pane-<TMUX_PANE>.md` — the `/clear` case: the id is regenerated, but the operator is
    still sitting in the same pane, so that pane's handoff is the one that belongs to them;
-3. nothing.
+3. the newest `<session-id>.md` archive, explicitly labelled `foreign-session` so neither
+   Claude nor the operator can mistake another session's context for an exact match;
+4. legacy `HANDOFF.md`, also explicitly labelled foreign, when no session archive exists.
 
-`HANDOFF.md` is written for convenience but is deliberately **not** restored: several
-sessions routinely run in one directory at once and all overwrite that single file.
-Inheriting a neighbour's handoff is worse than inheriting none — an empty context
-announces itself, a plausible wrong one silently sends the session down another task.
+`HANDOFF.md` remains a convenience copy of the latest save. Durable context lives in the
+per-session files, so another session updating the convenience copy does not erase it.
 
 Claude-only by design (`~/.claude` paths, Claude hook events); excluded from Codex.
 

@@ -1,11 +1,6 @@
 ---
 name: deep-interview
-description: |
-  Focused clarification interview for vague tasks. Asks questions one at a time,
-  explores codebase for context, outputs structured brief for planning/execution.
-  Triggers: "interview", "clarify task", "deep interview",
-  "define requirements", "scope this out", "what exactly do you need",
-  "let's clarify", "gather requirements"
+description: Use when a vague task needs a clarification interview and structured brief. Triggers — "clarify task", "define requirements".
 ---
 
 # Deep Interview — Task Clarification

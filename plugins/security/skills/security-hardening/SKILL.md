@@ -1,6 +1,6 @@
 ---
 name: security-hardening
-description: "Comprehensive security audit and hardening checklist for VPS servers, WordPress sites, and Next.js applications. Covers SSH hardening, firewall configuration, fail2ban, CrowdSec, kernel sysctl, Docker security, SSL/TLS, WAF, OWASP Top 10, headers, secrets management, backups, and incident response. Use this skill whenever the user mentions security, hardening, securing a server, защита сервера, обезопасить VPS, security audit, security checklist, or asks about SSH, firewall, fail2ban, ports, brute force, DDoS, WAF, SSL certificates, security headers, or any topic related to protecting servers, websites, or web applications from attacks — even if they don't explicitly say 'security'."
+description: Use for server or web hardening. Triggers — SSH, firewall, fail2ban, ports, brute force, DDoS, WAF, SSL certificates, security headers.
 ---
 
 # Security Hardening

@@ -1,6 +1,6 @@
 {
   "name": "infocompressor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Compress documents into dense reference specs with 40-75% reduction",
   "author": {
     "name": "OXI-717"

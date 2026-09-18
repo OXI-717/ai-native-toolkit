@@ -1,6 +1,6 @@
 {
   "name": "security",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Security hardening audit for VPS, WordPress, Next.js, and web applications",
   "author": {
     "name": "OXI-717"

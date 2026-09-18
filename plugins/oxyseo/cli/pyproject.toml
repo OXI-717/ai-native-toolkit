@@ -1,0 +1,29 @@
+[project]
+name = "oxyseo"
+version = "0.1.18"
+description = "Read-only SEO intelligence hub CLI"
+requires-python = ">=3.11"
+dependencies = ["PyJWT[crypto]>=2.10.1,<3"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+seo-hub = "seo_hub.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["seo_hub*"]
+
+[tool.setuptools.package-data]
+seo_hub = ["templates/*.html", "static/*.css"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

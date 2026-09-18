@@ -1,0 +1,28 @@
+schema_version = 1
+data_dir = "../data"
+export_dir = "../exports"
+
+[server]
+bind = "127.0.0.1:8080"
+auth_mode = "cloudflare_access"
+access_team_domain = "team.cloudflareaccess.com"
+human_audience = "hub-human-audience"
+service_audience = "hub-cli-audience"
+owner_email = "owner@example.com"
+service_common_name = "exact-cli-service-token-name"
+
+[[projects]]
+id = "example"
+label = "Example"
+observer_config = "../projects/example/project.toml"
+credentials_env_file = "../secrets/example.env"
+elmo_base_url = "http://elmo:3000"
+elmo_brand_id = "brand-id"
+openseo_mcp_url = "https://openseo.example.com/mcp"
+openseo_project_id = "project-id"
+openseo_rank_tracker_id = "optional-tracker-id"
+
+[[projects.exports]]
+name = "project-handoff"
+format = "markdown"
+relative_dir = "example"

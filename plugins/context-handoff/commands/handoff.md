@@ -31,7 +31,10 @@ Review the ENTIRE current conversation and create a compressed handoff document.
 
 ### Output Format
 
-Write to `~/.claude/handoff/<project-hash>/HANDOFF.md` where project-hash is cwd with `/` replaced by `-`:
+Write the durable copy to `~/.claude/handoff/<project-hash>/<session-id>.md`, where
+project-hash is cwd with `/` replaced by `-`. If no session id is available, use
+`manual-<UTC timestamp>.md`. Also copy the same content to `HANDOFF.md` as the
+project-wide convenience pointer to the latest save:
 
 ```markdown
 # Context Handoff
@@ -69,12 +72,12 @@ Write to `~/.claude/handoff/<project-hash>/HANDOFF.md` where project-hash is cwd
 1. Run `mkdir -p ~/.claude/handoff/$(pwd | sed 's|/|-|g')`
 2. Analyze current conversation context
 3. Compress using rules above
-4. Write HANDOFF.md
+4. Write `<session-id>.md` (or `manual-<UTC timestamp>.md`), then copy it to HANDOFF.md
 5. Write HANDOFF.meta.json: `{"session_id":"...","timestamp":"...","cwd":"...","method":"manual"}`
 6. **MANDATORY: Confirm to user with this exact format:**
 
 ```
-Context saved to ~/.claude/handoff/<hash>/HANDOFF.md
+Context saved to ~/.claude/handoff/<hash>/<session-id-or-manual-timestamp>.md
 - Sections: [list of ## sections written]
 - Size: N lines, M bytes
 - Method: manual

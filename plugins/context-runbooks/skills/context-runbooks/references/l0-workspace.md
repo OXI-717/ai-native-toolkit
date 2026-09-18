@@ -8,7 +8,7 @@ artifacts, and temporary work have obvious places.
 ## Steps
 
 1. Pick the umbrella path.
-2. Create a root `AGENTS.md`.
+2. Create a root `AGENTS.md` and a thin `CLAUDE.md` wrapper containing `@AGENTS.md`.
 3. Create `rules/` for reusable rules.
 4. Add `.gitignore` entries for local-only files.
 5. Define the credentials boundary.
@@ -18,6 +18,7 @@ artifacts, and temporary work have obvious places.
 ```text
 <workspace>/
 ├── AGENTS.md
+├── CLAUDE.md
 ├── rules/
 │   ├── git.md
 │   ├── no-secrets.md
@@ -48,6 +49,12 @@ that placement rules are written down.
 @./rules/git.md
 @./rules/no-secrets.md
 @./rules/session-hygiene.md
+```
+
+## CLAUDE.md Starter
+
+```markdown
+@AGENTS.md
 ```
 
 ## .gitignore Starter

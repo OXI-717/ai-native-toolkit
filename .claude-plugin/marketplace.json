@@ -57,7 +57,7 @@
       "name": "infocompressor",
       "description": "Compress documents into dense reference specs with 40-75% reduction",
       "source": "./plugins/infocompressor/",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "OXI-717"
       }
@@ -66,7 +66,7 @@
       "name": "deep-interview",
       "description": "Focused task clarification interview - one question at a time, structured brief output for planning",
       "source": "./plugins/deep-interview/",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "OXI-717"
       }
@@ -93,7 +93,7 @@
       "name": "notebooklm",
       "description": "Query Google NotebookLM notebooks with source-grounded, citation-backed answers",
       "source": "./plugins/notebooklm/",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "OXI-717"
       }
@@ -111,7 +111,7 @@
       "name": "openrouter-setup",
       "description": "Configure OpenRouter as an OpenAI-compatible endpoint, API key in env only",
       "source": "./plugins/openrouter-setup/",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "OXI-717"
       }
@@ -120,7 +120,7 @@
       "name": "security",
       "description": "Security hardening audit for VPS, WordPress, Next.js, and web applications",
       "source": "./plugins/security/",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "OXI-717"
       }
@@ -147,6 +147,15 @@
       "name": "context-runbooks",
       "description": "Runbooks and bootstrap skill for building a personal or team Claude Code/Codex working structure",
       "source": "./plugins/context-runbooks/",
+      "version": "0.1.1",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "oxyseo",
+      "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and seo-hub CLI. Imports existing evidence only; no live paid provider calls.",
+      "source": "./plugins/oxyseo/",
       "version": "0.1.0",
       "author": {
         "name": "OXI-717"

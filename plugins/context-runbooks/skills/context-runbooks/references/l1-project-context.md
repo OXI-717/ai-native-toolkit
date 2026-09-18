@@ -10,6 +10,7 @@ manual briefing at the start of every session.
 ```text
 <project>/
 ├── AGENTS.md
+├── CLAUDE.md
 └── rules/
     ├── git.md
     ├── testing.md
@@ -42,6 +43,12 @@ This project does <one paragraph>.
 
 Replace unknown commands with "unknown, inspect before running". Do not invent
 commands.
+
+## Project CLAUDE.md Starter
+
+```markdown
+@AGENTS.md
+```
 
 ## Rule Template
 
