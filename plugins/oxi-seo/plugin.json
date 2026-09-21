@@ -1,5 +1,5 @@
 {
   "name": "oxi-seo",
   "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxi-seo CLI. Imports existing evidence only; no live paid provider calls.",
-  "version": "0.1.2"
+  "version": "0.1.3"
 }
