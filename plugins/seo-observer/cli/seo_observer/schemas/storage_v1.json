@@ -1,0 +1,3706 @@
+{
+  "db_schema_version": 1,
+  "reserved_all_dimension": "__all__",
+  "tables": {
+    "action_targets": {
+      "category": "actions",
+      "primary_key": [
+        "target_id"
+      ],
+      "columns": [
+        {
+          "name": "target_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "action_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "action_revision_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "target_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "target_value",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "target_role",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "action_id",
+            "action_revision_hash"
+          ],
+          "referenced_table": "seo_actions",
+          "referenced_columns": [
+            "action_id",
+            "action_revision_hash"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "action_verdicts": {
+      "category": "verdicts",
+      "primary_key": [
+        "verdict_id"
+      ],
+      "columns": [
+        {
+          "name": "verdict_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "action_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "action_revision_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "window_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "verdict",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "absolute_delta",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "relative_delta",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "input_derived_metric_ids_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "input_fact_set_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evidence_set_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "historical_snapshot_hashes_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability_state",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evaluation_policy_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evaluation_as_of",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "supersedes_verdict_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "explanation",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "supersedes_verdict_id"
+          ],
+          "referenced_table": "action_verdicts",
+          "referenced_columns": [
+            "verdict_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "window_id",
+            "action_revision_hash"
+          ],
+          "referenced_table": "measurement_windows",
+          "referenced_columns": [
+            "window_id",
+            "action_revision_hash"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "action_id",
+            "action_revision_hash"
+          ],
+          "referenced_table": "seo_actions",
+          "referenced_columns": [
+            "action_id",
+            "action_revision_hash"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "collection_runs": {
+      "category": "attempts",
+      "primary_key": [
+        "run_id"
+      ],
+      "columns": [
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "period_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "period_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "started_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "finished_at",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "config_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "cli_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "db_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "config_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "competitor_metrics": {
+      "category": "derived",
+      "primary_key": [
+        "metric_id"
+      ],
+      "columns": [
+        {
+          "name": "metric_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalized_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword_set_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "visibility_score",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "formula_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "top3_count",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "top10_count",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "gained_keywords",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "lost_keywords",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_new_competitor",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_disappeared_competitor",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "page_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "input_fact_ids_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "calculated_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "content_coverage": {
+      "category": "coverage",
+      "primary_key": [
+        "coverage_id"
+      ],
+      "columns": [
+        {
+          "name": "coverage_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "coverage_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "covered_count",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "expected_count",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "coverage_ratio",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evidence_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "derived_metrics": {
+      "category": "derived",
+      "primary_key": [
+        "metric_id"
+      ],
+      "columns": [
+        {
+          "name": "metric_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "metric_name",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "formula_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "formula_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dimensions_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "value",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "unit",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparison_window_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "input_request_ids_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "input_metric_ids_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "quality_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "calculated_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "index_coverage": {
+      "category": "observed",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "index_state",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "problem_severity",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "problem_code",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sitemap_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "searchable_pages",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "excluded_pages",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "submitted_urls",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "indexed_urls",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "problem_count",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "keyword_demand": {
+      "category": "observed",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "region",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "device",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "demand_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "history_bucket",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "relation",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "demand_count",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "supersedes_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "superseded_by_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "superseded_by_fact_id"
+          ],
+          "referenced_table": "keyword_demand",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "supersedes_fact_id"
+          ],
+          "referenced_table": "keyword_demand",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "measurement_windows": {
+      "category": "windows",
+      "primary_key": [
+        "window_id",
+        "action_revision_hash"
+      ],
+      "columns": [
+        {
+          "name": "window_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 1
+        },
+        {
+          "name": "action_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "action_revision_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 2
+        },
+        {
+          "name": "baseline_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "baseline_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observation_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observation_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparison_strategy",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "minimum_denominator",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "earliest_evaluation_date",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "confounder_notes",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "action_id",
+            "action_revision_hash"
+          ],
+          "referenced_table": "seo_actions",
+          "referenced_columns": [
+            "action_id",
+            "action_revision_hash"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "metric_coverage": {
+      "category": "coverage",
+      "primary_key": [
+        "coverage_id"
+      ],
+      "columns": [
+        {
+          "name": "coverage_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "metric_name",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dimension_scope_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dimension_scope_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "transport_status",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "zero_confirmed",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "expected_rows",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "received_rows",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "coverage_denominator",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "coverage_ratio",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sampled",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sample_share",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "available_through",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "as_of",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "logical_observation_key",
+            "metric_name",
+            "dimension_scope_hash",
+            "request_id"
+          ],
+          "where": null
+        }
+      ]
+    },
+    "outcome_metrics": {
+      "category": "observed",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "outcome_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evidence_kind",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "counting_unit",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "deduplication_rule",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "population_scope",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "attribution_model",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "attribution_scope",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "traffic_channel",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "search_engine",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "landing_page_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "device",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "attribution_level",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "count",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "unique_actors",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "value_minor",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "currency",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "supersedes_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "superseded_by_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "superseded_by_fact_id"
+          ],
+          "referenced_table": "outcome_metrics",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "supersedes_fact_id"
+          ],
+          "referenced_table": "outcome_metrics",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "projects": {
+      "category": "registry",
+      "primary_key": [
+        "project_id"
+      ],
+      "columns": [
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "config_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "config_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [],
+      "unique_indexes": []
+    },
+    "properties": {
+      "category": "registry",
+      "primary_key": [
+        "project_id",
+        "property_id"
+      ],
+      "columns": [
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 1
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 2
+        },
+        {
+          "name": "canonical_url",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "enabled",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "raw_artifacts": {
+      "category": "attempts",
+      "primary_key": [
+        "artifact_id"
+      ],
+      "columns": [
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "relative_path",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sha256",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "content_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "compression",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "redaction_state",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "byte_size",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "relative_path"
+          ],
+          "where": null
+        }
+      ]
+    },
+    "schema_meta": {
+      "category": "migration",
+      "primary_key": [
+        "db_schema_version"
+      ],
+      "columns": [
+        {
+          "name": "db_schema_version",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "applied_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "app_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [],
+      "unique_indexes": []
+    },
+    "search_performance": {
+      "category": "observed",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "query_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "query_text",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "page_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "page_url",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "search_engine",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "device",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "country",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "region",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "segment_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "impressions",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "clicks",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "ctr",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "average_position",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sampled",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sample_share",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "supersedes_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "superseded_by_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "content_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "superseded_by_fact_id"
+          ],
+          "referenced_table": "search_performance",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "supersedes_fact_id"
+          ],
+          "referenced_table": "search_performance",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "logical_observation_key",
+            "effective_start",
+            "effective_end",
+            "query_id",
+            "page_id",
+            "search_engine",
+            "device",
+            "country",
+            "region",
+            "segment_id"
+          ],
+          "where": "is_current = 1"
+        }
+      ]
+    },
+    "seo_actions": {
+      "category": "actions",
+      "primary_key": [
+        "action_id",
+        "action_revision_hash"
+      ],
+      "columns": [
+        {
+          "name": "action_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "changed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "action_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "hypothesis_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evidence_ref",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "lifecycle_state",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "action_revision_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 2
+        },
+        {
+          "name": "supersedes_action_revision_hash",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "serp_results": {
+      "category": "observed",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "protocol_slot",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword_set_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "region",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "device",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "search_engine",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "rank",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "result_url",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalized_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "result_type",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "serp_features_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "belongs_to_project",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "snapshot_manifests": {
+      "category": "snapshots",
+      "primary_key": [
+        "manifest_id"
+      ],
+      "columns": [
+        {
+          "name": "manifest_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "snapshot_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "period_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "period_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "generated_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_quality_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "snapshot_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "report_hash",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_evidence_ids_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "local_attempt_receipt_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "renderer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "source_requests": {
+      "category": "attempts",
+      "primary_key": [
+        "request_id"
+      ],
+      "columns": [
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_descriptor_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "attempt",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "queried_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "completed_at",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "transport_status",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sampled",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "sample_share",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "data_lag_seconds",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "row_limit",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "rows_received",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "pages_expected",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "pages_received",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "error_code",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "error_summary",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "run_id"
+          ],
+          "referenced_table": "collection_runs",
+          "referenced_columns": [
+            "run_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "collection_attempt_key"
+          ],
+          "where": null
+        }
+      ]
+    },
+    "sources": {
+      "category": "registry",
+      "primary_key": [
+        "project_id",
+        "source"
+      ],
+      "columns": [
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 1
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 2
+        },
+        {
+          "name": "enabled",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "required",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_config_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "traffic_metrics": {
+      "category": "observed",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_start",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_instant_end",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "channel",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "search_engine",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "landing_page_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "device",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "region",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "attribution_model",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "visits",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "users",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "pageviews",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "bounce_rate",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "avg_visit_duration_seconds",
+          "type": "REAL",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "supersedes_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "superseded_by_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "superseded_by_fact_id"
+          ],
+          "referenced_table": "traffic_metrics",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "supersedes_fact_id"
+          ],
+          "referenced_table": "traffic_metrics",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "competitor_discovery_runs": {
+      "category": "competitors",
+      "primary_key": [
+        "run_id"
+      ],
+      "columns": [
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "target_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "provider_mode",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "quality",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "cost_usd",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_manifest_path",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": []
+    },
+    "competitor_candidates": {
+      "category": "competitors",
+      "primary_key": [
+        "candidate_id"
+      ],
+      "columns": [
+        {
+          "name": "candidate_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "target_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "competitor_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "intersections",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "organic_keywords",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "estimated_traffic",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "quality",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "cost_usd",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "evidence_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "run_id"
+          ],
+          "referenced_table": "competitor_discovery_runs",
+          "referenced_columns": [
+            "run_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "run_id",
+            "competitor_domain"
+          ],
+          "where": null
+        }
+      ]
+    },
+    "keyword_gap_rows": {
+      "category": "competitors",
+      "primary_key": [
+        "gap_id"
+      ],
+      "columns": [
+        {
+          "name": "gap_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "target_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "competitor_domain",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "competitor_domains_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword_set_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword_set_hash",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "keyword",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalized_keyword",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "location_code",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "location_name",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "language_code",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "best_competitor_rank",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "representative_competitor_url",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "search_volume",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "cpc",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "quality",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "cost_usd",
+          "type": "REAL",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "citation_ids_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "run_id"
+          ],
+          "referenced_table": "competitor_discovery_runs",
+          "referenced_columns": [
+            "run_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "run_id",
+            "normalized_keyword",
+            "location_code",
+            "location_name",
+            "language_code"
+          ],
+          "where": null
+        }
+      ]
+    },
+    "crawl_pages": {
+      "category": "crawl",
+      "primary_key": [
+        "fact_id"
+      ],
+      "columns": [
+        {
+          "name": "fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "effective_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "source_timezone",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "request_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "artifact_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "logical_observation_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "collection_attempt_key",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "crawled_url",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "final_url",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "depth",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fetch_status",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "robots_status",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "content_type",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "byte_size",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "meta_description",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "h1_text",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "h1_count",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "canonical_url",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "header_canonical_url",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "meta_robots",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "x_robots_tag",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "hreflang_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "redirect_chain_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "internal_links_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "error",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "dataset_coverage",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "freshness",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "comparability",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "fact_schema_version",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "normalizer_version",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "is_current",
+          "type": "INTEGER",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "supersedes_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "superseded_by_fact_id",
+          "type": "INTEGER",
+          "not_null": false,
+          "primary_key_position": 0
+        },
+        {
+          "name": "content_hash",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "superseded_by_fact_id"
+          ],
+          "referenced_table": "crawl_pages",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "supersedes_fact_id"
+          ],
+          "referenced_table": "crawl_pages",
+          "referenced_columns": [
+            "fact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "artifact_id"
+          ],
+          "referenced_table": "raw_artifacts",
+          "referenced_columns": [
+            "artifact_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "request_id"
+          ],
+          "referenced_table": "source_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_indexes": [
+        {
+          "columns": [
+            "project_id",
+            "property_id",
+            "logical_observation_key"
+          ],
+          "where": "is_current = 1"
+        }
+      ]
+    }
+  }
+}

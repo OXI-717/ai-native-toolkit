@@ -1,0 +1,5 @@
+# Generated from plugins/seo-observer/skills/seo-observer/SKILL.md
+interface:
+  display_name: "Seo Observer:Seo Observer"
+  short_description: "Use when producing evidence-first SEO snapshots, comparisons, outcome reports, opportunity research, or AI-search rea..."
+  default_prompt: "Use `seo-observer`."

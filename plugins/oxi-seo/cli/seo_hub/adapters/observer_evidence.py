@@ -26,11 +26,11 @@ STALE_AFTER_DAYS = 14
 # export denylist.
 SERP_EXTRACT_SCHEMAS = frozenset({
     "seo-observer.serp_extract.v1",
-    "oxi-seo-observer.serp_extract.v1",
+    "seo-observer.serp_extract.v1",
 })
 COMPETITOR_METRICS_SCHEMAS = frozenset({
     "seo-observer.competitor_metrics.v1",
-    "oxi-seo-observer.competitor_metrics.v1",
+    "seo-observer.competitor_metrics.v1",
 })
 
 

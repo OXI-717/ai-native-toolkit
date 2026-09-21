@@ -1,0 +1,84 @@
+config_schema_version = 1
+project = "demo-example"
+timezone = "Europe/Moscow"
+default_search_engine = "google"
+default_location_code = 2840
+default_location_name = "United States"
+default_language_code = "en"
+default_devices = ["desktop", "mobile"]
+
+[[properties]]
+id = "main"
+url = "https://demo.example/"
+
+[providers.dataforseo]
+enabled = true
+credential_env = "DATAFORSEO_CREDENTIALS"
+endpoint = "https://api.dataforseo.com"
+per_run_budget_usd = 3.00
+monthly_budget_usd = 50.00
+cache_ttl_hours = 24
+
+[providers.exa]
+enabled = true
+credential_env = "EXA_CREDENTIAL"
+endpoint = "https://api.exa.ai"
+per_run_budget_usd = 1.00
+cache_ttl_hours = 24
+
+[sources.serp]
+enabled = true
+required = false
+provider = "dataforseo_google_organic"
+regions = ["2840"]
+devices = ["desktop", "mobile"]
+result_depth = 10
+confirmation_observations = 2
+observations_per_protocol_slot = 2
+rank_aggregation = "median"
+minimum_weighted_keyword_coverage = 0.90
+
+[sources.competitor_discovery]
+enabled = true
+required = false
+provider = "dataforseo"
+limit_competitors = 20
+gap_limit = 100
+mega_authority_domains = ["wikipedia.org", "youtube.com", "example-directory.example"]
+
+[sources.competitor_research]
+enabled = true
+required = false
+provider = "exa"
+num_results = 10
+include_domains = ["learning.example"]
+exclude_domains = ["jobs.example"]
+
+[[source_bindings]]
+property = "main"
+source = "serp"
+remote_id = "demo-example-serp"
+
+[[keyword_sets]]
+id = "core"
+path = "keywords/core.txt"
+locale = "ru-RU"
+regions = ["2840"]
+devices = ["desktop", "mobile"]
+
+[competitors]
+owned_domains = ["demo.example", "*.demo.example"]
+
+[[competitors.items]]
+id = "learning-platform"
+name = "Learning Platform"
+domain_patterns = ["learning.example", "*.learning.example"]
+aliases = ["Learning"]
+class = "direct"
+
+[[competitors.items]]
+id = "boat-school"
+name = "Boat School"
+domain_patterns = ["boat-school.example"]
+aliases = ["Boat School"]
+class = "direct"

@@ -1,0 +1,73 @@
+{
+  "candidate_competitors": [
+    {
+      "domain": "learning.example",
+      "estimated_traffic": 1200,
+      "intersections": 12,
+      "organic_keywords": 220,
+      "quality": "live"
+    },
+    {
+      "domain": "boat-school.example",
+      "estimated_traffic": 900,
+      "intersections": 8,
+      "organic_keywords": 160,
+      "quality": "live"
+    }
+  ],
+  "filtered_domains": [],
+  "keyword_gaps": [
+    {
+      "best_competitor_rank": 2,
+      "citation_ids": [
+        "gap:demo-example:0"
+      ],
+      "competitor_domains": [
+        "learning.example",
+        "boat-school.example"
+      ],
+      "difficulty": 35,
+      "intent": "informational",
+      "keyword": "demo exam tickets",
+      "normalized_keyword": "demo exam tickets",
+      "our_domain_present": false,
+      "quality": "live",
+      "representative_competitor_url": "https://learning.example/demo-exam-tickets",
+      "search_volume": 1200
+    },
+    {
+      "best_competitor_rank": 4,
+      "citation_ids": [
+        "gap:demo-example:1"
+      ],
+      "competitor_domains": [
+        "boat-school.example"
+      ],
+      "difficulty": 42,
+      "intent": "informational",
+      "keyword": "boat license practice",
+      "normalized_keyword": "boat license practice",
+      "our_domain_present": false,
+      "quality": "live",
+      "representative_competitor_url": "https://boat-school.example/boat-license-practice",
+      "search_volume": 800
+    }
+  ],
+  "known_competitors": [],
+  "picked_competitors": [
+    {
+      "domain": "learning.example",
+      "quality": "live"
+    },
+    {
+      "domain": "boat-school.example",
+      "quality": "live"
+    }
+  ],
+  "quality_summary": {
+    "overall": "live"
+  },
+  "schema": "seo-observer.competitor_extract.v1",
+  "source_requests": [],
+  "target_domain": "demo.example"
+}

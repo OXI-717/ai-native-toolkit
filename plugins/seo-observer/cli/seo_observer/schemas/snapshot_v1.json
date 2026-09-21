@@ -1,0 +1,1021 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "seo-observer portable snapshot v1",
+  "snapshot_schema_version": 1,
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "snapshot_schema_version",
+    "project",
+    "period",
+    "versions",
+    "privacy",
+    "manifest",
+    "coverage",
+    "formula_inputs",
+    "lineage",
+    "evidence"
+  ],
+  "properties": {
+    "snapshot_schema_version": {
+      "const": 1
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "period": {
+      "$ref": "#/$defs/period"
+    },
+    "versions": {
+      "$ref": "#/$defs/versions"
+    },
+    "privacy": {
+      "$ref": "#/$defs/privacy"
+    },
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "formula_inputs": {
+      "$ref": "#/$defs/formula_inputs"
+    },
+    "lineage": {
+      "$ref": "#/$defs/lineage"
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence"
+    }
+  },
+  "$defs": {
+    "nullable_string": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nullable_number": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "nullable_integer": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "redactable_integer": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "const": "[redacted]"
+        }
+      ]
+    },
+    "redactable_string": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "const": "[redacted]"
+        }
+      ]
+    },
+    "string_int_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "timezone",
+        "config_hash",
+        "config_schema_version"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "config_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "config_schema_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reporting_period_id",
+        "start",
+        "end",
+        "timezone"
+      ],
+      "properties": {
+        "reporting_period_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cli",
+        "storage_schema",
+        "snapshot_schema",
+        "renderer"
+      ],
+      "properties": {
+        "cli": {
+          "type": "string"
+        },
+        "storage_schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "snapshot_schema": {
+          "const": 1
+        },
+        "renderer": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "redactions"
+      ],
+      "properties": {
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allow_exact_local_business_values"
+          ],
+          "properties": {
+            "allow_exact_local_business_values": {
+              "type": "boolean"
+            }
+          }
+        },
+        "redactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/privacy_redaction"
+          }
+        }
+      }
+    },
+    "privacy_redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(evidence\\.outcome_metrics|formula_inputs\\.outcome_metric_inputs)\\[[0-9]+\\]\\.(count|unique_actors|value_minor|currency)$"
+        },
+        "reason": {
+          "const": "exact_local_business_value"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_id",
+        "snapshot_schema_version",
+        "project_id",
+        "reporting_period_id",
+        "period_start",
+        "period_end",
+        "timezone",
+        "generated_at",
+        "source_coverage",
+        "logical_evidence_descriptors",
+        "logical_evidence_ids",
+        "local_attempt_receipt",
+        "snapshot_hash",
+        "renderer_version"
+      ],
+      "properties": {
+        "manifest_id": {
+          "type": "string",
+          "pattern": "^manifest:.+:.+:[0-9a-f]{16}$"
+        },
+        "snapshot_schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reporting_period_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "period_start": {
+          "type": "string"
+        },
+        "period_end": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_coverage": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/source_coverage_item"
+          }
+        },
+        "logical_evidence_descriptors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/logical_evidence_descriptor"
+          }
+        },
+        "logical_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^ev:(search_performance|outcome_metrics):[0-9a-f]{16}$"
+          }
+        },
+        "local_attempt_receipt": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_request"
+          }
+        },
+        "snapshot_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "renderer_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "source_coverage_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_evidence_rows",
+        "logical_observation_keys",
+        "dataset_coverage",
+        "freshness"
+      ],
+      "properties": {
+        "current_evidence_rows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "logical_observation_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dataset_coverage": {
+          "$ref": "#/$defs/string_int_map"
+        },
+        "freshness": {
+          "$ref": "#/$defs/string_int_map"
+        }
+      }
+    },
+    "logical_evidence_descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptor_id",
+        "source",
+        "property_id",
+        "logical_observation_key",
+        "request_descriptor_hash"
+      ],
+      "properties": {
+        "descriptor_id": {
+          "type": "string",
+          "pattern": "^desc:.+:.+:.+$"
+        },
+        "source": {
+          "type": "string"
+        },
+        "property_id": {
+          "type": "string"
+        },
+        "logical_observation_key": {
+          "type": "string"
+        },
+        "request_descriptor_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "search_performance",
+        "outcome_metrics"
+      ],
+      "properties": {
+        "search_performance": {
+          "$ref": "#/$defs/coverage_block"
+        },
+        "outcome_metrics": {
+          "$ref": "#/$defs/coverage_block"
+        }
+      }
+    },
+    "coverage_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row_count",
+        "dataset_coverage",
+        "freshness",
+        "comparability",
+        "sampled_rows"
+      ],
+      "properties": {
+        "row_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataset_coverage": {
+          "$ref": "#/$defs/string_int_map"
+        },
+        "freshness": {
+          "$ref": "#/$defs/string_int_map"
+        },
+        "comparability": {
+          "$ref": "#/$defs/string_int_map"
+        },
+        "sampled_rows": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "formula_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "search_performance_totals",
+        "outcome_metric_inputs"
+      ],
+      "properties": {
+        "search_performance_totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "clicks",
+            "impressions",
+            "ctr"
+          ],
+          "properties": {
+            "clicks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "impressions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ctr": {
+              "$ref": "#/$defs/nullable_number"
+            }
+          }
+        },
+        "outcome_metric_inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/outcome_metric_input"
+          }
+        }
+      }
+    },
+    "outcome_metric_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "outcome_id",
+        "count",
+        "unique_actors",
+        "value_minor",
+        "currency"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^ev:outcome_metrics:[0-9a-f]{16}$"
+        },
+        "outcome_id": {
+          "type": "string"
+        },
+        "count": {
+          "$ref": "#/$defs/redactable_integer"
+        },
+        "unique_actors": {
+          "$ref": "#/$defs/redactable_integer"
+        },
+        "value_minor": {
+          "$ref": "#/$defs/redactable_integer"
+        },
+        "currency": {
+          "$ref": "#/$defs/redactable_string"
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collection_runs",
+        "source_requests",
+        "raw_artifacts"
+      ],
+      "properties": {
+        "collection_runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/collection_run"
+          }
+        },
+        "source_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_request"
+          }
+        },
+        "raw_artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/raw_artifact"
+          }
+        }
+      }
+    },
+    "collection_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "project_id",
+        "period_start",
+        "period_end",
+        "timezone",
+        "started_at",
+        "finished_at",
+        "status",
+        "config_hash",
+        "cli_version",
+        "db_schema_version",
+        "config_schema_version"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "period_start": {
+          "type": "string"
+        },
+        "period_end": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "finished_at": {
+          "$ref": "#/$defs/nullable_string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "config_hash": {
+          "type": "string"
+        },
+        "cli_version": {
+          "type": "string"
+        },
+        "db_schema_version": {
+          "type": "integer"
+        },
+        "config_schema_version": {
+          "type": "integer"
+        }
+      }
+    },
+    "source_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "run_id",
+        "source",
+        "property_id",
+        "logical_observation_key",
+        "collection_attempt_key",
+        "request_descriptor",
+        "attempt",
+        "queried_at",
+        "completed_at",
+        "transport_status",
+        "freshness",
+        "sampled",
+        "sample_share",
+        "data_lag_seconds",
+        "row_limit",
+        "rows_received",
+        "pages_expected",
+        "pages_received",
+        "error_code",
+        "error_summary"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "property_id": {
+          "type": "string"
+        },
+        "logical_observation_key": {
+          "type": "string"
+        },
+        "collection_attempt_key": {
+          "type": "string"
+        },
+        "request_descriptor": {
+          "type": "object"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "queried_at": {
+          "type": "string"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullable_string"
+        },
+        "transport_status": {
+          "type": "string"
+        },
+        "freshness": {
+          "type": "string"
+        },
+        "sampled": {
+          "type": "boolean"
+        },
+        "sample_share": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "data_lag_seconds": {
+          "$ref": "#/$defs/nullable_integer"
+        },
+        "row_limit": {
+          "$ref": "#/$defs/nullable_integer"
+        },
+        "rows_received": {
+          "$ref": "#/$defs/nullable_integer"
+        },
+        "pages_expected": {
+          "$ref": "#/$defs/nullable_integer"
+        },
+        "pages_received": {
+          "$ref": "#/$defs/nullable_integer"
+        },
+        "error_code": {
+          "$ref": "#/$defs/nullable_string"
+        },
+        "error_summary": {
+          "$ref": "#/$defs/nullable_string"
+        }
+      }
+    },
+    "raw_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "request_id",
+        "relative_path",
+        "sha256",
+        "content_type",
+        "compression",
+        "redaction_state",
+        "byte_size",
+        "created_at"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "relative_path": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "compression": {
+          "$ref": "#/$defs/nullable_string"
+        },
+        "redaction_state": {
+          "type": "string"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "search_performance",
+        "outcome_metrics"
+      ],
+      "properties": {
+        "search_performance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/search_performance_row"
+          }
+        },
+        "outcome_metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/outcome_metric_row"
+          }
+        }
+      }
+    },
+    "search_performance_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "project_id",
+        "property_id",
+        "source",
+        "effective_start",
+        "effective_end",
+        "source_timezone",
+        "effective_instant_start",
+        "effective_instant_end",
+        "observed_at",
+        "reporting_period_id",
+        "request_id",
+        "artifact_id",
+        "logical_observation_key",
+        "collection_attempt_key",
+        "query_id",
+        "query_text",
+        "page_id",
+        "page_url",
+        "search_engine",
+        "device",
+        "country",
+        "region",
+        "segment_id",
+        "impressions",
+        "clicks",
+        "ctr",
+        "average_position",
+        "dataset_coverage",
+        "sampled",
+        "sample_share",
+        "freshness",
+        "comparability",
+        "fact_schema_version",
+        "normalizer_version",
+        "content_hash"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^ev:search_performance:[0-9a-f]{16}$"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "property_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "effective_start": {
+          "type": "string"
+        },
+        "effective_end": {
+          "type": "string"
+        },
+        "source_timezone": {
+          "type": "string"
+        },
+        "effective_instant_start": {
+          "type": "string"
+        },
+        "effective_instant_end": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string"
+        },
+        "reporting_period_id": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "artifact_id": {
+          "type": "string"
+        },
+        "logical_observation_key": {
+          "type": "string"
+        },
+        "collection_attempt_key": {
+          "type": "string"
+        },
+        "query_id": {
+          "type": "string"
+        },
+        "query_text": {
+          "type": "string"
+        },
+        "page_id": {
+          "type": "string"
+        },
+        "page_url": {
+          "type": "string"
+        },
+        "search_engine": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "impressions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "clicks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ctr": {
+          "type": "number"
+        },
+        "average_position": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "dataset_coverage": {
+          "type": "string"
+        },
+        "sampled": {
+          "type": "boolean"
+        },
+        "sample_share": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "freshness": {
+          "type": "string"
+        },
+        "comparability": {
+          "type": "string"
+        },
+        "fact_schema_version": {
+          "type": "integer"
+        },
+        "normalizer_version": {
+          "type": "string"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "outcome_metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "project_id",
+        "property_id",
+        "source",
+        "effective_start",
+        "effective_end",
+        "source_timezone",
+        "request_id",
+        "artifact_id",
+        "logical_observation_key",
+        "collection_attempt_key",
+        "outcome_id",
+        "evidence_kind",
+        "counting_unit",
+        "deduplication_rule",
+        "population_scope",
+        "attribution_model",
+        "attribution_scope",
+        "traffic_channel",
+        "search_engine",
+        "landing_page_id",
+        "device",
+        "attribution_level",
+        "count",
+        "unique_actors",
+        "value_minor",
+        "currency",
+        "dataset_coverage",
+        "freshness",
+        "comparability",
+        "fact_schema_version",
+        "normalizer_version"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^ev:outcome_metrics:[0-9a-f]{16}$"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "property_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "effective_start": {
+          "type": "string"
+        },
+        "effective_end": {
+          "type": "string"
+        },
+        "source_timezone": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "artifact_id": {
+          "type": "string"
+        },
+        "logical_observation_key": {
+          "type": "string"
+        },
+        "collection_attempt_key": {
+          "type": "string"
+        },
+        "outcome_id": {
+          "type": "string"
+        },
+        "evidence_kind": {
+          "type": "string"
+        },
+        "counting_unit": {
+          "type": "string"
+        },
+        "deduplication_rule": {
+          "type": "string"
+        },
+        "population_scope": {
+          "type": "string"
+        },
+        "attribution_model": {
+          "type": "string"
+        },
+        "attribution_scope": {
+          "type": "string"
+        },
+        "traffic_channel": {
+          "type": "string"
+        },
+        "search_engine": {
+          "type": "string"
+        },
+        "landing_page_id": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "attribution_level": {
+          "type": "string"
+        },
+        "count": {
+          "$ref": "#/$defs/redactable_integer"
+        },
+        "unique_actors": {
+          "$ref": "#/$defs/redactable_integer"
+        },
+        "value_minor": {
+          "$ref": "#/$defs/redactable_integer"
+        },
+        "currency": {
+          "$ref": "#/$defs/redactable_string"
+        },
+        "dataset_coverage": {
+          "type": "string"
+        },
+        "freshness": {
+          "type": "string"
+        },
+        "comparability": {
+          "type": "string"
+        },
+        "fact_schema_version": {
+          "type": "integer"
+        },
+        "normalizer_version": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

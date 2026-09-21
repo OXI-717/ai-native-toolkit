@@ -1,0 +1,50 @@
+{
+  "artifacts": [
+    {
+      "artifact_type": "competitor_extract",
+      "created_at": "2026-07-30T00:00:00Z",
+      "path": "competitor-extract.json",
+      "privacy_class": "private_structured_artifact",
+      "sha256": "sha256:0952b33dd29c8b7d971eb3c075155e05f9e796f35465e754ef4c25bb970ccdbf",
+      "source_request_ids": []
+    },
+    {
+      "artifact_type": "serp_extract",
+      "created_at": "2026-07-30T00:00:00Z",
+      "path": "serp-extract.json",
+      "privacy_class": "private_structured_artifact",
+      "sha256": "sha256:d6a0435e3a4857b73b1b80620fd45a9f900e7bad7bbefdf442be3a929d92a8fa",
+      "source_request_ids": []
+    },
+    {
+      "artifact_type": "competitor_metrics",
+      "created_at": "2026-07-30T00:00:00Z",
+      "path": "competitor-metrics.json",
+      "privacy_class": "public_report_artifact",
+      "sha256": "sha256:67e6ed8aead03cff5ad100b6609cd196c49a0c8e2fcc1427de987de1deef6bd4",
+      "source_request_ids": []
+    },
+    {
+      "artifact_type": "content_extract",
+      "created_at": "2026-07-30T00:00:00Z",
+      "path": "content-extract.json",
+      "privacy_class": "private_structured_artifact",
+      "sha256": "sha256:473b88d2f731687a6c3eea992e0f8f70f7a46d3c06285eadab4cdf9a67069136",
+      "source_request_ids": []
+    }
+  ],
+  "budget": {
+    "actual_calls": 0,
+    "allow_paid": false,
+    "planned_calls": 0,
+    "provider_mode": "artifact"
+  },
+  "command": "competitors.report",
+  "created_at": "2026-07-30T00:00:00Z",
+  "project": "demo-example",
+  "protocol_hashes": [
+    "serpproto:demo-example-core-google-us-desktop"
+  ],
+  "schema": "seo-observer.competitor_manifest.v1",
+  "source_request_ids": []
+}

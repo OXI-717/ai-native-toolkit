@@ -1,0 +1,44 @@
+{
+  "baseline": {
+    "reason": "not_found",
+    "source": null
+  },
+  "comparability": "not_comparable",
+  "competitors": [
+    {
+      "best_rank": 2,
+      "classification": "competitor",
+      "competitor_id": "learning-platform",
+      "median_rank": 2,
+      "share_of_voice": 0.42
+    },
+    {
+      "best_rank": 4,
+      "classification": "competitor",
+      "competitor_id": "boat-school",
+      "median_rank": 4,
+      "share_of_voice": 0.28
+    }
+  ],
+  "conclusion_status": "available",
+  "coverage": {
+    "weighted_coverage": 1.0
+  },
+  "keyword_set_hash": "kwsha256:demo-example-core",
+  "keyword_set_id": "core",
+  "movements": {},
+  "owned": [
+    {
+      "best_rank": 6,
+      "classification": "owned",
+      "competitor_id": "owned:demo.example",
+      "median_rank": 6,
+      "share_of_voice": 0.14
+    }
+  ],
+  "protocol_hashes": [
+    "serpproto:demo-example-core-google-us-desktop"
+  ],
+  "quality": "live",
+  "schema": "seo-observer.competitor_metrics.v1"
+}

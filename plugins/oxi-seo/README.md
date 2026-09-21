@@ -67,8 +67,10 @@ a prerequisite, not a dependency: `baseline` and `full` runs and every
 existing-evidence import invoke the separately installed `seo-observer`
 console tool (a Python console-script installation exposing the `seo_observer`
 API). The CLI package does not install it, and without that executable those
-paths fail with `OBSERVER_API_UNAVAILABLE`. The Observer companion is not
-published yet; a configured project still runs without it — `observer.*`
+paths fail with `OBSERVER_API_UNAVAILABLE`. The Observer companion is
+published as the `seo-observer` plugin in the same marketplace — install it
+and run `uv tool install --force "$PLUGIN_ROOT/cli"` from its plugin
+directory. A configured project still runs without it — `observer.*`
 sources report the failure while Elmo and OpenSEO imports proceed
 independently. Original source dates and incomplete coverage
 are preserved; report generation time does not make source data fresh. Imports

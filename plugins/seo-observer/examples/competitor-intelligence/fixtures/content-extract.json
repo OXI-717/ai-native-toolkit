@@ -1,0 +1,60 @@
+{
+  "keyword_set_hash": "kwsha256:demo-example-core",
+  "keyword_set_id": "core",
+  "page_extracts": [
+    {
+      "canonical_url": "https://learning.example/demo-exam-tickets",
+      "citation_id": "page:demo-example:0",
+      "headings": [
+        {
+          "level": 1,
+          "path": [
+            "Demo exam tickets"
+          ],
+          "text": "Demo exam tickets"
+        },
+        {
+          "level": 2,
+          "path": [
+            "Demo exam tickets",
+            "Practice by topic"
+          ],
+          "text": "Practice by topic"
+        }
+      ],
+      "json_ld_types": [
+        "Article"
+      ],
+      "quality": "research-only",
+      "text_excerpt": "Example competitor page summary for a study guide, topic drill, and exam preparation page.",
+      "title": "Demo exam tickets",
+      "url": "https://learning.example/demo-exam-tickets",
+      "word_count": 1300
+    },
+    {
+      "canonical_url": "https://boat-school.example/boat-license-practice",
+      "citation_id": "page:demo-example:1",
+      "headings": [
+        {
+          "level": 1,
+          "path": [
+            "Boat license practice"
+          ],
+          "text": "Boat license practice"
+        }
+      ],
+      "json_ld_types": [
+        "FAQPage"
+      ],
+      "quality": "research-only",
+      "text_excerpt": "Example competitor page summary for practice tests and frequently asked questions.",
+      "title": "Boat license practice",
+      "url": "https://boat-school.example/boat-license-practice",
+      "word_count": 980
+    }
+  ],
+  "quality_summary": {
+    "overall": "research-only"
+  },
+  "schema": "seo-observer.content_extract.v1"
+}

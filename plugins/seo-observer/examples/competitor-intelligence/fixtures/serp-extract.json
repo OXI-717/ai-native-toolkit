@@ -1,0 +1,63 @@
+{
+  "classification_summary": {
+    "competitor": 2,
+    "owned": 1
+  },
+  "coverage": {
+    "weighted_coverage": 1.0
+  },
+  "keyword_set_hash": "kwsha256:demo-example-core",
+  "keyword_set_id": "core",
+  "protocol_hashes": [
+    "serpproto:demo-example-core-google-us-desktop"
+  ],
+  "quality_summary": {
+    "overall": "live"
+  },
+  "schema": "seo-observer.serp_extract.v1",
+  "serp_rows": [
+    {
+      "classification": "competitor",
+      "competitor_id": "learning-platform",
+      "competitor_name": "Learning Platform",
+      "domain": "learning.example",
+      "keyword": "demo exam tickets",
+      "logical_observation_key": "serp-0",
+      "quality": "live",
+      "rank": 2,
+      "serp_features": [
+        "people_also_ask"
+      ],
+      "url": "https://learning.example/demo-exam-tickets"
+    },
+    {
+      "classification": "competitor",
+      "competitor_id": "boat-school",
+      "competitor_name": "Boat School",
+      "domain": "boat-school.example",
+      "keyword": "boat license practice",
+      "logical_observation_key": "serp-1",
+      "quality": "live",
+      "rank": 4,
+      "serp_features": [
+        "organic"
+      ],
+      "url": "https://boat-school.example/boat-license-practice"
+    },
+    {
+      "classification": "owned",
+      "competitor_id": null,
+      "competitor_name": null,
+      "domain": "demo.example",
+      "keyword": "small vessel rules",
+      "logical_observation_key": "serp-2",
+      "quality": "live",
+      "rank": 6,
+      "serp_features": [
+        "organic"
+      ],
+      "url": "https://demo.example/small-vessel-rules"
+    }
+  ],
+  "source_requests": []
+}
