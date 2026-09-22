@@ -59,8 +59,7 @@ loader = "scripts/seo-observer-env.sh"   # только называется, н
 
 ## Schema
 
-The local schema follows
-`docs/superpowers/specs/2026-07-27-seo-observer-design.md`.
+The local schema is documented below.
 
 ```toml
 config_schema_version = 1
