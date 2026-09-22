@@ -74,8 +74,10 @@ jobs:
           observer_config = "obs/project.toml"
           EOF
           cd "$work"
-          oxi-seo doctor --config registry.toml --json \
-            | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['ok'] and d['checks']['config']['status']=='ready', d"
+          oxi-seo doctor --config registry.toml --json > doctor.json 2> doctor.err || true
+          rc=$?
+          echo "doctor output:"; cat doctor.json; cat doctor.err
+          python3 -c "import json; d=json.load(open('doctor.json')); assert d['ok'] and d['checks']['config']['status']=='ready', d"
           oxi-seo run --config registry.toml --project example --mode full --json \
             | python3 - "$PWD" <<'PY'
           import json, sys
