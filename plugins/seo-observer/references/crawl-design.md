@@ -43,7 +43,7 @@ A local crawl is provider-independent and observes the page directly.
   is recorded as `robots_excluded`, not silently skipped (it is itself a
   finding — "this page can't be crawled by us or by search engines").
 - Default User-Agent identifies the tool explicitly (e.g.
-  `oxi-seo-observer-crawler/1.0 (+local diagnostic)`), never spoofs a real
+  `seo-observer-crawler/1.0 (+local diagnostic)`), never spoofs a real
   search engine UA — this is a diagnostic tool, not a bypass tool.
   A configured per-project `Crawl-Delay` override is honored if present.
 - Conservative default rate limit (named constant,

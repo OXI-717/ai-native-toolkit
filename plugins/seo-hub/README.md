@@ -1,7 +1,7 @@
-# oxi-seo
+# seo-hub
 
-`oxi-seo` is a read-only SEO intelligence hub. It provides the
-installable `oxi-seo` CLI, a strict project registry parser, safe secret env-file
+`seo-hub` is a read-only SEO intelligence hub. It provides the
+installable `seo-hub` CLI, a strict project registry parser, safe secret env-file
 loading, local run manifests, read-only evidence adapters, and draft-only
 exports.
 
@@ -17,15 +17,15 @@ not this release.
 ## CLI
 
 ```bash
-uv tool install --force plugins/oxi-seo/cli
-oxi-seo doctor --json
-oxi-seo --json projects --config plugins/oxi-seo/examples/registry.toml
-oxi-seo status --project example --json --config config/oxi-seo.toml
-oxi-seo run --project example --mode full --json --config config/oxi-seo.toml
-oxi-seo report --project example --run run_... --json --config config/oxi-seo.toml
-oxi-seo opportunities --project example --run run_... --json --config config/oxi-seo.toml
-oxi-seo outcomes --project example --json --config config/oxi-seo.toml
-oxi-seo export --project example --run run_... --format observer-actions --json --config config/oxi-seo.toml
+uv tool install --force plugins/seo-hub/cli
+seo-hub doctor --json
+seo-hub --json projects --config plugins/seo-hub/examples/registry.toml
+seo-hub status --project example --json --config config/seo-hub.toml
+seo-hub run --project example --mode full --json --config config/seo-hub.toml
+seo-hub report --project example --run run_... --json --config config/seo-hub.toml
+seo-hub opportunities --project example --run run_... --json --config config/seo-hub.toml
+seo-hub outcomes --project example --json --config config/seo-hub.toml
+seo-hub export --project example --run run_... --format observer-actions --json --config config/seo-hub.toml
 ```
 
 `--json` and `--config` are accepted before or after subcommands.

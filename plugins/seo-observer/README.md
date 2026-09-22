@@ -57,6 +57,6 @@ in `references/data-contract.md`.
 
 ## Companion
 
-`oxi-seo` (the SEO hub plugin) imports Observer snapshots and reports
+`seo-hub` (the SEO hub plugin) imports Observer snapshots and reports
 through the `seo-observer` executable installed above — install this package
 first when you use the hub's `baseline`/`full` run modes.

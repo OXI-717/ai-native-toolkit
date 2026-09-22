@@ -1,7 +1,7 @@
 # AI Visibility Import
 
 `seo_observer.ai_visibility_import` normalizes the read-only Elmo envelope emitted by
-`oxi-seo`. The module does not call Elmo, does not trigger prompt runs, and does not
+`seo-hub`. The module does not call Elmo, does not trigger prompt runs, and does not
 duplicate Elmo formulas.
 
 ## Evidence Semantics

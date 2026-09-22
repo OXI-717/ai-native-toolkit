@@ -24,7 +24,7 @@ MAX_CRAWL_REDIRECTS = 10
 MAX_CRAWL_RESPONSE_BYTES = 1_000_000
 DEFAULT_CRAWL_DELAY_SECONDS = 0.5
 DEFAULT_CRAWL_TIMEOUT_SECONDS = 10
-DEFAULT_CRAWL_USER_AGENT = "oxi-seo-observer-crawler/1.0 (+local diagnostic)"
+DEFAULT_CRAWL_USER_AGENT = "seo-observer-crawler/1.0 (+local diagnostic)"
 TRACKING_QUERY_PREFIXES = ("utm_",)
 TRACKING_QUERY_NAMES = frozenset({"fbclid", "gclid", "yclid"})
 

@@ -125,18 +125,6 @@
       "category": "Coding"
     },
     {
-      "name": "oxi-seo",
-      "source": {
-        "source": "local",
-        "path": "./plugins/oxi-seo"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "agent-time",
       "source": {
         "source": "local",
@@ -153,6 +141,18 @@
       "source": {
         "source": "local",
         "path": "./plugins/seo-observer"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "seo-hub",
+      "source": {
+        "source": "local",
+        "path": "./plugins/seo-hub"
       },
       "policy": {
         "installation": "AVAILABLE",

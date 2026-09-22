@@ -1,5 +1,5 @@
-# Generated from plugins/oxi-seo/skills/oxi-seo/SKILL.md
+# Generated from plugins/seo-hub/skills/seo-hub/SKILL.md
 interface:
-  display_name: "OXI Seo:OXI Seo"
+  display_name: "Seo Hub:Seo Hub"
   short_description: "Use for the read-only SEO Hub CLI, project registry validation, secret env-file checks, and existing SEO evidence rou..."
-  default_prompt: "Use `oxi-seo`."
+  default_prompt: "Use `seo-hub`."

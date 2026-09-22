@@ -281,7 +281,7 @@ def read_existing_evidence(config: Path, *, home: Path | None = None,
     entries = sorted(latest.values(), key=lambda item: (item["kind"], item["source"], item.get("keyword_set_id", ""), item.get("reporting_period_id", "")))
     dated = [item for item in entries if item["quality"] != "missing"]
     quality = "missing" if not dated else "stale" if all(item["quality"] == "stale" for item in dated) else "partial"
-    return {"ok": True, "schema": "oxi-seo.observer_evidence.v1", "project": project,
+    return {"ok": True, "schema": "seo-hub.observer_evidence.v1", "project": project,
             "quality": quality, "evidence": entries,
             "privacy": {"private_rows_omitted": True, "exact_local_business_values": False},
             "source_status": {"mode": "existing_evidence", "stale_after_days": STALE_AFTER_DAYS,

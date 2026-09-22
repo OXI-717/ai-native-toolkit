@@ -259,7 +259,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         return 0
     except (SeoHubError, OSError, ValueError) as exc:
-        print(f"oxi-seo server: {exc}", file=sys.stderr)
+        print(f"seo-hub server: {exc}", file=sys.stderr)
         return 2
     return 0
 

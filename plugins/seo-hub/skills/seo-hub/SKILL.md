@@ -1,16 +1,16 @@
 ---
-name: oxi-seo
+name: seo-hub
 description: Use for the read-only SEO Hub CLI, project registry validation, secret env-file checks, and existing SEO evidence routing.
 ---
 
-# oxi-seo
+# seo-hub
 
 Use this skill when the user asks about SEO Hub projects, registry setup, CLI
 doctor output, or read-only routing for existing SEO/AI-search evidence. The
 MVP is read-only.
 
 Resolve the plugin root through the runtime-provided environment first, then make
-sure the `oxi-seo` CLI is installed before calling it — a fresh marketplace
+sure the `seo-hub` CLI is installed before calling it — a fresh marketplace
 install exposes this skill but does not install the nested Python package:
 
 ```bash
@@ -26,14 +26,14 @@ Follow this CLI order:
 
 ```bash
 uv tool install --force "$PLUGIN_ROOT/cli"
-oxi-seo doctor --json --config <path>
-oxi-seo projects --json --config <path>
-oxi-seo status --project <id> --json --config <path>
-oxi-seo run --project <id> --mode full --json --config <path>
-oxi-seo report --project <id> --run <run_id> --json --config <path>
-oxi-seo opportunities --project <id> --run <run_id> --json --config <path>
-oxi-seo outcomes --project <id> --json --config <path>
-oxi-seo export --project <id> --run <run_id> --format observer-actions --json --config <path>
+seo-hub doctor --json --config <path>
+seo-hub projects --json --config <path>
+seo-hub status --project <id> --json --config <path>
+seo-hub run --project <id> --mode full --json --config <path>
+seo-hub report --project <id> --run <run_id> --json --config <path>
+seo-hub opportunities --project <id> --run <run_id> --json --config <path>
+seo-hub outcomes --project <id> --json --config <path>
+seo-hub export --project <id> --run <run_id> --format observer-actions --json --config <path>
 ```
 
 A successful `doctor` without a registry only confirms that the CLI starts.

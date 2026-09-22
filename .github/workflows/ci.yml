@@ -55,7 +55,7 @@ jobs:
           exit "$failed"
       - name: seo-observer doctor (no config)
         run: seo-observer doctor --json | python3 -c "import json,sys; assert json.load(sys.stdin)['ok']"
-      - name: oxi-seo end-to-end with minimal external registry
+      - name: seo-hub end-to-end with minimal external registry
         shell: bash
         run: |
           set -euo pipefail
@@ -74,11 +74,11 @@ jobs:
           observer_config = "obs/project.toml"
           EOF
           cd "$work"
-          oxi-seo doctor --config registry.toml --json > doctor.json 2> doctor.err || true
+          seo-hub doctor --config registry.toml --json > doctor.json 2> doctor.err || true
           rc=$?
           echo "doctor output:"; cat doctor.json; cat doctor.err
           python3 -c "import json; d=json.load(open('doctor.json')); assert d['ok'] and d['checks']['config']['status']=='ready', d"
-          oxi-seo run --config registry.toml --project example --mode full --json > run.json
+          seo-hub run --config registry.toml --project example --mode full --json > run.json
           cat run.json
           python3 -c "
           import json

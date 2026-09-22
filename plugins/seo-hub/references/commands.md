@@ -5,15 +5,15 @@ run a read-only import, read reports, inspect opportunities/outcomes, then
 export local handoff files.
 
 ```bash
-uv tool install --force plugins/oxi-seo/cli
-oxi-seo doctor --json
-oxi-seo projects --json --config config/oxi-seo.toml
-oxi-seo status --project example --json --config config/oxi-seo.toml
-oxi-seo run --project example --mode full --json --config config/oxi-seo.toml
-oxi-seo report --project example --run run_... --json --config config/oxi-seo.toml
-oxi-seo opportunities --project example --run run_... --json --config config/oxi-seo.toml
-oxi-seo outcomes --project example --json --config config/oxi-seo.toml
-oxi-seo export --project example --run run_... --format observer-actions --json --config config/oxi-seo.toml
+uv tool install --force plugins/seo-hub/cli
+seo-hub doctor --json
+seo-hub projects --json --config config/seo-hub.toml
+seo-hub status --project example --json --config config/seo-hub.toml
+seo-hub run --project example --mode full --json --config config/seo-hub.toml
+seo-hub report --project example --run run_... --json --config config/seo-hub.toml
+seo-hub opportunities --project example --run run_... --json --config config/seo-hub.toml
+seo-hub outcomes --project example --json --config config/seo-hub.toml
+seo-hub export --project example --run run_... --format observer-actions --json --config config/seo-hub.toml
 ```
 
 `--json` and `--config` are accepted before or after subcommands. `run` imports
@@ -23,7 +23,7 @@ publish content, send outreach, or mutate provider state.
 ## Setup
 
 Create the portable layout from `references/project-bootstrap.md`, install the
-CLI package, then run `oxi-seo doctor --json --config config/oxi-seo.toml`.
+CLI package, then run `seo-hub doctor --json --config config/seo-hub.toml`.
 Secret env files must be regular files with mode `0600`; do not commit
 credentials or paste credential values into reports.
 
@@ -61,5 +61,5 @@ run a zero-cost read-only smoke against existing evidence.
 ## Rollback
 
 Stop services, restore the previous config/data/export backup, reinstall the
-previous CLI/plugin version, and run `oxi-seo doctor --json`. Do not roll back
+previous CLI/plugin version, and run `seo-hub doctor --json`. Do not roll back
 by opening origin ports or disabling Access policy.
