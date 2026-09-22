@@ -450,6 +450,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Evidence-first SEO observer CLI.",
         parents=[common],
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     for command in NOT_IMPLEMENTED_COMMANDS:

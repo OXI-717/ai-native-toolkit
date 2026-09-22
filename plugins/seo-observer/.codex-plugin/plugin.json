@@ -1,6 +1,6 @@
 {
   "name": "seo-observer",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Evidence-first SEO observer CLI: snapshots, period comparisons, outcome measurement, opportunity reports, competitor intelligence, AI-search readiness. Local SQLite storage; provider credentials via env vars only.",
   "author": {
     "name": "OXI-717"

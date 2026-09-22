@@ -33,6 +33,7 @@ without live provider calls.
 ```bash
 mkdir -p .seo-observer
 seo-observer doctor --config .seo-observer/project.toml --json
+seo-observer projects register myproject --config .seo-observer/project.toml --json
 seo-observer snapshot --project myproject --json
 seo-observer report --project myproject --json
 ```

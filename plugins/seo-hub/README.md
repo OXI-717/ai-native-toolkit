@@ -20,12 +20,12 @@ not this release.
 uv tool install --force plugins/seo-hub/cli
 seo-hub doctor --json
 seo-hub --json projects --config plugins/seo-hub/examples/registry.toml
-seo-hub status --project example --json --config config/seo-hub.toml
-seo-hub run --project example --mode full --json --config config/seo-hub.toml
-seo-hub report --project example --run run_... --json --config config/seo-hub.toml
-seo-hub opportunities --project example --run run_... --json --config config/seo-hub.toml
-seo-hub outcomes --project example --json --config config/seo-hub.toml
-seo-hub export --project example --run run_... --format observer-actions --json --config config/seo-hub.toml
+seo-hub status --project example --json --config seo-hub.toml
+seo-hub run --project example --mode full --json --config seo-hub.toml
+seo-hub report --project example --run run_... --json --config seo-hub.toml
+seo-hub opportunities --project example --run run_... --json --config seo-hub.toml
+seo-hub outcomes --project example --json --config seo-hub.toml
+seo-hub export --project example --run run_... --format observer-actions --json --config seo-hub.toml
 ```
 
 `--json` and `--config` are accepted before or after subcommands.
@@ -109,7 +109,7 @@ delta.
 Setup, add-project, export, backup, auth, update, and rollback are summarized in
 `references/commands.md`, `references/project-bootstrap.md`, and
 `references/runbook.md`. Owner-only Docker/Tunnel deployment notes live in
-`references/deployment.md`, which ships with the source tree and is not part of
-the published plugin package. These docs contain no credentials. Owner-only
+`references/deployment.md`, which lives in the source repository and is not
+part of the published plugin package. These docs contain no credentials. Owner-only
 Tunnel/Access setup and zero-cost native cross-check stay in the post-orchestrate
 checklist; worker sessions do not run them.

@@ -240,6 +240,7 @@ def _print_human(command: str, payload: dict[str, Any]) -> None:
 def build_parser() -> argparse.ArgumentParser:
     common = _common_parser()
     parser = _JsonAwareArgumentParser(description="Read-only SEO intelligence hub CLI.", parents=[common])
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True, parser_class=_JsonAwareArgumentParser)
 
     doctor = subparsers.add_parser("doctor", parents=[common], help="check local CLI/config readiness")
