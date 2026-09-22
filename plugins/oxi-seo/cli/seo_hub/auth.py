@@ -50,10 +50,13 @@ def principal_from_cloudflare_access_jwt(
 
     The caller selects the required application audience, never from token claims.
     """
-    domain = registry.server.access_team_domain
+    server = registry.server
+    if server is None:
+        raise AuthError("registry has no [server] section; Access verification is not configured.")
+    domain = server.access_team_domain or ""
     if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.cloudflareaccess\.com", domain):
         raise AuthError("Access team domain is invalid.")
-    if not audience or audience not in (registry.server.human_audience, registry.server.service_audience):
+    if not audience or audience not in (server.human_audience, server.service_audience):
         raise AuthError("Access JWT audience is invalid.")
     issuer = "https://" + domain
     try:
@@ -73,8 +76,11 @@ def principal_from_cloudflare_access_jwt(
 
 
 def local_noauth_principal(registry: Registry) -> Principal:
-    _assert_loopback_bind(registry.server.bind)
-    return Principal(kind="owner", identity="local-noauth", email=registry.server.owner_email, scopes=OWNER_SCOPES)
+    server = registry.server
+    bind = server.bind if server is not None else "127.0.0.1:0"
+    owner_email = server.owner_email if server is not None else "local-owner@localhost"
+    _assert_loopback_bind(bind)
+    return Principal(kind="owner", identity="local-noauth", email=owner_email, scopes=OWNER_SCOPES)
 
 
 def principal_from_access_jwt(
@@ -108,19 +114,22 @@ def principal_from_access_jwt(
     if claims.get("iss") != issuer:
         raise AuthError("Access JWT issuer is invalid.")
     _validate_time_claims(claims)
+    server = registry.server
     email = claims.get("email")
     sub = claims.get("sub")
     service_name = claims.get("common_name")
     if (
-        audience == registry.server.human_audience
-        and isinstance(email, str) and email and email == registry.server.owner_email
+        server is not None
+        and audience == server.human_audience
+        and isinstance(email, str) and email and email == server.owner_email
         and isinstance(sub, str) and sub
     ):
         return Principal(kind="owner", identity=sub, email=email, scopes=OWNER_SCOPES)
     if (
-        audience == registry.server.service_audience
+        server is not None
+        and audience == server.service_audience
         and isinstance(service_name, str) and service_name
-        and service_name == registry.server.service_common_name
+        and service_name == server.service_common_name
     ):
         return Principal(kind="service", identity=service_name, email=email if isinstance(email, str) else None, scopes=SERVICE_SCOPES)
     raise AuthError("Access identity is not allowlisted for this hub.")

@@ -16,11 +16,11 @@ class RegistryError(SeoHubError, ValueError):
 class Server:
     bind: str
     auth_mode: str
-    access_team_domain: str
-    human_audience: str
-    service_audience: str
     owner_email: str
-    service_common_name: str
+    access_team_domain: str | None = None
+    human_audience: str | None = None
+    service_audience: str | None = None
+    service_common_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -34,12 +34,12 @@ class ProjectExport:
 class Project:
     id: str
     label: str
-    observer_config: Path
-    credentials_env_file: Path
-    elmo_base_url: str
-    elmo_brand_id: str
-    openseo_mcp_url: str
-    openseo_project_id: str
+    observer_config: Path | None
+    credentials_env_file: Path | None
+    elmo_base_url: str | None
+    elmo_brand_id: str | None
+    openseo_mcp_url: str | None
+    openseo_project_id: str | None
     openseo_rank_tracker_id: str | None
     exports: list[ProjectExport]
     provider_credentials_env_file: Path | None = None
@@ -52,20 +52,21 @@ class Registry:
     path: Path
     data_dir: Path
     export_dir: Path
-    server: Server
+    server: Server | None
     projects: list[Project]
 
 
 TOP_LEVEL_KEYS = {"schema_version", "data_dir", "export_dir", "server", "projects"}
-SERVER_KEYS = {
-    "bind",
-    "auth_mode",
+TOP_LEVEL_REQUIRED_KEYS = TOP_LEVEL_KEYS - {"server"}
+SERVER_BASE_KEYS = {"bind", "auth_mode", "owner_email"}
+SERVER_CLOUDFLARE_KEYS = {
     "access_team_domain",
     "human_audience",
     "service_audience",
-    "owner_email",
     "service_common_name",
 }
+SERVER_KEYS = SERVER_BASE_KEYS | SERVER_CLOUDFLARE_KEYS
+AUTH_MODES = {"local_noauth", "cloudflare_access"}
 PROJECT_KEYS = {
     "id",
     "label",
@@ -80,7 +81,9 @@ PROJECT_KEYS = {
     "provider_credentials_env_file",
     "elmo_organization_slug",
 }
-PROJECT_REQUIRED_KEYS = PROJECT_KEYS - {"openseo_rank_tracker_id", "exports", "provider_credentials_env_file", "elmo_organization_slug"}
+PROJECT_REQUIRED_KEYS = {"id", "label"}
+ELMO_KEY_PAIR = {"elmo_base_url", "elmo_brand_id"}
+OPENSEO_KEY_PAIR = {"openseo_mcp_url", "openseo_project_id"}
 EXPORT_KEYS = {"name", "format", "relative_dir"}
 EXPORT_FORMATS = {"json", "markdown", "observer-actions"}
 
@@ -145,8 +148,18 @@ def _parse_server(data: Any) -> Server:
     if not isinstance(data, dict):
         raise RegistryError("server must be a table")
     _unknown_keys("server", data, SERVER_KEYS)
-    _required_keys("server", data, SERVER_KEYS)
-    return Server(**{key: _string("server", data, key) for key in sorted(SERVER_KEYS)})
+    _required_keys("server", data, SERVER_BASE_KEYS)
+    auth_mode = _string("server", data, "auth_mode")
+    if auth_mode not in AUTH_MODES:
+        raise RegistryError(f"server.auth_mode must be one of {', '.join(sorted(AUTH_MODES))}")
+    if auth_mode == "cloudflare_access":
+        _required_keys("server", data, SERVER_CLOUDFLARE_KEYS)
+    return Server(
+        **{
+            key: _string("server", data, key)
+            for key in sorted(SERVER_KEYS & set(data))
+        }
+    )
 
 
 def _parse_exports(project_index: int, raw_exports: Any) -> list[ProjectExport]:
@@ -194,26 +207,49 @@ def _parse_projects(raw_projects: Any, registry_dir: Path, registry_root: Path) 
         if project_id in ids:
             raise RegistryError(f"duplicate project id: {project_id}")
         ids.add(project_id)
+        for pair in (ELMO_KEY_PAIR, OPENSEO_KEY_PAIR):
+            present = pair & set(item)
+            if present and present != pair:
+                missing = sorted(pair - present)
+                raise RegistryError(
+                    f"{scope}: {' and '.join(sorted(pair))} must be set together; missing: {', '.join(missing)}"
+                )
         projects.append(
             Project(
                 id=project_id,
                 label=_string(scope, item, "label"),
-                observer_config=_resolve_path(
-                    registry_dir,
-                    registry_root,
-                    _string(scope, item, "observer_config"),
-                    f"{scope}.observer_config",
+                observer_config=(
+                    _resolve_path(
+                        registry_dir,
+                        registry_root,
+                        _string(scope, item, "observer_config"),
+                        f"{scope}.observer_config",
+                    )
+                    if "observer_config" in item
+                    else None
                 ),
-                credentials_env_file=_resolve_path(
-                    registry_dir,
-                    registry_root,
-                    _string(scope, item, "credentials_env_file"),
-                    f"{scope}.credentials_env_file",
+                credentials_env_file=(
+                    _resolve_path(
+                        registry_dir,
+                        registry_root,
+                        _string(scope, item, "credentials_env_file"),
+                        f"{scope}.credentials_env_file",
+                    )
+                    if "credentials_env_file" in item
+                    else None
                 ),
-                elmo_base_url=_string(scope, item, "elmo_base_url"),
-                elmo_brand_id=_string(scope, item, "elmo_brand_id"),
-                openseo_mcp_url=_string(scope, item, "openseo_mcp_url"),
-                openseo_project_id=_string(scope, item, "openseo_project_id"),
+                elmo_base_url=(
+                    _string(scope, item, "elmo_base_url") if "elmo_base_url" in item else None
+                ),
+                elmo_brand_id=(
+                    _string(scope, item, "elmo_brand_id") if "elmo_brand_id" in item else None
+                ),
+                openseo_mcp_url=(
+                    _string(scope, item, "openseo_mcp_url") if "openseo_mcp_url" in item else None
+                ),
+                openseo_project_id=(
+                    _string(scope, item, "openseo_project_id") if "openseo_project_id" in item else None
+                ),
                 openseo_rank_tracker_id=(
                     _string(scope, item, "openseo_rank_tracker_id")
                     if "openseo_rank_tracker_id" in item
@@ -249,7 +285,7 @@ def load_registry(path: str | Path) -> Registry:
         raise RegistryError(f"failed to read registry {registry_path}: {exc}") from exc
 
     _unknown_keys("registry", data, TOP_LEVEL_KEYS)
-    _required_keys("registry", data, TOP_LEVEL_KEYS)
+    _required_keys("registry", data, TOP_LEVEL_REQUIRED_KEYS)
     schema_version = data["schema_version"]
     if not isinstance(schema_version, int) or isinstance(schema_version, bool) or schema_version != 1:
         raise RegistryError("schema_version must be 1")
@@ -260,6 +296,6 @@ def load_registry(path: str | Path) -> Registry:
         path=registry_path.resolve(),
         data_dir=_resolve_path(registry_dir, registry_root, _string("registry", data, "data_dir"), "data_dir"),
         export_dir=_resolve_path(registry_dir, registry_root, _string("registry", data, "export_dir"), "export_dir"),
-        server=_parse_server(data["server"]),
+        server=_parse_server(data["server"]) if "server" in data else None,
         projects=_parse_projects(data["projects"], registry_dir, registry_root),
     )

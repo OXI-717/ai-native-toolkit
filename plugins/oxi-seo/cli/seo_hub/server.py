@@ -62,6 +62,8 @@ class HTTPRunStore(RunStore):
 
 def create_server(registry: Registry, *, host: str = "127.0.0.1", port: int = 8080) -> ThreadingHTTPServer:
     """Create a local listener or a JWT-protected private/container listener."""
+    if registry.server is None:
+        raise AuthError("registry has no [server] section; the HTTP server cannot start")
     auth_mode = registry.server.auth_mode
     if auth_mode not in {"local_noauth", "cloudflare_access"}:
         raise AuthError("Unsupported server auth_mode")

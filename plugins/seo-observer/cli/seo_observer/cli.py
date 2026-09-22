@@ -314,6 +314,14 @@ def _doctor_provider_source(
         ok = False
         quality = "unsupported"
         validation_code = "PROVIDER_CREDENTIAL_MISSING"
+    hint = None
+    if validation_code == "PROVIDER_CREDENTIAL_MISSING":
+        hint = (
+            f"export {credential_env} in the environment or declare "
+            "[credentials] env_file/loader in project.toml"
+        )
+    elif validation_code == "SOURCE_PROVIDER_NOT_CONFIGURED":
+        hint = f"set enabled = true and endpoint in [providers.{provider_name}] in project.toml"
     return {
         "source": source_name,
         "provider": provider_name,
@@ -324,6 +332,7 @@ def _doctor_provider_source(
         "quality": quality,
         "validation_code": validation_code,
         "credential_env": credential_env,
+        "hint": hint,
         "errors": [],
     }
 
@@ -351,6 +360,14 @@ def _doctor_serp_source(
             check["ok"] = False
             quality = "unsupported"
             validation_code = "PROVIDER_CREDENTIAL_MISSING"
+    hint = None
+    if validation_code == "PROVIDER_CREDENTIAL_MISSING":
+        hint = (
+            f"export {credential_env} in the environment or declare "
+            "[credentials] env_file/loader in project.toml"
+        )
+    elif validation_code == "SOURCE_PROVIDER_NOT_CONFIGURED":
+        hint = f"set enabled = true and endpoint in [providers.{provider_account}] in project.toml"
     check.update(
         {
             "source": "serp",
@@ -361,6 +378,7 @@ def _doctor_serp_source(
             "quality": quality,
             "validation_code": validation_code,
             "credential_env": credential_env if isinstance(credential_env, str) else None,
+            "hint": hint,
         }
     )
     return check

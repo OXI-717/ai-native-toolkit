@@ -103,8 +103,14 @@ def _check_registry_project_files(registry: Registry) -> dict[str, Any]:
     projects: dict[str, Any] = {}
     ok = True
     for project in registry.projects:
-        observer_config = _check_project_file(project.observer_config, require_mode_0600=False)
-        credentials_env_file = _check_project_file(project.credentials_env_file, require_mode_0600=True)
+        observer_config = (
+            _check_project_file(project.observer_config, require_mode_0600=False)
+            if project.observer_config else {"ok": True, "configured": False}
+        )
+        credentials_env_file = (
+            _check_project_file(project.credentials_env_file, require_mode_0600=True)
+            if project.credentials_env_file else {"ok": True, "configured": False}
+        )
         project_ok = observer_config["ok"] and credentials_env_file["ok"]
         provider_credentials = (
             _check_project_file(project.provider_credentials_env_file, require_mode_0600=True)

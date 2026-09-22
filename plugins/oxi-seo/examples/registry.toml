@@ -26,3 +26,11 @@ openseo_rank_tracker_id = "optional-tracker-id"
 name = "project-handoff"
 format = "markdown"
 relative_dir = "example"
+
+# Minimal external setup: every source field is optional. A project with only
+# an observer_config is valid; unconfigured sources are reported as skipped.
+# The [server] section above is required only for the HTTP panel.
+# [[projects]]
+# id = "minimal"
+# label = "Minimal"
+# observer_config = "../projects/minimal/project.toml"

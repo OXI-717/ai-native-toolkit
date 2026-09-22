@@ -38,6 +38,12 @@ openseo_mcp_url = "https://openseo.example.invalid/mcp"
 openseo_project_id = "example"
 ```
 
+All source fields are optional. `elmo_base_url` + `elmo_brand_id` and
+`openseo_mcp_url` + `openseo_project_id` are validated as pairs: set both or
+neither. A project with only `observer_config` is a valid minimal setup;
+sources without configuration are reported as `skipped` in run manifests.
+The `[server]` section is needed only when running the HTTP panel.
+
 Replace placeholder provider IDs on the host. Do not commit real service URLs
 when they reveal private deployment details.
 

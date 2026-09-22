@@ -270,7 +270,7 @@ def read_existing_evidence(config: Path, *, home: Path | None = None,
     for entry in entries:
         _quality(entry, now)
     if not entries:
-        return {"ok": False, "quality": "missing", "error": {"code": "EXISTING_EVIDENCE_NOT_FOUND", "message": "No readable existing Observer evidence was found."}, "source_status": {"rejected_artifacts": rejected}}
+        return {"ok": False, "quality": "missing", "error": {"code": "EXISTING_EVIDENCE_NOT_FOUND", "message": "No readable existing Observer evidence was found. Collect evidence first (seo-observer collect) or point observer_config at a project that already has snapshots."}, "source_status": {"rejected_artifacts": rejected}}
     # Keep the latest artifact per source/keyword set, retaining SQLite as a
     # separate evidence family instead of pretending its history was refreshed.
     latest = {}

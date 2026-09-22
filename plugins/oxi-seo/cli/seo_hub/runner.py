@@ -69,56 +69,87 @@ class HubRunner:
             start = end - timedelta(days=30)
             if plan.import_elmo:
                 credentials = {}
-                try:
-                    credentials = self._provider_env(project)
-                    elmo = self.elmo or self._provider(project, "elmo", credentials)
-                    result = await elmo.read_ai_visibility(
-                        brand_id=project.elmo_brand_id,
-                        window_start=start.isoformat(),
-                        window_end=end.isoformat(),
-                        locale="",
-                    )
-                except Exception as exc:
+                if project.elmo_base_url is None or project.elmo_brand_id is None:
                     from seo_hub.adapters.base import AdapterResult
 
                     result = AdapterResult(
-                        name="elmo.ai_visibility", status="failed", quality="missing",
-                        error={"code": getattr(exc, "code", "ADAPTER_ERROR"),
-                               "message": "Elmo import failed; check native service, project ID and credentials."},
+                        name="elmo.ai_visibility", status="skipped", quality="missing",
+                        source_status={"configured": False,
+                                       "reason": "elmo_base_url and elmo_brand_id are not set in the registry"},
                     )
+                else:
+                    try:
+                        credentials = self._provider_env(project)
+                        elmo = self.elmo or self._provider(project, "elmo", credentials)
+                        result = await elmo.read_ai_visibility(
+                            brand_id=project.elmo_brand_id,
+                            window_start=start.isoformat(),
+                            window_end=end.isoformat(),
+                            locale="",
+                        )
+                    except Exception as exc:
+                        from seo_hub.adapters.base import AdapterResult
+
+                        result = AdapterResult(
+                            name="elmo.ai_visibility", status="failed", quality="missing",
+                            error={"code": getattr(exc, "code", "ADAPTER_ERROR"),
+                                   "message": "Elmo import failed; check native service, project ID and credentials."},
+                        )
                 manifest = manifest.with_source(self._redact_result(result, credentials).to_source_status(), state="running")
                 self.store.save_manifest(manifest)
             if plan.import_openseo:
                 credentials = {}
-                try:
-                    credentials = self._provider_env(project)
-                    openseo = self.openseo or self._provider(project, "openseo", credentials)
-                    evidence = await openseo.collect_project_evidence(
-                        project_id=project.openseo_project_id,
-                        rank_tracker_id=project.openseo_rank_tracker_id,
-                        window={"start": start.isoformat(), "end": end.isoformat(), "timezone": "UTC"},
-                    )
+                if project.openseo_mcp_url is None or project.openseo_project_id is None:
                     from seo_hub.adapters.base import AdapterResult
 
                     result = AdapterResult(
-                        name="openseo.evidence",
-                        status="succeeded",
-                        quality=evidence.get("quality", "partial"),
-                        source_status=evidence,
+                        name="openseo.evidence", status="skipped", quality="missing",
+                        source_status={"configured": False,
+                                       "reason": "openseo_mcp_url and openseo_project_id are not set in the registry"},
                     )
-                except Exception as exc:
-                    from seo_hub.adapters.base import AdapterResult
+                else:
+                    try:
+                        credentials = self._provider_env(project)
+                        openseo = self.openseo or self._provider(project, "openseo", credentials)
+                        evidence = await openseo.collect_project_evidence(
+                            project_id=project.openseo_project_id,
+                            rank_tracker_id=project.openseo_rank_tracker_id,
+                            window={"start": start.isoformat(), "end": end.isoformat(), "timezone": "UTC"},
+                        )
+                        from seo_hub.adapters.base import AdapterResult
 
-                    result = AdapterResult(
-                        name="openseo.evidence",
-                        status="failed",
-                        quality="missing",
-                        error={"code": getattr(exc, "code", "ADAPTER_ERROR"),
-                               "message": "OpenSEO import failed; check native service, project ID and credentials."},
-                    )
+                        result = AdapterResult(
+                            name="openseo.evidence",
+                            status="succeeded",
+                            quality=evidence.get("quality", "partial"),
+                            source_status=evidence,
+                        )
+                    except Exception as exc:
+                        from seo_hub.adapters.base import AdapterResult
+
+                        result = AdapterResult(
+                            name="openseo.evidence",
+                            status="failed",
+                            quality="missing",
+                            error={"code": getattr(exc, "code", "ADAPTER_ERROR"),
+                                   "message": "OpenSEO import failed; check native service, project ID and credentials."},
+                        )
                 manifest = manifest.with_source(self._redact_result(result, credentials).to_source_status(), state="running")
                 self.store.save_manifest(manifest)
             for command in plan.observer_commands:
+                if project.observer_config is None:
+                    from seo_hub.adapters.base import AdapterResult
+
+                    result = AdapterResult(
+                        name=f"observer.{command}",
+                        status="skipped",
+                        quality="missing",
+                        source_status={"configured": False,
+                                       "reason": "observer_config is not set in the registry"},
+                    )
+                    manifest = manifest.with_source(result.to_source_status(), state="running")
+                    self.store.save_manifest(manifest)
+                    continue
                 try:
                     result = await self.observer.read(
                         command,

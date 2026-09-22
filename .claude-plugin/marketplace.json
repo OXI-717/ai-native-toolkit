@@ -156,7 +156,7 @@
       "name": "oxi-seo",
       "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and oxi-seo CLI. Imports existing evidence only; no live paid provider calls.",
       "source": "./plugins/oxi-seo/",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "author": {
         "name": "OXI-717"
       }
@@ -174,7 +174,7 @@
       "name": "seo-observer",
       "description": "Evidence-first SEO observer CLI: snapshots, period comparisons, outcome measurement, opportunity reports, competitor intelligence, AI-search readiness. Local SQLite storage; provider credentials via env vars only.",
       "source": "./plugins/seo-observer/",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "OXI-717"
       }

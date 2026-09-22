@@ -47,8 +47,8 @@ class HubAPI:
         runs = self.store.list_manifests(project.id)
         latest = runs[0].to_json() if runs else None
         readiness = {
-            "observer": project.observer_config.exists(),
-            "credentials": project.credentials_env_file.exists(),
+            "observer": project.observer_config is not None and project.observer_config.exists(),
+            "credentials": project.credentials_env_file is not None and project.credentials_env_file.exists(),
             "elmo": _source_ready([run.to_json() for run in runs], "elmo.ai_visibility"),
             "openseo": _source_ready([run.to_json() for run in runs], "openseo.evidence"),
         }
@@ -150,14 +150,16 @@ class LocalHubClient:
 
 
 def _deep_links(project: Any) -> dict[str, str]:
-    openseo_base = project.openseo_mcp_url.removesuffix("/mcp").rstrip("/")
-    elmo_path = "/app"
-    if project.elmo_organization_slug:
-        elmo_path += f"/org/{quote(project.elmo_organization_slug, safe='')}/brand/{quote(project.elmo_brand_id, safe='')}"
-    return {
-        "elmo": f"{project.elmo_base_url.rstrip('/')}{elmo_path}",
-        "openseo": f"{openseo_base}/p/{quote(project.openseo_project_id, safe='')}",
-    }
+    links: dict[str, str] = {}
+    if project.elmo_base_url and project.elmo_brand_id:
+        elmo_path = "/app"
+        if project.elmo_organization_slug:
+            elmo_path += f"/org/{quote(project.elmo_organization_slug, safe='')}/brand/{quote(project.elmo_brand_id, safe='')}"
+        links["elmo"] = f"{project.elmo_base_url.rstrip('/')}{elmo_path}"
+    if project.openseo_mcp_url and project.openseo_project_id:
+        openseo_base = project.openseo_mcp_url.removesuffix("/mcp").rstrip("/")
+        links["openseo"] = f"{openseo_base}/p/{quote(project.openseo_project_id, safe='')}"
+    return links
 
 
 def _source_ready(history: list[dict[str, Any]], name: str) -> bool:

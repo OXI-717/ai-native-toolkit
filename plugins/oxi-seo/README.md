@@ -84,6 +84,17 @@ resolved from the registry file directory and must stay under that directory's
 parent root. Secrets live outside the registry in project env files with mode
 `0600`; symlinks and path escapes fail closed.
 
+Every source is optional and configured per project: `observer_config`,
+`credentials_env_file`, the `elmo_base_url` + `elmo_brand_id` pair, and the
+`openseo_mcp_url` + `openseo_project_id` pair may each be present or absent.
+Partial pairs are rejected at load time, and a run reports unconfigured sources
+as `skipped` instead of failing them. The `[server]` section is required only
+for the HTTP panel (`python -m seo_hub.server`); `auth_mode = "local_noauth"`
+needs only `bind` and `owner_email`, while `cloudflare_access` additionally
+requires the Access keys. A minimal external setup is a registry with a single
+project that points at an Observer `project.toml` — no server block and no
+native-service fields are needed.
+
 ## Semantic Smoke
 
 The synthetic full-run fixture covers API, CLI client, observer report loading,
