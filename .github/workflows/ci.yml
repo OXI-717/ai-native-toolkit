@@ -78,14 +78,15 @@ jobs:
           rc=$?
           echo "doctor output:"; cat doctor.json; cat doctor.err
           python3 -c "import json; d=json.load(open('doctor.json')); assert d['ok'] and d['checks']['config']['status']=='ready', d"
-          oxi-seo run --config registry.toml --project example --mode full --json \
-            | python3 - "$PWD" <<'PY'
-          import json, sys
-          payload = json.load(sys.stdin)
-          sources = payload["run"]["sources"]
-          assert sources["observer.doctor"]["status"] == "succeeded", sources
-          assert sources["elmo.ai_visibility"]["status"] == "skipped", sources
-          assert sources["openseo.evidence"]["status"] == "skipped", sources
-          assert payload["run"]["state"] in {"succeeded", "partial"}, payload["run"]["state"]
-          print("e2e ok:", payload["run"]["state"])
-          PY
+          oxi-seo run --config registry.toml --project example --mode full --json > run.json
+          cat run.json
+          python3 -c "
+          import json
+          payload = json.load(open('run.json'))
+          sources = payload['run']['sources']
+          assert sources['observer.doctor']['status'] == 'succeeded', sources
+          assert sources['elmo.ai_visibility']['status'] == 'skipped', sources
+          assert sources['openseo.evidence']['status'] == 'skipped', sources
+          assert payload['run']['state'] in {'succeeded', 'partial'}, payload['run']['state']
+          print('e2e ok:', payload['run']['state'])
+          "
