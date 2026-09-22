@@ -1,0 +1,89 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 scripts/check_manifests.py
+
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 scripts/check_hygiene.py
+
+  install-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install every CLI package and smoke its entry points
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for pyproject in plugins/*/cli/pyproject.toml; do
+            pkg_dir=$(dirname "$pyproject")
+            echo "=== install $pkg_dir"
+            uv tool install --quiet --force "$pkg_dir" || { failed=1; continue; }
+            binaries=$(python3 -c "
+          import sys, tomllib
+          scripts = tomllib.load(open(sys.argv[1], 'rb'))['project'].get('scripts', {})
+          print(' '.join(scripts))
+          " "$pyproject")
+            for binary in $binaries; do
+              command -v "$binary" >/dev/null || { echo "MISSING binary: $binary"; failed=1; continue; }
+              "$binary" --help >/dev/null 2>&1 || "$binary" --version >/dev/null 2>&1 \
+                || { echo "SMOKE FAILED: $binary"; failed=1; }
+            done
+          done
+          exit "$failed"
+      - name: seo-observer doctor (no config)
+        run: seo-observer doctor --json | python3 -c "import json,sys; assert json.load(sys.stdin)['ok']"
+      - name: oxi-seo end-to-end with minimal external registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          work=$(mktemp -d)
+          mkdir -p "$work/obs"
+          cp plugins/seo-observer/examples/competitor-intelligence/project.toml "$work/obs/"
+          cp -r plugins/seo-observer/examples/competitor-intelligence/keywords "$work/obs/"
+          cat > "$work/registry.toml" <<'EOF'
+          schema_version = 1
+          data_dir = "./data"
+          export_dir = "./exports"
+
+          [[projects]]
+          id = "example"
+          label = "Example"
+          observer_config = "obs/project.toml"
+          EOF
+          cd "$work"
+          oxi-seo doctor --config registry.toml --json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['ok'] and d['checks']['config']['status']=='ready', d"
+          oxi-seo run --config registry.toml --project example --mode full --json \
+            | python3 - "$PWD" <<'PY'
+          import json, sys
+          payload = json.load(sys.stdin)
+          sources = payload["run"]["sources"]
+          assert sources["observer.doctor"]["status"] == "succeeded", sources
+          assert sources["elmo.ai_visibility"]["status"] == "skipped", sources
+          assert sources["openseo.evidence"]["status"] == "skipped", sources
+          assert payload["run"]["state"] in {"succeeded", "partial"}, payload["run"]["state"]
+          print("e2e ok:", payload["run"]["state"])
+          PY
