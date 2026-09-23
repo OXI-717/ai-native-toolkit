@@ -216,8 +216,8 @@ seo-observer render-report \
   --input /tmp/demo-seo-audit.md \
   --output-dir /tmp/demo-seo-audit-rendered \
   --basename demo-seo-audit \
-  --title "SEO-аудит demo.example" \
-  --subtitle "Период: 2026-06-28 - 2026-07-27" \
+  --title "SEO audit demo.example" \
+  --subtitle "Period: 2026-06-28 - 2026-07-27" \
   --json
 ```
 
@@ -295,8 +295,8 @@ The agent still cites generated artifact paths/hashes and does not duplicate the
 deterministic calculations.
 
 
-## Маркетинговый отчёт и контуры
+## Marketing report and markets
 
-- `scripts/marketing-report.py` — кластеры и разрывы, отчёт для маркетинга.
-  См. `references/marketing-report.md`.
-- Поисковые контуры RU/EN и привязка конкурентов — `references/markets.md`.
+- `scripts/marketing-report.py` — clusters and gap analysis for marketing.
+  See `references/marketing-report.md`.
+- RU/EN search-market contours and competitor binding — `references/markets.md`.

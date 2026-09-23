@@ -37,15 +37,15 @@ contract:
 
 | Section | Contract |
 |---|---|
-| Резюме для первого экрана | coverage counts, number of prioritized findings, and the explicit reason when SERP/SOV is absent |
-| Охват источников | per-source quality in words; a raw quality code is glossed in Russian at first use |
-| Приоритетные выводы | each finding: severity, confidence, evidence text, evidence ID, why it matters, action |
-| Эффективность провайдеров | per-provider quality, diagnostics count, extract sizes |
-| Техническая диагностика | provider diagnostics plus up to eight blocked claims with their reason codes; the complete list is in limitations |
-| Наблюдения по конкурентам | research candidates and content topics, labelled as hypotheses |
-| SERP / доля видимости | rendered **only** when a deterministic SERP artifact exists |
-| Ограничения и заблокированные выводы | blocked conclusion, reason code, evidence ID |
-| Приложение | input artifact paths and pointers to excerpts in the structured artifacts |
+| First-screen summary | coverage counts, number of prioritized findings, and the explicit reason when SERP/SOV is absent |
+| Source coverage | per-source quality in words; a raw quality code is glossed at first use |
+| Prioritized findings | each finding: severity, confidence, evidence text, evidence ID, why it matters, action |
+| Provider efficiency | per-provider quality, diagnostics count, extract sizes |
+| Technical diagnostics | provider diagnostics plus up to eight blocked claims with their reason codes; the complete list is in limitations |
+| Competitor observations | research candidates and content topics, labelled as hypotheses |
+| SERP / share of visibility | rendered **only** when a deterministic SERP artifact exists |
+| Limitations and blocked conclusions | blocked conclusion, reason code, evidence ID |
+| Appendix | input artifact paths and pointers to excerpts in the structured artifacts |
 
 Two invariants matter more than layout:
 

@@ -1,7 +1,8 @@
-# Поисковые контуры (`[[markets]]`)
+# Search-market contours (`[[markets]]`)
 
-Проект может вести несколько независимых поисковых рынков. Контуры **не смешиваются**:
-набор ключей принадлежит ровно одному рынку, метрики считаются по каждому отдельно.
+A project can track several independent search markets. Contours **do not
+mix**: a keyword set belongs to exactly one market, and metrics are computed
+per market.
 
 ```toml
 [[markets]]
@@ -9,7 +10,7 @@ id = "ru"
 search_engine = "yandex"
 provider = "yandex_search"
 credential_env = "PROJ_YANDEX_SEARCH_API_TOKEN"
-regions = ["213", "2"]        # региональные ID Яндекса: 213 Москва, 2 СПб
+regions = ["213", "2"]        # Yandex regional IDs: 213 Moscow, 2 Saint Petersburg
 locale = "ru-RU"
 language = "ru"
 intent = "primary"
@@ -21,14 +22,14 @@ id = "en"
 search_engine = "google"
 provider = "dataforseo_google_organic"
 credential_env = "PROJ_DATAFORSEO_AUTH"
-regions = ["2840", "2826"]    # коды локаций DataForSEO
+regions = ["2840", "2826"]    # DataForSEO location codes
 locale = "en-US"
 language = "en"
 intent = "secondary"
 source_roles = ["google_search_console", "dataforseo_google_organic", "competitor_research"]
 ```
 
-Набор ключей привязывается полем `market`:
+A keyword set binds to a market via the `market` field:
 
 ```toml
 [[keyword_sets]]
@@ -37,23 +38,25 @@ market = "ru"
 path = "keywords/ru-core.txt"
 ```
 
-## Почему RU-контур двухдвижковый
+## Why the RU contour is two-engine
 
-**DataForSEO не поддерживает локации России и Беларуси ни в одном сервисе** — это
-ограничение провайдера целиком, а не конкретного эндпоинта, и оно не откатится:
-локации вырезаны из всех API и баз в 2022 году вместе с Yandex SERP API. Поэтому
-RU-позиции через DataForSEO недостижимы независимо от движка.
+**DataForSEO does not support Russian or Belarusian locations in any service** —
+this is a provider-wide limitation, not an endpoint quirk, and it will not be
+reverted: the locations were removed from all APIs and databases in 2022
+together with the Yandex SERP API. So RU positions are unreachable through
+DataForSEO regardless of engine.
 
-Отсюда распределение по RU:
+Hence the RU split:
 
-- **Яндекс** — `provider = "yandex_search"` (Yandex Search API v2);
+- **Yandex** — `provider = "yandex_search"` (Yandex Search API v2);
 - **Google** — `provider = "topvisor_google_organic"`.
 
-Google в России — это ~25–30% запросов (Яндекс отчитывается о своей доле около
-70%), и в крупных городах доля Google выше средней. Контур, снятый только
-Яндексом, даёт не «неполное покрытие», а смещённую долю видимости: один движок
-подаётся как рынок. Поэтому оба движка описываются отдельными рынками с
-собственными наборами ключей, а выводы по ним не складываются.
+Google holds ~25–30% of queries in Russia (Yandex reports its own share near
+70%), and in large cities Google's share is above average. A contour measured
+only via Yandex produces not "incomplete coverage" but a biased share of
+visibility: one engine is presented as the market. That is why both engines
+are described as separate markets with their own keyword sets, and
+conclusions from them are not merged.
 
 ```toml
 [[markets]]
@@ -61,79 +64,82 @@ id = "ru_google"
 search_engine = "google"
 provider = "topvisor_google_organic"
 credential_env = "TOPVISOR_API_KEY"
-regions = ["213", "2"]        # те же ID, что у Яндекса — см. ниже
+regions = ["213", "2"]        # same IDs as Yandex — see below
 locale = "ru-RU"
 language = "ru"
 intent = "primary"
 ```
 
-**Региональные ID переводить не нужно.** База регионов у Topvisor общая для
-движков: поиск по «Москва» возвращает `{"id": 213, "google_id": 1011969}`, и
-`region_key` — это тот же яндексовый `lr`. То есть `regions = ["213", "2"]`
-работают для обоих движков без изменений.
+**Regional IDs do not need translation.** Topvisor's region database is shared
+across engines: searching for "Moscow" returns `{"id": 213, "google_id":
+1011969}`, and `region_key` is the same Yandex `lr`. In other words,
+`regions = ["213", "2"]` works for both engines unchanged.
 
-Частая ошибка при переносе конфига остаётся в силе для DataForSEO: оставить
-яндексовые ID (`213`, `2`) при `provider = "dataforseo_google_organic"`. Такая
-связка не работает — DataForSEO этих идентификаторов не понимает.
+A common config-migration mistake still applies to DataForSEO: keeping Yandex
+IDs (`213`, `2`) with `provider = "dataforseo_google_organic"`. That pairing
+does not work — DataForSEO does not understand these identifiers.
 
-### Глубина стоит линейно
+### Depth costs linearly
 
-Google убил параметр `num=100`, поэтому одна «страница выдачи» — это ТОП-10, и
-Topvisor берёт за глубину пропорционально (замер на живом аккаунте, цена за
-ключ со снимками): ТОП-10 — 0,10 ₽, ТОП-30 — 0,30 ₽, ТОП-100 — 1,00 ₽. Бюджет
-считается как `depth × keywords × regions × devices`, а не по числу ключей.
-Снимки выдачи прибавляют к цене около 11%, и без них доля видимости не
-считается вовсе — собирать позиции без снимков смысла нет.
+Google removed the `num=100` parameter, so one "SERP page" is TOP-10, and
+Topvisor charges proportionally to depth (measured on a live account, price
+per keyword with snapshots): TOP-10 — 0.10 ₽, TOP-30 — 0.30 ₽, TOP-100 —
+1.00 ₽. Budget is computed as `depth × keywords × regions × devices`, not by
+keyword count. SERP snapshots add ~11% to the price, and without them share
+of visibility is not computed at all — collecting positions without snapshots
+is pointless.
 
-## Конкуренты и пересечение контуров
+## Competitors and contour overlap
 
 ```toml
 [[competitors.items]]
-id = "breaking-bet"
-name = "BreakingBet"
-domain_patterns = ["breaking-bet.com"]
+id = "demo-rival"
+name = "DemoRival"
+domain_patterns = ["demo-rival.com"]
 class = "direct"
 markets = ["ru"]
 ```
 
-Поле `markets` **опускается**, когда конкурент работает на всех рынках проекта — это
-умолчание, а не «нигде». Конкуренты вполне могут присутствовать одновременно в RU и EN,
-и отчёт должен такие пересечения показывать.
+The `markets` field is **omitted** when the competitor operates on all of the
+project's markets — that is the default, not "nowhere". Competitors can well
+be present in both RU and EN at once, and reports should show such overlaps.
 
-Ограничение на сегодня: привязка сохраняется, но при классификации выдачи пока не
-применяется (известное ограничение). Практический смысл в том, что пересечения видно
-эмпирически: в живом прогоне домен, помеченный `markets = ["en"]`, обнаружился на
-позиции 2 RU-выдачи — то есть привязка была уже, чем реальность.
+Current limitation: the binding is stored but not yet applied during SERP
+classification (a known limitation). The practical value is that overlaps are
+visible empirically: in a live run, a domain tagged `markets = ["en"]` was
+found at position 2 of the RU SERP — the binding was already stricter than
+reality.
 
-## Intent отчёта
+## Report intent
 
-`intent` задаёт не сбор данных, а трактовку отчёта:
+`intent` controls not data collection but report interpretation:
 
-- `primary` — основной SEO-контур проекта. Composite report выводит его первым и
-  считает его источники главным lens для выводов.
-- `secondary` — полезный дополнительный контур. Данные можно цитировать, но они
-  не должны становиться default competitor lens.
-- `out_of_scope` — контур описан для явного исключения; выводы по нему не делаются
-  без отдельного запроса.
+- `primary` — the project's main SEO contour. The composite report lists it
+  first and treats its sources as the primary lens for conclusions.
+- `secondary` — a useful supplementary contour. Its data may be cited but must
+  not become the default competitor lens.
+- `out_of_scope` — the contour is described for explicit exclusion; no
+  conclusions are drawn from it without a separate request.
 
-`source_roles` перечисляет источники, которые важны для интерпретации рынка.
-`out_of_scope` перечисляет выводы, которые отчёт должен проговорить как
-намеренно исключённые. Russia-first конфигурация использует
-`out_of_scope = ["google_worldwide_serp_competitor_lens"]`: GSC полезен для
-собственной видимости, но Google-worldwide SERP competitors не являются default
-выводом. Global-first конфигурация использует primary Google worldwide и может
-помечать RU/Yandex lens как secondary или out of scope.
+`source_roles` lists the sources that matter for interpreting the market.
+`out_of_scope` lists the conclusions the report must state as deliberately
+excluded. A Russia-first configuration uses `out_of_scope =
+["google_worldwide_serp_competitor_lens"]`: GSC is useful for own visibility,
+but Google-worldwide SERP competitors are not the default conclusion. A
+global-first configuration uses primary Google worldwide and may mark the
+RU/Yandex lens as secondary or out of scope.
 
-## Класс конкурента
+## Competitor class
 
-`direct` / `indirect` — те, у кого можно отобрать место в выдаче.
-`reference` / `marketplace` — обзоры, витрины, первоисточники: они занимают выдачу, но
-вытеснить их продуктовой страницей нельзя, туда нужно попадать.
+`direct` / `indirect` — players whose SERP positions can be taken.
+`reference` / `marketplace` — reviews, showcases, primary sources: they occupy
+the SERP but cannot be displaced by a product page; the goal is to be listed
+there.
 
-Разделение существенно для трактовки доли видимости — см. issue #1676.
+The distinction matters for interpreting share of visibility.
 
-## Авторизация Yandex Search API
+## Yandex Search API authorization
 
-Токен — **Api-Key** Yandex Cloud (`AQVN…`), заголовок `Authorization: Api-Key <ключ>`.
-Схема `OAuth` даёт HTTP 401. `region` передаётся верхним уровнем тела запроса; внутри
-`query` он игнорируется.
+The token is a Yandex Cloud **Api-Key** (`AQVN…`), sent as `Authorization:
+Api-Key <key>`. The `OAuth` scheme returns HTTP 401. `region` is passed at the
+top level of the request body; inside `query` it is ignored.

@@ -24,6 +24,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python3 scripts/check_hygiene.py
+      - run: python3 scripts/check_doc_refs.py
 
   install-smoke:
     runs-on: ubuntu-latest

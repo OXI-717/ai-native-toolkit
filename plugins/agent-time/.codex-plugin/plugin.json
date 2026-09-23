@@ -1,6 +1,6 @@
 {
   "name": "agent-time",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Install, diagnose, and report local ActivityWatch human and AI agent time",
   "author": {
     "name": "OXI-717"

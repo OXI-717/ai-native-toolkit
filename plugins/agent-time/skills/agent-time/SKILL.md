@@ -27,7 +27,7 @@ Keep three measures separate:
 
 These measures overlap. Never sum them into total human working hours. Concurrent agent time can exceed elapsed wall time; do not infer productivity gains or hours saved without a defined comparison. State source coverage, missing watchers, unmapped projects, stale data, and whether the current day is partial.
 
-Prefer existing reports or a read-only report path. In versions that expose the Python scripts, inspect `scripts/aggregate.py --help`: aggregation normally reruns trackers and may write report files. Where supported, `--skip-trackers --no-obsidian` reads existing buckets and prints the report. Verify these flags against the installed version before using them. A flag named `--dry-run` is not proof that every side effect is disabled; inspect the relevant execution path before relying on it.
+Prefer existing reports or a read-only report path. In versions that expose the Python scripts, inspect `aggregate.py --help`: aggregation normally reruns trackers and may write report files. Where supported, `--skip-trackers --no-obsidian` reads existing buckets and prints the report. Verify these flags against the installed version before using them. A flag named `--dry-run` is not proof that every side effect is disabled; inspect the relevant execution path before relying on it.
 
 Present the interval and timezone, then each layer separately, followed by project breakdowns and coverage limitations. Missing observations mean unknown coverage, not proven zero work. Do not publish raw window titles, prompts, file paths, or session logs as part of an ordinary summary.
 

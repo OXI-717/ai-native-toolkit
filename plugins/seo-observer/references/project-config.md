@@ -16,46 +16,45 @@ Discovery walks upward from the current working directory. Explicit selectors ta
 
 `--config` and `--project` are mutually exclusive and return `SELECTOR_CONFLICT`.
 
-## Откуда берутся креды
+## Where credentials come from
 
-Плагин резолвит секреты через `os.environ[<имя из credential_env>]` и к именам
-переменных никак не относится: валидно любое непустое имя. Поэтому конфиг обязан
-сам объявлять, откуда эти переменные берутся, — иначе «где у проекта ключи»
-выясняется раскопками (у трёх живых проектов было три разных механизма и ни одного
-указания в конфиге).
+The plugin resolves secrets via `os.environ[<name from credential_env>]` and is
+agnostic about variable names: any non-empty name is valid. So the config must
+declare where those variables come from — otherwise "where are this project's
+keys" becomes an archaeology exercise.
 
 ```toml
 [credentials]
-env_file = "../.env.seo"                 # подгружается CLI
-loader = "scripts/seo-observer-env.sh"   # только называется, никогда не исполняется
+env_file = "../.env.seo"                 # loaded by the CLI
+loader = "scripts/seo-observer-env.sh"   # named only, never executed
 ```
 
-Пути резолвятся относительно каталога конфига, а не рабочего каталога: команда
-запускается откуда угодно, а объявление обязано указывать на одно и то же место.
+Paths resolve relative to the config directory, not the working directory: a
+command can run from anywhere while the declaration still points at one place.
 
-**`env_file` — данные.** Плоский список `KEY=VALUE` (поддерживаются `export`,
-кавычки, комментарии). Значение из файла **не перекрывает** уже заданную
-переменную: явный экспорт старше файла, поэтому файл — это умолчание, а не
-авторитет, и разовый оверрайд продолжает работать.
+**`env_file` is data.** A flat `KEY=VALUE` list (`export`, quoting, and
+comments are supported). A value from the file does **not** override an
+already-set variable: an explicit export outranks the file, so the file is a
+default, not an authority, and one-off overrides keep working.
 
-**`loader` — код, и потому не исполняется.** Конфиг не является границей доверия:
-он ездит в PR, его правят агенты, и его читают из каталогов, куда CLI просто
-зашёл. Объявленный loader только **сообщается**: `doctor` печатает
-`source <путь>`, чтобы команду выполнил человек. Если бы исполнение добавили,
-`project.toml` стал бы способом запустить произвольный shell из всего, что
-загружает конфиг. Файл, которому нужна логика (вытащить токен из OAuth-JSON,
-сходить в keychain), объявляется именно как `loader`.
+**`loader` is code, and therefore is not executed.** A config is not a trust
+boundary: it travels in PRs, agents edit it, and it is read from directories
+the CLI merely visits. A declared loader is only **reported**: `doctor` prints
+`source <path>` so a human runs the command. If execution were added,
+`project.toml` would become a way to run arbitrary shell from anything that
+loads the config. A file that needs logic (extract a token from an OAuth JSON,
+hit a keychain) is declared as a `loader`.
 
-## Именование переменных
+## Variable naming
 
-Префикс проекта (`PROJ_`, `DEMO_`, `ACME_`) защищает ровно от одного:
-**разные значения под одним именем**. Отсюда критерий:
+A project prefix (`PROJ_`, `DEMO_`, `ACME_`) protects against exactly one
+thing: **different values under one name**. Hence the rule:
 
-- значение у проектов **различается** (GSC, счётчик Метрики, Webmaster) →
-  префикс обязателен;
-- значение **общее** для всех проектов (единый аккаунт: `TOPVISOR_USER_ID`,
-  `TOPVISOR_API_KEY`) → префикс не защищает ни от чего и лишь размножает одно
-  значение под тремя именами → без префикса.
+- values **differ** across projects (GSC, Metrica counter, Webmaster) →
+  prefix required;
+- the value is **shared** across all projects (one account:
+  `TOPVISOR_USER_ID`, `TOPVISOR_API_KEY`) → a prefix protects nothing and only
+  multiplies one value under three names → no prefix.
 
 ## Schema
 

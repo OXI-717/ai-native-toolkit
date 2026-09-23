@@ -2,8 +2,8 @@
 
 Last verified: 2026-07-30.
 
-Fixture capture date: 2026-07-30, synthetic provider-shaped fixtures under
-`plugins/seo-observer/cli/tests/fixtures/dataforseo`.
+Fixture capture date: 2026-07-30. Synthetic provider-shaped fixtures live in
+the CLI test suite (`cli/tests/fixtures/dataforseo` in the source repository).
 
 ## Endpoint Family
 

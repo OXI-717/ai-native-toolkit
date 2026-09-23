@@ -109,7 +109,6 @@ delta.
 Setup, add-project, export, backup, auth, update, and rollback are summarized in
 `references/commands.md`, `references/project-bootstrap.md`, and
 `references/runbook.md`. Owner-only Docker/Tunnel deployment notes live in
-`references/deployment.md`, which lives in the source repository and is not
-part of the published plugin package. These docs contain no credentials. Owner-only
+the source repository and are not part of the published plugin package. These docs contain no credentials. Owner-only
 Tunnel/Access setup and zero-cost native cross-check stay in the post-orchestrate
 checklist; worker sessions do not run them.

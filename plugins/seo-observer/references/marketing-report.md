@@ -1,4 +1,4 @@
-# Маркетинговый отчёт
+# Marketing report
 
 ```bash
 python3 scripts/marketing-report.py \
@@ -6,51 +6,54 @@ python3 scripts/marketing-report.py \
     --output <report.md> [--limit 60]
 ```
 
-Отвечает на другой вопрос, нежели `competitors audit`. Аудит показывает **какая сейчас
-доля видимости**; маркетинговый отчёт — **куда вкладываться в первую очередь**. Отсюда
-два измерения, которых в аудите нет.
+It answers a different question than `competitors audit`. The audit shows
+**what the share of visibility is right now**; the marketing report shows
+**where to invest first**. Hence two dimensions the audit does not have.
 
-## Кластер
+## Cluster
 
-Тема целиком, взвешенная по спросу, а не по числу фраз. Разница между «просели три
-запроса» и «просел кластер на 6 930 показов» — это разница между правкой мета-тега и
-отдельной посадочной страницей.
+A whole topic, weighted by demand rather than phrase count. The difference
+between "three queries dropped" and "a 6,930-impression cluster dropped" is
+the difference between editing a meta tag and building a dedicated landing
+page.
 
-## Разрыв
+## Gap
 
-Запрос, где одновременно: есть спрос, нас нет в топ-20, а прямой конкурент стоит в топ-3.
-Третье условие важно — если запрос не берёт никто из прямых конкурентов, это не разрыв, а
-незанятая ниша: другой тип задачи и другая цена входа.
+A query where all of the following hold: demand exists, we are absent from
+the top 20, and a direct competitor sits in the top 3. The third condition
+matters — if no direct competitor takes the query, it is not a gap but an
+unoccupied niche: a different kind of task with a different entry cost.
 
-Разрывы отсортированы по спросу, то есть таблица сама по себе является очередью работ.
+Gaps are sorted by demand, so the table is itself a work queue.
 
-## Разметка набора ключей
+## Keyword-set markup
 
-Канонический формат:
-
-```
-# cluster: калькулятор вилок
-калькулятор вилок    # yws=5772 yws_exact=3327
-```
-
-Поддерживается и формат выгрузок подрядчиков:
+Canonical format:
 
 ```
-# --- кластер: калькулятор вилок (24 фразы, YWS 6930) ---
-калькулятор вилок    # YWS 5772 / 3327
+# cluster: mortgage calculator
+mortgage calculator    # yws=5772 yws_exact=3327
 ```
 
-Файл без разметки читается как раньше. В этом случае отчёт **честно сообщает**, что
-приоритизировать темы по объёму нельзя, и не показывает выдуманных нулевых процентов.
+Contractor-export format is also supported:
 
-## Трактовка источников
+```
+# --- cluster: mortgage calculator (24 phrases, YWS 6930) ---
+mortgage calculator    # YWS 5772 / 3327
+```
 
-Отчёт явно предупреждает о расхождении, которое иначе принимают за ошибку:
-**Яндекс.Вебмастер усредняет позицию по фактически состоявшимся показам** —
-персонализированным, региональным, по хвостовым переформулировкам, — и потому
-систематически выглядит оптимистичнее чистой выдачи.
+A file without markup is read as before. In that case the report **honestly
+states** that topics cannot be prioritized by volume, instead of showing
+invented zero percentages.
 
-Реальный случай: по запросу «сканер вилок» Вебмастер показывал среднюю позицию 8.5 и
-живые клики, тогда как в чистой выдаче сайт отсутствовал в топ-20. Противоречия нет, но
-планировать по средней позиции Вебмастера нельзя — для решений нужен детерминированный
-съём.
+## Source interpretation
+
+The report explicitly warns about a discrepancy that is otherwise mistaken
+for a bug: **Yandex Webmaster averages position over actually-served
+impressions** — personalized, regional, and long-tail reformulations — and
+therefore systematically looks more optimistic than a clean SERP.
+
+A real case: for the query "price comparison tool" Webmaster showed an
+average position of 8.5 with live clicks, while the site was absent from the
+clean SERP top 20. There is no contradiction, but planning by Webmaster's
+average position is impossible — decisions need a deterministic capture.
