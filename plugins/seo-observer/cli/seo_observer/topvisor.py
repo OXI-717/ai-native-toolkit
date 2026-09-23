@@ -36,8 +36,9 @@ TOPVISOR_PRICE_ENDPOINT = "/v2/json/get/positions_2/checker/price"
 TOPVISOR_CHECKER_ENDPOINT = "/v2/json/edit/positions_2/checker/go"
 TOPVISOR_REGIONS_ENDPOINT = "/v2/json/get/system_2/common/regions"
 
-# Вендор режет ответ на 100 ключей; потолок страниц — защита от бесконечного
-# цикла, а не оценка размера проектов (~1000 ключей — уже 10 страниц).
+# The vendor truncates responses at 100 keywords; the page cap guards against an
+# infinite loop rather than estimating project size (~1000 keywords is already
+# 10 pages).
 SNAPSHOT_PAGE_SIZE = 100
 SNAPSHOT_MAX_KEYWORDS = 20000
 
@@ -121,15 +122,16 @@ def device_key(device: str) -> int:
 
 
 class PostJsonHttp:
-    """Переходник от общего `post_json`-транспорта CLI к `TopvisorHttp`.
+    """Bridge from the CLI's shared `post_json` transport to `TopvisorHttp`.
 
-    CLI строит транспорты с методом `post_json(endpoint, json=..., headers=...)`
-    — там уже живут таймауты и ретраи, поэтому свой HTTP-клиент здесь не нужен.
+    The CLI builds transports with a `post_json(endpoint, json=..., headers=...)`
+    method — timeouts and retries already live there, so no dedicated HTTP client
+    is needed here.
 
-    GET намеренно не поддерживается, а не сводится к POST: у Topvisor есть
-    GET-методы (`get/system_2/common/regions`), и молчаливая подмена глагола
-    дала бы не отказ, а ответ не того метода — то есть неверные данные вместо
-    внятной ошибки.
+    GET is intentionally unsupported rather than being folded into POST:
+    Topvisor has GET methods (`get/system_2/common/regions`), and silently
+    substituting the verb would produce not a refusal but a response from the
+    wrong method — invalid data instead of a clear error.
     """
 
     def __init__(self, transport: Any) -> None:
@@ -412,19 +414,19 @@ class TopvisorSnapshotTransport:
 
 
 class TopvisorSerpProviderAdapter:
-    """Адаптер Topvisor под общий шов `SerpProviderAdapter` из `competitors.py`.
+    """Topvisor adapter for the shared `SerpProviderAdapter` seam from `competitors.py`.
 
-    Аудит разбирает `rows` одинаково для всех движков, поэтому форма ответа
-    совпадает с DataForSEO и Яндексом.
+    The audit parses `rows` the same way for every engine, so the response shape
+    matches DataForSEO and Yandex.
 
-    Читает уже снятые снимки и **никогда не запускает платную проверку**: у
-    Topvisor съём идёт по всему проекту сразу, поэтому запуск из per-keyword
-    цикла означал бы один платный прогон на каждый ключ. Стоимость чтения — 0.
+    Reads already-taken snapshots and **never triggers a paid check**: Topvisor
+    scans the whole project at once, so triggering a check from the per-keyword
+    loop would mean one paid run per keyword. Read cost is 0.
 
-    Отсутствие ключа в снимке и отсутствие позиций у ключа — разные вещи:
-    первое отдаётся как `quality = "unsupported"` с явной ошибкой, второе —
-    как `live` с пустым `rows`. Схлопывание их превратило бы несобранный
-    контур в «конкурентов нет».
+    A keyword missing from the snapshot and a keyword with no positions are
+    different things: the former is returned as `quality = "unsupported"` with an
+    explicit error, the latter as `live` with empty `rows`. Collapsing them would
+    turn an uncollected market into "there are no competitors".
     """
 
     def __init__(
@@ -457,7 +459,7 @@ class TopvisorSerpProviderAdapter:
         }
         try:
             page = self._transport.post_json("", json=payload, headers={})
-        except Exception as exc:  # сеть/вендор — деградируем в статус, не в traceback
+        except Exception as exc:  # network/vendor — degrade to a status, not a traceback
             return {
                 "rows": [],
                 "quality": "unsupported",
@@ -491,8 +493,8 @@ class TopvisorSerpProviderAdapter:
                     "rank_absolute": row["position"],
                     "result_type": "organic",
                     "url": row["url"],
-                    # Снимки Topvisor не содержат заголовков и сниппетов —
-                    # это свойство источника, а не потеря данных.
+                    # Topvisor snapshots contain no titles or snippets —
+                    # that is a property of the source, not a data loss.
                     "title": None,
                     "description": None,
                     "serp_features": ["organic"],

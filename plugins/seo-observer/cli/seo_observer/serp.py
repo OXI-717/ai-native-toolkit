@@ -27,11 +27,11 @@ SUPPORTED_API_FAMILIES = frozenset(
     {"yandex_search_api", "dataforseo_serp_api", "topvisor_api"}
 )
 
-# Утверждение о конкретном провайдере, а не о факте его поддержки. Раньше
-# `no_browser_automation` считалось как «провайдер в списке поддерживаемых», то
-# есть отвечало true по построению и не могло стать false ни для кого. Первый
-# же провайдер, который гоняет браузер, сделал бы это поле враньём, и заметить
-# это было бы нечем.
+# A claim about a specific provider, not about the fact of its support.
+# Previously `no_browser_automation` was computed as "provider is in the
+# supported list", i.e. it answered true by construction and could never become
+# false for anyone. The first provider that actually drives a browser would have
+# made this field a lie, with no way to notice it.
 PROVIDER_DRIVES_BROWSER = {
     "yandex_search": False,
     "fixture_yandex_search": False,
@@ -66,8 +66,8 @@ class SerpSource:
     endpoint: str = DEFAULT_ENDPOINT
     method: str = "POST"
     response_format: str = "XML"
-    # Yandex Cloud Search API v2 принимает Api-Key (или IAM-токен), но НЕ OAuth:
-    # тот же ключ даёт HTTP 200 с "Api-Key" и HTTP 401 с "OAuth" (проверено 2026-07-31).
+    # Yandex Cloud Search API v2 accepts Api-Key (or an IAM token), but NOT OAuth:
+    # the same key yields HTTP 200 with "Api-Key" and HTTP 401 with "OAuth" (verified 2026-07-31).
     auth_scheme: str = "Api-Key"
     search_engine: str = "yandex"
     locale: str = "ru-RU"
@@ -89,8 +89,9 @@ class SerpKeywordSet:
     regions: tuple[str, ...]
     devices: tuple[str, ...] = ("__all__",)
     weight: float = 1.0
-    # Контур, которому принадлежит набор. Нужен, чтобы аудит выбрал адаптер
-    # и проверил креды того рынка, а не универсального DataForSEO.
+    # The market the set belongs to. Needed so the audit picks the adapter
+    # and checks the credentials of that market rather than the universal
+    # DataForSEO ones.
     market: str | None = None
 
 
@@ -119,9 +120,9 @@ class SerpProtocolSlot:
     weight: float = 1.0
     classification_config_hash: str = "sha256:unconfigured"
     date_bucket: str = "__all__"
-    # Контур слота. Нужен классификации выдачи (#1677) и намеренно НЕ входит в
-    # normalized_inputs: protocol_hash обязан остаться сравнимым со снапшотами,
-    # снятыми до появления контуров.
+    # The market of the slot. Needed by SERP classification (#1677) and
+    # intentionally NOT part of normalized_inputs: protocol_hash must stay
+    # comparable with snapshots taken before markets existed.
     market: str | None = None
 
     @property
@@ -155,18 +156,19 @@ class Competitor:
     name: str
     domain_patterns: tuple[str, ...]
     aliases: tuple[str, ...] = ()
-    # Класс определяет, попадает ли домен в конкурентный SOV: у reference
-    # (регулятор, первоисточник) и marketplace (витрина с нашим же приложением)
-    # место в выдаче отобрать продуктовой страницей нельзя.
+    # The class determines whether the domain counts toward competitor SOV:
+    # a reference (regulator, primary source) or a marketplace (a storefront
+    # hosting our own app) cannot have its SERP slot taken by a product page.
     competitor_class: str = "unknown"
-    # Пустой кортеж означает «во всех контурах».
+    # An empty tuple means "in all markets".
     markets: tuple[str, ...] = ()
 
 
-# Классы, чьё место в выдаче своей страницей не отобрать. Исключаем только их,
-# а не «всё, кроме direct/indirect»: неразмеченный конфиг (класс `unknown`)
-# иначе схлопнул бы SOV в ноль, то есть неопределённость молча испортила бы
-# метрику вместо того, чтобы сохранить прежнее поведение (#1676).
+# Classes whose SERP slot cannot be taken by our own page. We exclude only
+# these, not "everything except direct/indirect": an unmarked config (class
+# `unknown`) would otherwise collapse SOV to zero, i.e. uncertainty would
+# silently corrupt the metric instead of preserving the previous behavior
+# (#1676).
 NON_CONTESTABLE_CLASSES = frozenset({"reference", "marketplace"})
 
 
@@ -477,12 +479,13 @@ def derive_competitor_metrics(
 def classify_domain(
     url_or_host: str, config: CompetitorConfig, *, market_id: str | None = None
 ) -> dict[str, Any]:
-    """Классифицирует домен из выдачи.
+    """Classifies a domain from the SERP.
 
-    Привязка конкурента к контурам (`markets`) НЕ фильтрует классификацию:
-    домен, найденный в чужом контуре, помечается `out_of_market`, но остаётся
-    в отчёте. Молчаливая фильтрация скрыла бы более частый случай — неверную
-    привязку в конфиге, когда конкурент реально работает на оба рынка (#1677).
+    Binding a competitor to markets (`markets`) does NOT filter classification:
+    a domain found in a foreign market is marked `out_of_market` but stays in
+    the report. Silent filtering would hide the more common case — a wrong
+    binding in the config when the competitor actually works in both markets
+    (#1677).
     """
     host = normalized_host(url_or_host)
     for pattern in config.owned_domains:
@@ -663,9 +666,9 @@ def _snapshot_competitor_metrics(
         competitor_id: float(item.pop("_visibility_score_sum", 0.0))
         for competitor_id, item in metrics.items()
     }
-    # Две величины отвечают на два разных вопроса и поэтому имеют разные
-    # знаменатели: share_of_voice — «у кого мы можем отобрать трафик»,
-    # occupancy_share — «кто вообще занимает выдачу» (#1676).
+    # Two quantities answer two different questions and therefore have
+    # different denominators: share_of_voice — "whose traffic can we take",
+    # occupancy_share — "who occupies the SERP at all" (#1676).
     contestable_score = sum(
         score for competitor_id, score in score_sums.items() if metrics[competitor_id]["contestable"]
     )
@@ -699,10 +702,11 @@ def _resolve_competitor_class(
     classification: str,
     class_by_competitor_id: dict[str, str] | None,
 ) -> str:
-    """Класс берётся из конфига, а не из наблюдения.
+    """The class is taken from the config, not from the observation.
 
-    Снапшоты, снятые до появления поля, класса не несут, но пересчитывать их
-    по актуальному конфигу корректно: класс — свойство конкурента, а не замера.
+    Snapshots taken before the field existed carry no class, but recomputing
+    them against the current config is correct: the class is a property of the
+    competitor, not of the measurement.
     """
     if classification == "owned":
         return "owned"

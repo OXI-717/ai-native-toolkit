@@ -51,10 +51,10 @@ from seo_observer.serp import (
 
 
 def _market_for_keyword_set(config: ProjectConfig, keyword_set: Any) -> Any | None:
-    """Рынок, которому принадлежит набор ключей.
+    """The market the keyword set belongs to.
 
-    Возвращает None для непромигрированных проектов (без блока [[markets]]) —
-    тогда сохраняется прежнее поведение с DataForSEO.
+    Returns None for unmigrated projects (without a [[markets]] block) — in that
+    case the previous DataForSEO behavior is preserved.
     """
     market_id = getattr(keyword_set, "market", None)
     if not market_id:
@@ -121,8 +121,9 @@ class CompetitorDiscoveryOptions:
 
 
 class SerpProviderAdapter(Protocol):
-    """Шов сбора выдачи. Имя метода намеренно движко-нейтрально: контуры RU/Яндекс
-    и EN/Google реализуют один и тот же контракт и различаются только адаптером."""
+    """SERP collection seam. The method name is intentionally engine-neutral:
+    the RU/Yandex and EN/Google markets implement the same contract and differ
+    only in the adapter."""
 
     def fetch_organic_serp(
         self,
@@ -443,12 +444,12 @@ def _topvisor_audit_adapter(
     env: dict[str, str] | None,
     transport_factory: Any | None,
 ) -> TopvisorSerpProviderAdapter:
-    """Собирает адаптер Topvisor из рынка: два значения аутентификации и дата.
+    """Builds the Topvisor adapter from a market: two auth values and a date.
 
-    Topvisor требует пару «id аккаунта + ключ», а не один токен, поэтому рынок
-    объявляет `user_id_env` рядом с `credential_env`. Отсутствие любого из них —
-    ошибка с именем переменной: без неё сообщение «не удалось» не подсказывает,
-    что именно доложить.
+    Topvisor requires an "account id + key" pair rather than a single token, so
+    the market declares `user_id_env` alongside `credential_env`. A missing one
+    is an error naming the variable: without it, a "failed" message gives no hint
+    about what exactly to report.
     """
 
     if transport_factory is None:
@@ -632,9 +633,9 @@ def audit_competitors(
                     language_code=market.language,
                 )
             elif market is not None and market.provider.startswith("topvisor_"):
-                # Topvisor читается из уже снятого снимка: съём у него идёт по
-                # всему проекту сразу, поэтому запуск проверки из per-keyword
-                # цикла означал бы платный прогон на каждый ключ.
+                # Topvisor is read from an already-taken snapshot: it scans the
+                # whole project at once, so triggering a check from the
+                # per-keyword loop would mean a paid run per keyword.
                 adapter = _topvisor_audit_adapter(
                     market, config=config, env=env, transport_factory=transport_factory
                 )
@@ -1273,11 +1274,12 @@ def _resolve_audit_keyword_set(config: ProjectConfig, options: CompetitorAuditOp
     )
 
 
-# api_family попадает в protocol_hash, то есть в ключ сравнимости наблюдений.
-# Раньше здесь стоял fallback «всё, что не DataForSEO, — Яндекс», и первый же
-# новый провайдер начал штамповать свои строки как yandex_search_api: данные
-# внешне валидные, но помеченные чужим API. Исправить это потом дороже, чем
-# сейчас, — правка меняет хеши и обнуляет сравнимость всей накопленной истории.
+# api_family goes into protocol_hash, i.e. into the observation comparability
+# key. A fallback "everything that is not DataForSEO is Yandex" used to live
+# here, and the very first new provider started stamping its rows as
+# yandex_search_api: data that looks valid but is labeled with someone else's
+# API. Fixing that later costs more than now — the fix changes hashes and voids
+# the comparability of all accumulated history.
 _SERP_PROVIDER_DEFAULTS = {
     "dataforseo_google_organic": ("dataforseo_serp_api", "v3", "/v3/serp/google/organic/live/advanced"),
     "yandex_search": ("yandex_search_api", "v2", YANDEX_SEARCH_ENDPOINT),
@@ -1288,10 +1290,10 @@ _SERP_PROVIDER_DEFAULTS = {
 
 
 def _provider_serp_defaults(provider: str) -> tuple[str, str, str]:
-    """Дефолты api_family/api_version/endpoint по провайдеру рынка.
+    """Defaults of api_family/api_version/endpoint for the market provider.
 
-    Неизвестный провайдер — ошибка, а не тихое отнесение к известному: молчание
-    здесь означает неверную метку в protocol_hash, а не отсутствие данных.
+    An unknown provider is an error, not a silent attribution to a known one:
+    silence here would mean a wrong label in protocol_hash, not missing data.
     """
 
     try:
@@ -1508,8 +1510,8 @@ def _write_audit_result(
         markdown_text=report_text,
         output_dir=output_dir,
         basename="competitor-audit",
-        title=f"SEO-анализ конкурентов: {config.project.namespace}",
-        subtitle=f"Набор ключей: {keyword_set.id}. Качество источника: {source_quality}.",
+        title=f"Competitor SEO analysis: {config.project.namespace}",
+        subtitle=f"Keyword set: {keyword_set.id}. Source quality: {source_quality}.",
     )
     created_at = _utc_now()
     artifacts = [
@@ -1694,8 +1696,8 @@ def _write_research_result(
         markdown_text=report_text,
         output_dir=output_dir,
         basename="research-report",
-        title=f"SEO-исследование конкурентов: {config.project.namespace}",
-        subtitle=f"Набор ключей: {keyword_set.id}. Качество источника: {source_quality}.",
+        title=f"Competitor SEO research: {config.project.namespace}",
+        subtitle=f"Keyword set: {keyword_set.id}. Source quality: {source_quality}.",
     )
     artifacts = [
         _artifact_entry(research_path, output_dir=output_dir, artifact_type="research_extract", privacy_class="private_structured_artifact", source_request_ids=source_request_ids, created_at=observed_at),
@@ -1769,19 +1771,19 @@ def _render_research_report(
     errors: list[dict[str, Any]],
 ) -> str:
     lines = [
-        f"# Исследование конкурентов: {config.project.namespace}",
+        f"# Competitor research: {config.project.namespace}",
         "",
-        "## Качество источника и стоимость",
-        f"- Набор ключевых слов: `{keyword_set.id}`",
-        f"- Хеш набора ключевых слов: `{keyword_set_hash(keyword_set.keywords)}`",
-        f"- Качество данных: `{source_quality}`",
-        f"- Стоимость запроса у провайдера: `${round(float(cost_usd), 6)}`",
+        "## Source quality and cost",
+        f"- Keyword set: `{keyword_set.id}`",
+        f"- Keyword set hash: `{keyword_set_hash(keyword_set.keywords)}`",
+        f"- Data quality: `{source_quality}`",
+        f"- Provider request cost: `${round(float(cost_usd), 6)}`",
         "",
-        "## Что можно утверждать по этим данным",
-        "- Это исследовательская выдача и извлеченные страницы, а не замер позиций. По ней можно собрать список кандидатов-конкурентов и темы страниц.",
-        "- Нельзя делать выводы о доле видимости, росте/падении, трафике или точных позициях без отдельного SERP-аудита.",
+        "## What can be claimed from this data",
+        "- This is a research SERP sample and extracted pages, not a rank measurement. It supports a list of competitor candidates and page topics.",
+        "- Do not draw conclusions about share of voice, growth/decline, traffic, or exact ranks without a separate SERP audit.",
         "",
-        "## Найденные страницы-кандидаты",
+        "## Candidate pages found",
     ]
     if research_rows:
         for row in research_rows[:20]:
@@ -1791,20 +1793,20 @@ def _render_research_report(
             )
             snippet = str(row.get("snippet") or "")[:300]
             if snippet:
-                lines.append(f"  - Фрагмент: {snippet}")
+                lines.append(f"  - Snippet: {snippet}")
     else:
-        lines.append("- Нет данных.")
-    lines.extend(["", render_content_report_section(page_extracts), "## Частичные ограничения и ошибки"])
+        lines.append("- No data.")
+    lines.extend(["", render_content_report_section(page_extracts), "## Partial limitations and errors"])
     if errors:
         lines.extend(f"- `{error.get('code')}`: {error.get('safe_message') or error.get('message')}" for error in errors)
     else:
-        lines.append("- Нет.")
+        lines.append("- None.")
     lines.extend(
         [
             "",
-            "## Следующие действия",
-            "- Подтвердить кандидатов через SERP-аудит, если нужны выводы о позициях, видимости и доле выдачи.",
-            "- Использовать заголовки страниц и безопасные фрагменты текста как вход для анализа контентных разрывов.",
+            "## Next actions",
+            "- Confirm the candidates via a SERP audit if rank, visibility, and share-of-voice conclusions are needed.",
+            "- Use page headings and safe text excerpts as input for content-gap analysis.",
             "",
         ]
     )
@@ -2118,8 +2120,9 @@ def _serp_readiness(
 ) -> dict[str, Any]:
     source = config.sources.get("serp")
     if market is not None and market.search_engine == "yandex":
-        # RU-контур не зависит от DataForSEO: провайдер вообще не отдаёт локации РФ,
-        # поэтому проверять надо креды рынка, а не универсального DataForSEO.
+        # The RU market does not depend on DataForSEO: that provider does not
+        # serve RU locations at all, so the market credentials must be checked
+        # rather than the universal DataForSEO ones.
         if source is None or not source.enabled:
             return {
                 "ok": False,
@@ -2138,9 +2141,10 @@ def _serp_readiness(
             }
         return {"ok": True, "quality": "live", "error": None}
     if market is not None and market.provider.startswith("topvisor_"):
-        # Topvisor обслуживает RU-Google, который DataForSEO не отдаёт вовсе,
-        # поэтому проверяются креды рынка, а не универсального DataForSEO.
-        # Их два: id аккаунта и ключ — отсутствие любого называется по имени.
+        # Topvisor serves RU-Google, which DataForSEO does not serve at all, so
+        # the market credentials are checked rather than the universal DataForSEO
+        # ones. There are two of them: account id and key — a missing one is
+        # named explicitly.
         if source is None or not source.enabled:
             return {
                 "ok": False,

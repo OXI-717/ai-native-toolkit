@@ -37,28 +37,28 @@ FORBIDDEN_TEXT_MARKERS = (
 )
 YANDEX_FINDING_EXPLANATIONS = {
     "NO_ROBOTS_TXT": (
-        "Яндекс не видит robots.txt. Проверить, что файл реально отдаётся для конкретного хоста "
-        "и доступен Яндекс-боту."
+        "Yandex does not see robots.txt. Check that the file is actually served for the "
+        "specific host and is accessible to the Yandex bot."
     ),
-    "FAVICON_ERROR": "Проблема с favicon. Проверить ссылку, формат, размер, HTTP-статус.",
-    "BIG_FAVICON_ABSENT": "Нет большой иконки для поиска/сниппета. Добавить/проверить крупную иконку.",
+    "FAVICON_ERROR": "A favicon problem. Check the link, format, size, and HTTP status.",
+    "BIG_FAVICON_ABSENT": "No large icon for search/snippet. Add or check a large icon.",
     "NO_METRIKA_COUNTER_CRAWL_ENABLED": (
-        "Вебмастер считает, что обход/использование данных счётчика Метрики для диагностики "
-        "не включён или недоступен. Проверить настройки счётчика."
+        "Webmaster reports that crawling/using the Metrica counter data for diagnostics "
+        "is not enabled or not available. Check the counter settings."
     ),
     "NO_METRIKA_COUNTER_BINDING": (
-        "Счётчик Метрики не привязан к Вебмастеру. Привязать счётчик или явно оставить другой "
-        "источник трафика основным."
+        "The Metrica counter is not linked to Webmaster. Link the counter or explicitly "
+        "keep another traffic source as the primary one."
     ),
-    "NOT_IN_SPRAV": "Сайт не связан/не представлен в Яндекс Бизнес/Справочнике.",
-    "NO_REGIONS": "Регион сайта не задан в Вебмастере.",
+    "NOT_IN_SPRAV": "The site is not linked to / not listed in Yandex Business/Sprav.",
+    "NO_REGIONS": "The site region is not set in Webmaster.",
     "DUPLICATE_PAGES": (
-        "Яндекс видит несколько страниц с одинаковым или слишком похожим содержимым. Проверить "
-        "canonical, редиректы и URL-параметры."
+        "Yandex sees several pages with identical or too-similar content. Check "
+        "canonical tags, redirects, and URL parameters."
     ),
     "DUPLICATE_CONTENT_ATTRS": (
-        "Яндекс видит повторяющиеся title/description или другие атрибуты контента. Проверить "
-        "шаблоны мета-тегов."
+        "Yandex sees duplicated title/description or other content attributes. Check "
+        "the meta-tag templates."
     ),
 }
 
@@ -369,9 +369,9 @@ def render_provider_audit_markdown(extract: dict[str, Any]) -> str:
     period = extract.get("period") if isinstance(extract.get("period"), dict) else {}
     lines.append(f"# Provider audit: {project}")
     lines.append("")
-    lines.append(f"Период: {period.get('start', '?')} - {period.get('end', '?')}")
+    lines.append(f"Period: {period.get('start', '?')} - {period.get('end', '?')}")
     lines.append("")
-    lines.append("## Качество источников")
+    lines.append("## Source quality")
     sources = extract.get("sources") if isinstance(extract.get("sources"), dict) else {}
     for source_name, source in sources.items():
         if not isinstance(source, dict):
@@ -408,7 +408,7 @@ def write_provider_audit_artifacts(root: Path, extract: dict[str, Any], report_t
         markdown_text=report_text,
         output_dir=root,
         basename="provider-audit",
-        title=f"SEO-аудит источников: {extract.get('project') or 'unknown'}",
+        title=f"SEO source audit: {extract.get('project') or 'unknown'}",
         subtitle=_provider_audit_subtitle(extract),
     )
     extract_sha = _sha256_text(extract_text)
@@ -487,8 +487,8 @@ def _provider_audit_subtitle(extract: dict[str, Any]) -> str:
     period = extract.get("period") if isinstance(extract.get("period"), dict) else {}
     start = period.get("start") or "?"
     end = period.get("end") or "?"
-    timezone = period.get("timezone") or "локальный часовой пояс проекта"
-    return f"Период: {start} - {end}. Часовой пояс: {timezone}."
+    timezone = period.get("timezone") or "project local timezone"
+    return f"Period: {start} - {end}. Timezone: {timezone}."
 
 
 def summarize_source_quality(sources: dict[str, Any]) -> dict[str, Any]:
@@ -710,7 +710,7 @@ def _render_gsc(lines: list[str], source: Any) -> None:
     if not isinstance(source, dict):
         return
     lines.append("## Google Search Console")
-    lines.append("Важно: Search Analytics отдаёт top rows, а не полный universe всех запросов и URL.")
+    lines.append("Note: Search Analytics returns top rows, not the full universe of all queries and URLs.")
     for block in _source_property_blocks(source):
         _render_property_heading(lines, block)
         search = block.get("search_analytics") if isinstance(block.get("search_analytics"), dict) else {}
@@ -728,7 +728,7 @@ def _render_ga4(lines: list[str], source: Any) -> None:
     if not isinstance(source, dict):
         return
     lines.append("## GA4")
-    lines.append("Важно: GA4 показывает analytics traffic, а не поисковые показы/позиции; SEO-срез фильтруется по Organic Search.")
+    lines.append("Note: GA4 shows analytics traffic, not search impressions/ranks; the SEO slice is filtered by Organic Search.")
     for block in _source_property_blocks(source):
         _render_property_heading(lines, block)
         reports = block.get("reports") if isinstance(block.get("reports"), dict) else {}
@@ -779,7 +779,7 @@ def _render_webmaster(lines: list[str], source: Any) -> None:
                     continue
                 lines.append(f"- {item.get('code')} ({item.get('severity')})")
         lines.append("")
-        lines.append("### Расшифровка findings")
+        lines.append("### Finding explanations")
         for item in present:
             if not isinstance(item, dict):
                 continue
@@ -788,10 +788,10 @@ def _render_webmaster(lines: list[str], source: Any) -> None:
             if explanation:
                 lines.append(f"- {code}: {explanation}")
         if not present:
-            lines.append("- PRESENT findings не обнаружены в diagnostics payload.")
+            lines.append("- No PRESENT findings were detected in the diagnostics payload.")
         _table(lines, "Popular queries", ["query", "clicks", "impressions", "average_position"], block.get("popular_queries") or [])
         _table(lines, "Sitemaps", ["sitemap_url", "submitted_urls", "indexed_urls", "problem_count"], block.get("sitemaps") or [])
-        lines.append("diagnostics сами по себе affected pages не дают; broken-link endpoint может давать конкретные URL.")
+        lines.append("diagnostics alone do not provide affected pages; the broken-link endpoint may return specific URLs.")
         _table(lines, "Broken internal link samples", ["source_url", "target_url", "status"], block.get("broken_internal_links") or [])
     lines.append("")
 
@@ -811,7 +811,7 @@ def _table(lines: list[str], title: str, columns: list[str], rows: list[Any], *,
     lines.append(f"### {title}")
     clean_rows = [row for row in rows if isinstance(row, dict)]
     if not clean_rows:
-        lines.append("- Нет данных.")
+        lines.append("- No data.")
         return
     lines.append("| " + " | ".join(columns) + " |")
     lines.append("| " + " | ".join("---" for _ in columns) + " |")

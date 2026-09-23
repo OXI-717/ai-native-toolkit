@@ -407,7 +407,7 @@ def doctor_gsc_source(
             errors.append(f"{field_name} must be a non-empty string")
             config_shape = False
     if credential_file_env is None and token_file_env is None and credential_env is None:
-        # Как у GA4: service account, OAuth-файл или готовый токен — любой из трёх.
+        # Same as GA4: service account, OAuth file, or a ready token — any of the three.
         errors.append("one of credential_file_env, token_file_env or credential_env is required")
         config_shape = False
     bindings_valid = True
@@ -469,10 +469,11 @@ def validate_url_prefix_property(value: str, *, raise_error: bool = True) -> boo
 
 
 def validate_domain_property(value: str, *, raise_error: bool = True) -> bool:
-    """Доменный ресурс вида `sc-domain:example.org`.
+    """Domain property of the form `sc-domain:example.org`.
 
-    Такой ресурс покрывает все поддомены и оба протокола сразу, и во многих
-    проектах URL-prefix просто не заводят — тогда доменный ресурс единственный.
+    Such a property covers all subdomains and both protocols at once, and many
+    projects never register a URL-prefix property — then the domain property is
+    the only one available.
     """
     valid = (
         isinstance(value, str)
@@ -489,7 +490,7 @@ def validate_domain_property(value: str, *, raise_error: bool = True) -> bool:
 
 
 def validate_gsc_property(value: str, *, raise_error: bool = True) -> bool:
-    """Ресурс Search Console: URL-prefix либо доменный."""
+    """Search Console property: either a URL-prefix or a domain property."""
     if validate_url_prefix_property(value, raise_error=False):
         return True
     if validate_domain_property(value, raise_error=False):

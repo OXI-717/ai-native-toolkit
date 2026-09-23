@@ -14,21 +14,21 @@ from seo_hub.client import HubAPI
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 LABELS = {
-    "observer": "SEO-отчёт", "credentials": "Доступ к данным",
+    "observer": "SEO report", "credentials": "Data access",
     "elmo": "Elmo", "openseo": "OpenSEO",
-    "observer.report": "SEO-отчёт", "observer.actions": "Рекомендации SEO",
-    "elmo.ai_visibility": "Видимость в ИИ (Elmo)",
-    "openseo.evidence": "Данные поиска (OpenSEO)",
-    "queued": "В очереди", "running": "Выполняется", "succeeded": "Завершён",
-    "partial": "Частично", "failed": "Ошибка", "cancelled": "Отменён",
-    "skipped": "Пропущен", "complete": "Полные", "stale": "Устаревшие",
-    "not_comparable": "Несопоставимые", "missing": "Нет данных",
-    "google_search_console": "Google Search Console", "yandex_metrica": "Яндекс Метрика",
-    "yandex_webmaster": "Яндекс Вебмастер", "ga4": "Google Analytics",
-    "serp": "Поисковая выдача", "observer.snapshot": "Снимок SEO",
-    "observer.doctor": "Проверка настроек", "observer.ai-readiness": "Готовность к ИИ-поиску",
-    "comparable": "Сопоставимые", "insufficient_coverage": "Недостаточное покрытие",
-    "provisional": "Предварительные выводы", "confirmed": "Подтверждено", "unknown": "Не подтверждено",
+    "observer.report": "SEO report", "observer.actions": "SEO recommendations",
+    "elmo.ai_visibility": "AI visibility (Elmo)",
+    "openseo.evidence": "Search data (OpenSEO)",
+    "queued": "Queued", "running": "Running", "succeeded": "Finished",
+    "partial": "Partial", "failed": "Failed", "cancelled": "Cancelled",
+    "skipped": "Skipped", "complete": "Complete", "stale": "Stale",
+    "not_comparable": "Not comparable", "missing": "No data",
+    "google_search_console": "Google Search Console", "yandex_metrica": "Yandex Metrica",
+    "yandex_webmaster": "Yandex Webmaster", "ga4": "Google Analytics",
+    "serp": "Search results", "observer.snapshot": "SEO snapshot",
+    "observer.doctor": "Settings check", "observer.ai-readiness": "AI-search readiness",
+    "comparable": "Comparable", "insufficient_coverage": "Insufficient coverage",
+    "provisional": "Provisional conclusions", "confirmed": "Confirmed", "unknown": "Unconfirmed",
 }
 
 
@@ -40,11 +40,11 @@ def render_index(api: HubAPI, principal: Principal) -> str:
         status = api.project_status(project["id"], principal)
         readiness = _readiness(status["readiness"], status["history"])
         latest = status["latest_run"]
-        latest_cell = _run_link(project["id"], latest) if latest else "Запусков пока нет"
+        latest_cell = _run_link(project["id"], latest) if latest else "No runs yet"
         links = " ".join(filter(None, (
             _external_link(project['deep_links']['elmo'], 'Elmo'),
             _external_link(project['deep_links']['openseo'], 'OpenSEO'),
-        ))) or '<span class="muted">Нет доступных ссылок</span>'
+        ))) or '<span class="muted">No links available</span>'
         rows.append(
             "<tr>"
             f"<td><a href=\"/projects/{_segment(project['id'])}\">{_esc(project['label'])}</a></td>"
@@ -52,9 +52,9 @@ def render_index(api: HubAPI, principal: Principal) -> str:
             f"<td>{links}</td>"
             "</tr>"
         )
-    return _page("Проекты", '<h1>Проекты</h1><table><thead><tr>'
-                 '<th scope="col">Проект</th><th scope="col">Источники данных</th>'
-                 '<th scope="col">Последний запуск</th><th scope="col">Сервисы</th>'
+    return _page("Projects", '<h1>Projects</h1><table><thead><tr>'
+                 '<th scope="col">Project</th><th scope="col">Data sources</th>'
+                 '<th scope="col">Latest run</th><th scope="col">Services</th>'
                  '</tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
 
 
@@ -79,11 +79,11 @@ def render_project(api: HubAPI, principal: Principal, project_id: str) -> str:
     selected = selected or first
     overview = _report_body(selected) if selected else ""
     if latest and selected and latest["run_id"] != selected["run"]["run_id"]:
-        overview = f'<p class="notice">Последний запуск: {_label(latest["state"])}. Отчёта нет; показана предыдущая сводка.</p>' + overview
+        overview = f'<p class="notice">Latest run: {_label(latest["state"])}. No report; the previous summary is shown.</p>' + overview
     body = (f"<h1>{_esc(payload['project']['label'])}</h1>" + overview
-            + f'<section><h2>Подключения</h2>{readiness}</section>'
-            + '<details class="history"><summary>История запусков</summary>'
-            + (f'<ul class="run-history">{history}</ul>' if history else '<p>Запусков пока нет.</p>') + '</details>')
+            + f'<section><h2>Connections</h2>{readiness}</section>'
+            + '<details class="history"><summary>Run history</summary>'
+            + (f'<ul class="run-history">{history}</ul>' if history else '<p>No runs yet.</p>') + '</details>')
     return _page(payload["project"]["label"], _project_nav(api) + body)
 
 
@@ -93,7 +93,7 @@ def render_run(api: HubAPI, principal: Principal, project_id: str, run_id: str) 
     label = next(project.label for project in api.registry.projects if project.id == project_id)
     body = (
         _project_nav(api)
-        + f"<p><a href=\"/projects/{_segment(project_id)}\">История проекта</a></p>"
+        + f"<p><a href=\"/projects/{_segment(project_id)}\">Project history</a></p>"
         + f"<h1>{_esc(label)}</h1>" + _report_body(payload)
     )
     return _page(run_id, body)
@@ -101,7 +101,7 @@ def render_run(api: HubAPI, principal: Principal, project_id: str, run_id: str) 
 
 def _number(value: Any, *, percent: bool = False) -> str:
     if type(value) not in (int, float) or not math.isfinite(value):
-        return "Нет данных"
+        return "No data"
     return f"{value * 100 if percent else value:,.2f}".rstrip("0").rstrip(".").replace(",", " ").replace(".", ",") + ("%" if percent else "")
 
 
@@ -115,15 +115,15 @@ def _evidence_table(entries: list[dict[str, Any]]) -> str:
             name += f'<small>{_esc(basket)}</small>'
         quality = entry.get("quality", "missing")
         tone = "warning" if quality in {"stale", "missing", "not_comparable"} else "neutral"
-        observed = _date(entry["observed_at"]) if isinstance(entry.get("observed_at"), str) else "Дата неизвестна"
+        observed = _date(entry["observed_at"]) if isinstance(entry.get("observed_at"), str) else "Date unknown"
         start, end = entry.get("effective_start"), entry.get("effective_end")
         if start or end:
-            observed += f'<small>Период: {_esc(start or "?")} — {_esc(end or "?")}</small>'
+            observed += f'<small>Period: {_esc(start or "?")} — {_esc(end or "?")}</small>'
         coverage = entry.get("coverage") if isinstance(entry.get("coverage"), dict) else {}
         ratio = coverage.get("coverage")
         coverage_html = _number(ratio, percent=True)
         if type(ratio) in (float, int) and math.isfinite(ratio) and 0 <= ratio <= 1:
-            coverage_html += f'<progress max="1" value="{ratio}" aria-label="Покрытие"></progress>'
+            coverage_html += f'<progress max="1" value="{ratio}" aria-label="Coverage"></progress>'
         if coverage.get("observed_slots") is not None and coverage.get("expected_slots") is not None:
             coverage_html += f'<small>{_number(coverage["observed_slots"])} / {_number(coverage["expected_slots"])}</small>'
         count = _number(entry.get("row_count"))
@@ -133,15 +133,15 @@ def _evidence_table(entries: list[dict[str, Any]]) -> str:
         for index, metrics in enumerate(owned):
             if not isinstance(metrics, dict):
                 continue
-            ranks.append(f'<tr><th scope="row">{name}' + (f'<small>Объект {index + 1}</small>' if len(owned) > 1 else '')
+            ranks.append(f'<tr><th scope="row">{name}' + (f'<small>Property {index + 1}</small>' if len(owned) > 1 else '')
                          + f'</th><td>{_number(metrics.get("best_rank"))}</td><td>{_number(metrics.get("median_rank"))}</td>'
                          + f'<td>{_number(metrics.get("coverage"), percent=True)}</td>'
                          + f'<td>{_label(entry.get("comparability", "unknown"))}<small>{_label(entry.get("conclusion_status", "unknown"))}</small></td></tr>')
-    body = '<section><h2>Данные источников</h2>' + _table(
-        ("Источник / выборка", "Качество", "Дата измерения", "Покрытие", "Записей"), rows) + '</section>'
+    body = '<section><h2>Source data</h2>' + _table(
+        ("Source / sample", "Quality", "Measured at", "Coverage", "Rows"), rows) + '</section>'
     if ranks:
-        body += '<section><h2>Позиции в поиске</h2>' + _table(
-            ("Выборка", "Лучшая позиция", "Медианная позиция", "Покрытие", "Ограничения выводов"), ranks) + '</section>'
+        body += '<section><h2>Search rankings</h2>' + _table(
+            ("Sample", "Best rank", "Median rank", "Coverage", "Conclusion limits"), ranks) + '</section>'
     return body
 
 
@@ -176,7 +176,7 @@ def _has_renderable_report(report: Any) -> bool:
 def _report_body(payload: dict[str, Any]) -> str:
     run = payload["run"]
     report = payload.get("report")
-    body = f'<p class="run-meta">Сводка от {_date(run["created_at"])} · {_label(run["state"])}</p>'
+    body = f'<p class="run-meta">Summary from {_date(run["created_at"])} · {_label(run["state"])}</p>'
     entries = _evidence_entries(report)
     summary = _summary_text(report)
     if entries:
@@ -184,23 +184,23 @@ def _report_body(payload: dict[str, Any]) -> str:
         missing = sum(entry.get("quality", "missing") == "missing" for entry in entries)
         body += '<dl class="metrics">' + ''.join(
             f'<div><dt>{label}</dt><dd>{value}</dd></div>' for label, value in (
-                ("Наборов данных", len(entries)), ("Устаревших", stale), ("Без подтверждённых данных", missing))) + '</dl>'
+                ("Datasets", len(entries)), ("Stale", stale), ("Without confirmed data", missing))) + '</dl>'
         if stale or missing:
-            body += '<p class="notice">Есть устаревшие или неподтверждённые данные. Текущие результаты по ним не определены.</p>'
+            body += '<p class="notice">Some data is stale or unconfirmed. Current results for it are undefined.</p>'
         body += _evidence_table(entries)
     elif summary is not None:
-        body += '<section><h2>Отчёт</h2>' + ''.join(f'<p>{_esc(part)}</p>' for part in summary.split("\n\n") if part.strip()) + '</section>'
+        body += '<section><h2>Report</h2>' + ''.join(f'<p>{_esc(part)}</p>' for part in summary.split("\n\n") if part.strip()) + '</section>'
     else:
-        body += '<p title="No report content available">Для этого запуска пока нет текста отчёта.</p>'
+        body += '<p title="No report content available">No report text for this run yet.</p>'
     source_rows = []
     for name, source in run.get("sources", {}).items():
         error = source.get("error")
-        error_text = error.get("message", error.get("code", "Ошибка источника")) if isinstance(error, dict) else error
+        error_text = error.get("message", error.get("code", "Source error")) if isinstance(error, dict) else error
         source_rows.append(f'<tr title="{_esc(name)}: {_esc(source["status"])}, quality {_esc(source["quality"])}">'
                            f'<th scope="row">{_label(name)}</th><td>{_source_label(source)}'
                            + (f'<p class="source-error">{_esc(error_text)}</p>' if error_text else '') + '</td></tr>')
-    body += '<section><h2>Состояние проверок</h2>' + _table(("Проверка", "Результат"), source_rows) + '</section>'
-    body += '<details class="technical"><summary>Технические данные</summary><pre>' + _esc(
+    body += '<section><h2>Check status</h2>' + _table(("Check", "Result"), source_rows) + '</section>'
+    body += '<details class="technical"><summary>Technical data</summary><pre>' + _esc(
         json.dumps(payload, ensure_ascii=False, indent=2)) + '</pre></details>'
     return body
 
@@ -223,7 +223,7 @@ def _project_nav(api: HubAPI) -> str:
         f"<a href=\"/projects/{_segment(project.id)}\">{_esc(project.label)}</a>"
         for project in api.registry.projects
     )
-    return f'<nav aria-label="Проекты"><a href="/">Все проекты</a>{links}</nav>'
+    return f'<nav aria-label="Projects"><a href="/">All projects</a>{links}</nav>'
 
 
 def _external_link(url: str, label: str) -> str:
@@ -245,8 +245,8 @@ def _label(value: str) -> str:
 
 def _source_label(source: dict[str, Any]) -> str:
     if source["status"] == "succeeded" and source["quality"] == "missing":
-        return "Подключено, нет измерений"
-    return f"{_label(source['status'])}. Данные: {_label(source['quality'])}"
+        return "Connected, no measurements"
+    return f"{_label(source['status'])}. Data: {_label(source['quality'])}"
 
 
 def _readiness(values: dict[str, bool], history: list[dict[str, Any]]) -> str:
@@ -255,7 +255,7 @@ def _readiness(values: dict[str, bool], history: list[dict[str, Any]]) -> str:
     for key, value in values.items():
         name = source_names.get(key)
         source = next((run["sources"][name] for run in history if name in run.get("sources", {})), None)
-        label = _source_label(source) if source else ("Готово" if value else "Не настроено")
+        label = _source_label(source) if source else ("Ready" if value else "Not configured")
         available = (source["status"] == "succeeded" and source["quality"] != "missing") if source else value
         rows.append(
             f'<li title="{_esc(key)}:{"ready" if value else "missing"}">'

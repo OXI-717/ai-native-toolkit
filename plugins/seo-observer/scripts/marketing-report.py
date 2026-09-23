@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Маркетинговый SEO-отчёт: кластеры и разрывы, на русском.
+"""Marketing SEO report: clusters and gaps.
 
-Отличие от `competitors audit`: тот отвечает на вопрос «какая сейчас доля
-видимости», а этот — на вопрос «куда вкладываться в первую очередь». Поэтому
-здесь появляются два измерения, которых нет в аудите:
+Difference from `competitors audit`: that one answers "what is our current
+share of voice", while this one answers "where to invest first". That is why
+two dimensions appear here that the audit does not have:
 
-* **кластер** — тема целиком, взвешенная по спросу, а не по числу фраз;
-* **разрыв** — запрос с высоким спросом, где нас нет, а прямой конкурент в топ-3.
+* **cluster** — a whole topic, weighted by demand rather than phrase count;
+* **gap** — a high-demand query where we are absent while a direct competitor
+  sits in the top-3.
 
-Запуск:
+Usage:
 
     python3 scripts/marketing-report.py \
         --config <path/to/project.toml> --keyword-set <id> \
@@ -45,13 +46,13 @@ from seo_observer.yandex_search import (  # noqa: E402
 
 TOP_LEADER = 3
 VISIBLE_DEPTH = 20
-# Классы, за которыми имеет смысл гнаться: reference/marketplace занимают выдачу,
-# но отобрать у них место продуктовой страницей нельзя.
+# Classes worth competing with: reference/marketplace occupy the SERP, but a
+# product page cannot take their slot.
 CONTESTABLE = {"direct", "indirect"}
 
 
 class HttpTransport:
-    """Транспорт по контракту плагина: относительный endpoint, базовый URL внутри."""
+    """Transport following the plugin contract: relative endpoint, base URL held inside."""
 
     def __init__(self, base_url: str, timeout: int = 40) -> None:
         self._base_url = base_url.rstrip("/")
@@ -85,7 +86,7 @@ def main() -> int:
     parser.add_argument("--keyword-set", required=True)
     parser.add_argument("--market", default="ru")
     parser.add_argument("--output", required=True)
-    parser.add_argument("--limit", type=int, default=0, help="0 = весь набор")
+    parser.add_argument("--limit", type=int, default=0, help="0 = the whole set")
     parser.add_argument("--depth", type=int, default=20)
     parser.add_argument("--pause", type=float, default=0.25)
     args = parser.parse_args()
@@ -93,16 +94,16 @@ def main() -> int:
     config = load_project_config(Path(args.config).expanduser())
     market = next((m for m in config.markets if m.id == args.market), None)
     if market is None:
-        print(f"рынок {args.market!r} не найден в конфиге", file=sys.stderr)
+        print(f"market {args.market!r} not found in the config", file=sys.stderr)
         return 2
     token = os.environ.get(market.credential_env)
     if not token:
-        print(f"нет переменной {market.credential_env}", file=sys.stderr)
+        print(f"env variable {market.credential_env} is not set", file=sys.stderr)
         return 2
 
     selected = next((k for k in config.keyword_sets if k.id == args.keyword_set), None)
     if selected is None:
-        print(f"набор ключей {args.keyword_set!r} не найден", file=sys.stderr)
+        print(f"keyword set {args.keyword_set!r} not found", file=sys.stderr)
         return 2
 
     keywords = parse_keyword_file(selected.path)
@@ -126,8 +127,8 @@ def main() -> int:
         region,
         args.depth,
         args.pause,
-        # DataForSEO отвергает location_name, когда регион задан числовым
-        # location_code (40501 Invalid Field). Наши регионы — коды, поэтому None.
+        # DataForSEO rejects location_name when the region is given as a numeric
+        # location_code (40501 Invalid Field). Our regions are codes, so None.
         location_name=None,
         language=market.language if is_google else None,
         device="desktop" if is_google else "__all__",
@@ -144,16 +145,16 @@ def main() -> int:
     out = Path(args.output).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(report, encoding="utf-8")
-    print(f"отчёт: {out}  (запросов {len(rows)}, ошибок {failures})")
+    print(f"report: {out}  (queries {len(rows)}, failures {failures})")
     return 0
 
 
 def _build_adapter(config, market, token: str):
-    """Адаптер выбирается по движку рынка.
+    """The adapter is chosen by the market's engine.
 
-    Без этого `--market en` молча строил бы яндексовый адаптер с кредами
-    DataForSEO: все запросы падали бы с 401, а отчёт выглядел бы просто пустым
-    вместо явной ошибки.
+    Without this, `--market en` would silently build the Yandex adapter with
+    DataForSEO credentials: every request would fail with 401 and the report
+    would just look empty instead of showing an explicit error.
     """
     if market.search_engine == "yandex":
         return YandexSerpProviderAdapter(
@@ -163,7 +164,7 @@ def _build_adapter(config, market, token: str):
         provider = config.providers.get("dataforseo")
         if provider is None or not provider.enabled:
             raise ValueError(
-                f"рынок {market.id!r} требует включённого провайдера dataforseo в конфиге"
+                f"market {market.id!r} requires an enabled dataforseo provider in the config"
             )
         endpoint = provider.endpoint or DATAFORSEO_DEFAULT_BASE_URL
         return DataForSEOAdapter(
@@ -179,7 +180,7 @@ def _build_adapter(config, market, token: str):
             env=dict(os.environ),
         )
     raise ValueError(
-        f"движок {market.search_engine!r} не поддерживается маркетинговым отчётом"
+        f"engine {market.search_engine!r} is not supported by the marketing report"
     )
 
 
@@ -225,8 +226,8 @@ def _render(*, config, market, keyword_set_id, rows, failures, competitor_config
         our_rank = None
         leaders = []
         for row in serp:
-            # DataForSEO отдаёт и строки без url (часть типов сниппетов),
-            # поэтому классифицировать можно не всё, что пришло.
+            # DataForSEO also returns rows without a url (some snippet types),
+            # so not everything that arrives can be classified.
             url = row.get("url")
             rank_raw = row.get("rank_absolute")
             if not url or rank_raw is None:
@@ -247,7 +248,7 @@ def _render(*, config, market, keyword_set_id, rows, failures, competitor_config
                     leaders.append((rank, cid))
         entry = {
             "keyword": item.keyword,
-            "cluster": item.cluster or "без кластера",
+            "cluster": item.cluster or "no cluster",
             "yws": item.yws or 0,
             "rank": our_rank,
             "leaders": sorted(leaders)[:2],
@@ -262,43 +263,43 @@ def _render(*, config, market, keyword_set_id, rows, failures, competitor_config
     covered_yws = sum(e["yws"] for e in visible)
 
     lines = [
-        f"# SEO-отчёт: {project}",
+        f"# SEO report: {project}",
         "",
-        f"Контур: **{market.id.upper()}**, поиск {market.search_engine}, регион {market.regions[0] if market.regions else '—'}.",
-        f"Набор ключей: `{keyword_set_id}`. Дата: {generated}.",
+        f"Market: **{market.id.upper()}**, engine {market.search_engine}, region {market.regions[0] if market.regions else '—'}.",
+        f"Keyword set: `{keyword_set_id}`. Date: {generated}.",
         "",
-        "## Коротко",
+        "## In short",
         "",
-        f"- Проверено запросов: **{len(per_keyword)}**"
-        + (f" (не удалось собрать: {failures})" if failures else ""),
-        f"- Видны в топ-{VISIBLE_DEPTH}: **{len(visible)}** ({len(visible) * 100 // max(len(per_keyword), 1)}%)",
-        f"- Из них в топ-10: **{len(top10)}**",
+        f"- Queries checked: **{len(per_keyword)}**"
+        + (f" (failed to collect: {failures})" if failures else ""),
+        f"- Visible in top-{VISIBLE_DEPTH}: **{len(visible)}** ({len(visible) * 100 // max(len(per_keyword), 1)}%)",
+        f"- Of those in top-10: **{len(top10)}**",
     ]
     if demand_known:
         lines.append(
-            f"- Спрос, который мы охватываем: **{covered_yws * 100 // total_yws}%** "
-            f"({covered_yws} из {total_yws} показов Wordstat)"
+            f"- Demand we cover: **{covered_yws * 100 // total_yws}%** "
+            f"({covered_yws} of {total_yws} Wordstat impressions)"
         )
     else:
         lines.append(
-            "- Спрос по запросам **не размечен**: в наборе ключей нет частотностей "
-            "Wordstat, поэтому приоритизировать темы по объёму сейчас нельзя "
-            "(см. раздел «Чего не хватает»)."
+            "- Query demand is **not marked up**: the keyword set has no "
+            "Wordstat volumes, so topics cannot be prioritized by volume right "
+            "now (see the \"What is missing\" section)."
         )
     lines.append("")
 
     if not visible:
         lines += [
-            "> Сайт не найден ни по одному проверенному запросу в пределах топ-"
-            f"{VISIBLE_DEPTH}. Это означает, что органический поиск сейчас трафика "
-            "не приносит, и любая цифра роста будет считаться от нуля.",
+            "> The site was not found for any checked query within the top-"
+            f"{VISIBLE_DEPTH}. This means organic search currently brings no "
+            "traffic, and any growth figure will be measured from zero.",
             "",
         ]
 
     if demand_known:
-        lines += ["## Темы: где мы и где спрос", "", _cluster_table(cluster_rows), ""]
-    lines += ["## Куда вкладываться в первую очередь", "", _gap_section(per_keyword), ""]
-    lines += ["## Кто занимает выдачу", "", _competitor_table(competitor_hits), ""]
+        lines += ["## Topics: where we stand and where the demand is", "", _cluster_table(cluster_rows), ""]
+    lines += ["## Where to invest first", "", _gap_section(per_keyword), ""]
+    lines += ["## Who occupies the SERP", "", _competitor_table(competitor_hits), ""]
     lines += _method_section(market, len(per_keyword))
     if not demand_known:
         lines += _missing_data_section()
@@ -308,20 +309,20 @@ def _render(*, config, market, keyword_set_id, rows, failures, competitor_config
 def _missing_data_section() -> list[str]:
     return [
         "",
-        "## Чего не хватает для полноценного отчёта",
+        "## What is missing for a complete report",
         "",
-        "Набор ключей не размечен: нет ни кластеров, ни частотностей Wordstat. "
-        "Из-за этого отчёт может показать, **где** мы проигрываем, но не может "
-        "ответить, **что из этого дороже всего стоит** — все запросы выглядят "
-        "равнозначными, хотя различаются по спросу в сотни раз.",
+        "The keyword set is not marked up: it has neither clusters nor Wordstat "
+        "volumes. Because of that the report can show **where** we lose, but "
+        "cannot answer **which of it is worth the most** — all queries look "
+        "equal even though they differ in demand by hundreds of times.",
         "",
-        "Чтобы это починить, нужен один разовый шаг: собрать частотности по "
-        "имеющимся запросам и сгруппировать их по темам, после чего разметить файл "
-        "ключей — кластер строкой `# cluster: <тема>`, частотность комментарием "
-        "`# yws=<число>`. Дальше отчёт считает приоритеты сам.",
+        "Fixing this takes one one-off step: collect volumes for the existing "
+        "queries and group them by topic, then mark up the keyword file — a "
+        "cluster via a `# cluster: <topic>` line, a volume via a `# yws=<number>` "
+        "comment. After that the report computes priorities itself.",
         "",
-        "Когда разметка есть, отчёт сразу показывает очередь работ "
-        "по убыванию неохваченного спроса.",
+        "Once the markup exists, the report immediately shows the work queue "
+        "ordered by uncovered demand.",
     ]
 
 
@@ -330,9 +331,9 @@ def _cluster_table(cluster_rows) -> str:
         cluster_rows.items(), key=lambda kv: -sum(e["yws"] for e in kv[1])
     )
     out = [
-        "Кластеры отсортированы по спросу. «Наша лучшая» — минимальная позиция внутри темы.",
+        "Clusters are sorted by demand. \"Our best\" is the minimal rank within the topic.",
         "",
-        "| Тема | Спрос | Фраз | Наша лучшая | Видно фраз |",
+        "| Topic | Demand | Phrases | Our best | Phrases visible |",
         "|---|---:|---:|---|---:|",
     ]
     for name, entries in ordered[:15]:
@@ -342,7 +343,7 @@ def _cluster_table(cluster_rows) -> str:
         seen = len([e for e in entries if e["rank"] and e["rank"] <= VISIBLE_DEPTH])
         out.append(
             f"| {name} | {demand} | {len(entries)} | "
-            f"{best if best else '**нет в топ-20**'} | {seen}/{len(entries)} |"
+            f"{best if best else '**not in top-20**'} | {seen}/{len(entries)} |"
         )
     return "\n".join(out)
 
@@ -355,12 +356,12 @@ def _gap_section(per_keyword) -> str:
     ]
     gaps.sort(key=lambda e: -e["yws"])
     if not gaps:
-        return "Разрывов не найдено: по проверенным запросам прямые конкуренты топ-3 не занимают."
+        return "No gaps found: no checked query has a direct competitor holding a top-3 slot."
     out = [
-        "Запросы, где есть спрос, нас нет в топ-20, а прямой конкурент стоит в топ-3.",
-        "Это и есть очередь работ — сверху вниз.",
+        "Queries with demand where we are absent from the top-20 while a direct competitor sits in the top-3.",
+        "This is the work queue — top to bottom.",
         "",
-        "| Запрос | Спрос | Кто занимает топ-3 |",
+        "| Query | Demand | Top-3 holders |",
         "|---|---:|---|",
     ]
     for entry in gaps[:20]:
@@ -369,27 +370,27 @@ def _gap_section(per_keyword) -> str:
     lost = sum(e["yws"] for e in gaps)
     out += [
         "",
-        f"Суммарный неохваченный спрос по этим запросам — **{lost}** показов в месяц.",
+        f"Total uncovered demand for these queries is **{lost}** impressions per month.",
     ]
     return "\n".join(out)
 
 
 def _competitor_table(competitor_hits) -> str:
     if not competitor_hits:
-        return "Ни один из заведённых конкурентов в выдаче не встретился."
+        return "None of the configured competitors appeared in the SERP."
     contestable = {k: v for k, v in competitor_hits.items() if v["cls"] in CONTESTABLE}
     other = {k: v for k, v in competitor_hits.items() if v["cls"] not in CONTESTABLE}
-    out = ["**За кого можно бороться** — прямые и косвенные конкуренты:", "",
-           "| Конкурент | Запросов | Лучшая позиция |", "|---|---:|---:|"]
+    out = ["**Worth competing with** — direct and indirect competitors:", "",
+           "| Competitor | Queries | Best rank |", "|---|---:|---:|"]
     for cid, hit in sorted(contestable.items(), key=lambda kv: -kv[1]["n"])[:10]:
         out.append(f"| {cid} | {hit['n']} | {hit['best']} |")
     if other:
         out += [
             "",
-            "**Занимают выдачу, но бороться за их места бессмысленно** — обзоры, витрины, "
-            "первоисточники. Сюда нужно попадать, а не вытеснять:",
+            "**Occupy the SERP, but competing for their slots is pointless** — reviews, marketplaces, "
+            "primary sources. The goal is to be featured there, not to displace them:",
             "",
-            "| Площадка | Запросов | Лучшая позиция | Тип |",
+            "| Site | Queries | Best rank | Type |",
             "|---|---:|---:|---|",
         ]
         for cid, hit in sorted(other.items(), key=lambda kv: -kv[1]["n"])[:10]:
@@ -399,20 +400,21 @@ def _competitor_table(competitor_hits) -> str:
 
 def _method_section(market, checked: int) -> list[str]:
     return [
-        "## Как это измерено",
+        "## How this is measured",
         "",
-        f"Живой съём выдачи {market.search_engine} по каждому запросу "
-        f"(регион {market.regions[0] if market.regions else '—'}), {checked} запросов, "
-        "глубина 20 позиций.",
+        f"A live {market.search_engine} SERP fetch per query "
+        f"(region {market.regions[0] if market.regions else '—'}), {checked} queries, "
+        "depth 20 positions.",
         "",
-        "Важно про источники: **Яндекс.Вебмастер показывает среднюю позицию по "
-        "фактически состоявшимся показам** — персонализированным, региональным, по "
-        "хвостовым переформулировкам, — и поэтому систематически выглядит оптимистичнее "
-        "чистой выдачи. Цифры выше сняты из самой выдачи и годятся для планирования; "
-        "цифры Вебмастера годятся для отслеживания собственной динамики.",
+        "A note on sources: **Yandex Webmaster shows the average position over "
+        "impressions that actually happened** — personalized, regional, long-tail "
+        "reformulations — and therefore systematically looks more optimistic than "
+        "the raw SERP. The figures above are taken from the SERP itself and are "
+        "suitable for planning; Webmaster figures are suitable for tracking your "
+        "own dynamics.",
         "",
-        "«Спрос» — базовая частотность Wordstat из семантического ядра проекта: "
-        "сколько раз в месяц запрос вводят в Яндексе.",
+        "\"Demand\" is the base Wordstat volume from the project's semantic core: "
+        "how many times per month the query is entered into Yandex.",
     ]
 
 

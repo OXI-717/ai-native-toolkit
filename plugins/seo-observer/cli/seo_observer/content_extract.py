@@ -207,22 +207,22 @@ def build_heading_tree(headings: list[tuple[int, str]]) -> list[dict[str, Any]]:
 
 
 def render_content_report_section(pages: list[dict[str, Any]], *, markdown_excerpt_chars: int = MARKDOWN_EXCERPT_CHARS) -> str:
-    lines = ["## Извлеченные страницы", ""]
+    lines = ["## Extracted pages", ""]
     if not pages:
-        lines.extend(["Извлеченных страниц нет.", ""])
+        lines.extend(["No pages extracted.", ""])
         return "\n".join(lines)
     for page in pages:
-        lines.append(f"### {_safe_md(str(page.get('title') or page.get('url') or 'Страница без заголовка'))}")
+        lines.append(f"### {_safe_md(str(page.get('title') or page.get('url') or 'Untitled page'))}")
         lines.append(f"- URL: `{page.get('url')}`")
-        lines.append(f"- ID доказательства: `{page.get('citation_id')}`")
-        lines.append(f"- Качество: `{page.get('quality')}`")
-        lines.append(f"- HTTP-статус: `{page.get('fetch_status')}`")
+        lines.append(f"- Evidence ID: `{page.get('citation_id')}`")
+        lines.append(f"- Quality: `{page.get('quality')}`")
+        lines.append(f"- HTTP status: `{page.get('fetch_status')}`")
         if page.get("error"):
-            lines.append(f"- Ошибка: {_safe_md(str(page.get('error')))}")
+            lines.append(f"- Error: {_safe_md(str(page.get('error')))}")
         headings = page.get("headings") or []
         if headings:
             rendered = "; ".join(str(item.get("text") or "") for item in headings[:6] if isinstance(item, dict))
-            lines.append(f"- Заголовки на странице: {_safe_md(rendered)}")
+            lines.append(f"- Page headings: {_safe_md(rendered)}")
         excerpt = _safe_md(str(page.get("text_excerpt") or "")[:markdown_excerpt_chars])
         if excerpt:
             lines.append("")

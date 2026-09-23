@@ -1,20 +1,20 @@
-"""Разбор наборов ключей с кластерами и частотностью.
+"""Parsing of keyword sets with clusters and search volume.
 
-Кластер — это то измерение, в котором маркетинг реально принимает решения:
-«просели три запроса» и «просел весь кластер на 6 930 показов» требуют разных
-действий (правка мета-тега против отдельной посадочной страницы).
+A cluster is the dimension in which marketing actually makes decisions:
+"three queries dropped" and "the whole cluster dropped by 6,930 impressions"
+require different actions (a meta-tag fix versus a dedicated landing page).
 
-Канонический формат:
+Canonical format:
 
-    # cluster: калькулятор вилок
-    калькулятор вилок    # yws=5772 yws_exact=3327
+    # cluster: sofa calculator
+    sofa calculator    # yws=5772 yws_exact=3327
 
-Поддерживается и формат выгрузок, уже лежащих в проектах:
+The export format already found in projects is also supported:
 
-    # --- кластер: калькулятор вилок (24 фразы, YWS 6930) ---
-    калькулятор вилок    # YWS 5772 / 3327
+    # --- кластер: sofa calculator (24 phrases, YWS 6930) ---
+    sofa calculator    # YWS 5772 / 3327
 
-Файл без разметки читается как раньше: один кластер `None`, частотность `None`.
+A file without markup is read as before: a single `None` cluster, `None` volume.
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ from pathlib import Path
 _CLUSTER_CANON = re.compile(r"^#\s*cluster:\s*(?P<name>.+?)\s*$", re.IGNORECASE)
 _CLUSTER_LEGACY = re.compile(r"^#\s*-*\s*кластер:\s*(?P<name>.+?)\s*(?:\(.*\))?\s*-*\s*$", re.IGNORECASE)
 _YWS_CANON = re.compile(r"yws\s*=\s*(?P<base>\d+)(?:\s+yws_exact\s*=\s*(?P<exact>\d+))?", re.IGNORECASE)
-# Для не-яндексовых контуров частотность приходит из другого источника
-# (Google search volume), и называть её yws было бы неверно.
+# For non-Yandex markets the volume comes from a different source
+# (Google search volume), so calling it yws would be wrong.
 _SV_CANON = re.compile(r"\bsv\s*=\s*(?P<base>\d+)(?:\s+sv_exact\s*=\s*(?P<exact>\d+))?", re.IGNORECASE)
 _YWS_LEGACY = re.compile(r"YWS\s+(?P<base>\d+)\s*(?:/\s*(?P<exact>\d+))?", re.IGNORECASE)
 
@@ -36,14 +36,14 @@ _YWS_LEGACY = re.compile(r"YWS\s+(?P<base>\d+)\s*(?:/\s*(?P<exact>\d+))?", re.IG
 class ClusteredKeyword:
     keyword: str
     cluster: str | None = None
-    # Частотность запроса в его рынке: Wordstat для Яндекса, search volume
-    # для Google. Единица подписана в шапке файла ключей.
+    # Query volume in its market: Wordstat for Yandex, search volume
+    # for Google. The unit is labeled in the keyword file header.
     yws: int | None = None
     yws_exact: int | None = None
 
 
 def parse_keyword_file(path: Path) -> list[ClusteredKeyword]:
-    """Читает файл ключей, сохраняя кластер и частотность, если они размечены."""
+    """Reads a keyword file, preserving cluster and volume markup if present."""
     keywords: list[ClusteredKeyword] = []
     current_cluster: str | None = None
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -69,10 +69,10 @@ def parse_keyword_file(path: Path) -> list[ClusteredKeyword]:
 
 
 def cluster_demand(keywords: list[ClusteredKeyword]) -> dict[str, int]:
-    """Суммарная частотность по кластеру — вес темы, а не число фраз в ней."""
+    """Total volume per cluster — the weight of a topic, not the phrase count."""
     demand: dict[str, int] = {}
     for item in keywords:
-        name = item.cluster or "__без кластера__"
+        name = item.cluster or "__no cluster__"
         demand[name] = demand.get(name, 0) + (item.yws or 0)
     return demand
 

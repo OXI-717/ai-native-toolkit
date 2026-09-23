@@ -101,12 +101,13 @@ def _json_dump(payload: dict[str, Any]) -> None:
 
 
 def _install_check() -> dict[str, Any]:
-    """Откуда исполняется пакет.
+    """Where the package is executed from.
 
-    Editable install из git worktree тихо замораживает CLI на ветке: main уходит
-    вперёд, а команда продолжает исполнять старый код. Когда worktree удаляют,
-    команда вообще перестаёт импортироваться — но такой случай сюда уже не дойдёт,
-    его ловит doctor-чек исходного репозитория.
+    An editable install from a git worktree silently freezes the CLI on that
+    branch: main moves ahead while the command keeps running the old code. When
+    the worktree is deleted, the command stops importing at all — but that case
+    never reaches this point; it is caught by the doctor check of the source
+    repository.
     """
     package_dir = Path(__file__).resolve().parent
     parts = package_dir.parts
@@ -140,9 +141,9 @@ def doctor_payload(args: argparse.Namespace | None = None) -> dict[str, Any]:
     else:
         try:
             config = load_project_config(project_config)
-            # Объявленный env-файл подгружается до проверки источников: иначе
-            # doctor рапортует «нет токена» там, где токен объявлен и лежит на
-            # месте, и подсказка получается ровно противоположной правде.
+            # The declared env file is loaded before source checks: otherwise
+            # doctor reports "no token" where a token is declared and in place,
+            # and the hint ends up exactly opposite to the truth.
             apply_credential_source(config.credential_source, os.environ)
             extra_checks["credentials"] = doctor_credential_source(
                 config.credential_source,
@@ -271,7 +272,7 @@ def doctor_payload(args: argparse.Namespace | None = None) -> dict[str, Any]:
 
 
 def _required_env_names(config: Any) -> list[str]:
-    """Имена переменных, на которые ссылается конфиг включённых источников."""
+    """Names of env variables referenced by the config of enabled sources."""
 
     names: list[str] = []
     for source in config.sources.values():
@@ -1168,13 +1169,14 @@ def _snapshot_or_report_payload(
 
 
 def _project_mismatch_error(path: Path, action_project: str, selected: str) -> dict[str, Any] | None:
-    """Действие, объявляющее чужой project_id, пишется не в тот журнал.
+    """An action declaring a foreign project_id would be written to the wrong journal.
 
-    Заявка в файле и `--project` расходятся при устаревшем шаблоне, копипасте или опечатке.
-    Foreign key ловит это, только если чужой проект не зарегистрирован в этой базе, и
-    сообщает `FOREIGN KEY constraint failed` — по нему причину не найти. Когда же чужой
-    проект в базе известен, действие уходит в него молча: `ingested_count: 1`, а в
-    `actions list --project <выбранный>` его нет.
+    The file's declaration and `--project` diverge on a stale template, copy-paste, or a typo.
+    A foreign key catches this only if the foreign project is not registered in this
+    database, and reports `FOREIGN KEY constraint failed` — which gives no clue about the
+    cause. When the foreign project is known to the database, the action goes into it
+    silently: `ingested_count: 1`, yet it is absent from
+    `actions list --project <selected>`.
     """
     if action_project == selected:
         return None

@@ -42,8 +42,8 @@ KNOWN_SERP_PROVIDERS = frozenset(
         "yandex_search",
         "google_search",
         "dataforseo_google_organic",
-        # RU-контур Google: DataForSEO не отдаёт российские локации ни в одном
-        # сервисе с 2022 года, поэтому Google в РФ идёт через Topvisor.
+        # Google RU market: DataForSEO has not served Russian locations in any
+        # service since 2022, so Google in RU goes through Topvisor.
         "topvisor_google_organic",
         "topvisor_yandex_organic",
     }
@@ -128,8 +128,8 @@ class CompetitorEntry:
     domain_patterns: tuple[str, ...]
     aliases: tuple[str, ...] = ()
     competitor_class: str = "unknown"
-    # Пустой кортеж означает «во всех контурах»: конкурент вроде BreakingBet
-    # работает и на Россию, и на мир. Резолвится в явный список при парсинге.
+    # An empty tuple means "all markets": a competitor may operate on every
+    # market the project tracks. Resolved to an explicit list during parsing.
     markets: tuple[str, ...] = ()
 
 
@@ -154,7 +154,7 @@ class KeywordSet:
     regions: tuple[str, ...]
     devices: tuple[str, ...]
     weight: float | None = None
-    # Набор принадлежит ровно одному контуру; None — проект ещё не разделён на рынки.
+    # A set belongs to exactly one market; None means the project is not yet split into markets.
     market: str | None = None
 
 
@@ -167,10 +167,10 @@ class OutcomeConfig:
 
 @dataclass(frozen=True)
 class MarketConfig:
-    """Независимый поисковый контур проекта (например RU/Яндекс и EN/Google).
+    """An independent search market of the project (e.g. RU/Yandex and EN/Google).
 
-    Контуры не смешиваются: набор ключей принадлежит одному рынку, метрики
-    считаются по каждому рынку отдельно. Пересекаться могут только конкуренты.
+    Markets are not mixed: a keyword set belongs to one market, and metrics are
+    computed per market. Only competitors may overlap.
     """
 
     id: str
@@ -184,9 +184,9 @@ class MarketConfig:
     intent: str = "primary"
     source_roles: tuple[str, ...] = ()
     out_of_scope: tuple[str, ...] = ()
-    # Сырые поля рынка: провайдер-специфичные ключи (project_id, user_id_env,
-    # snapshot_date у Topvisor) не могут стать полями общего дата-класса, иначе
-    # каждый новый провайдер расширял бы контракт всех рынков.
+    # Raw market fields: provider-specific keys (project_id, user_id_env,
+    # snapshot_date for Topvisor) cannot become fields of the shared dataclass,
+    # otherwise every new provider would extend the contract of all markets.
     fields: dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
@@ -626,11 +626,11 @@ def _parse_market_defaults(raw: dict[str, Any], path: Path) -> dict[str, Any]:
 
 
 def _parse_credential_source(raw: dict[str, Any], path: Path) -> CredentialSource:
-    """Разбирает `[credentials]`: откуда проект берёт переменные окружения.
+    """Parses `[credentials]`: where the project sources env variables from.
 
-    Пути резолвятся относительно каталога конфига, а не рабочего каталога:
-    команда запускается откуда угодно, а объявление обязано указывать на одно и
-    то же место независимо от cwd.
+    Paths are resolved relative to the config directory, not the working
+    directory: a command can run from anywhere, and the declaration must point
+    to the same place regardless of cwd.
     """
 
     section = raw.get("credentials")
@@ -750,8 +750,8 @@ def _parse_competitors(
         known_markets = tuple(entry.id for entry in markets)
         markets_raw = item.get("markets")
         if markets_raw is None:
-            # Умолчание — участие во всех контурах: конкурент может работать
-            # и на Россию, и на мир одновременно.
+            # Default is participation in all markets: a competitor may operate
+            # in Russia and worldwide at the same time.
             competitor_markets = known_markets
         else:
             if not isinstance(markets_raw, list) or not all(

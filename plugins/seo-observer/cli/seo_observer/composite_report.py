@@ -115,7 +115,7 @@ def build_composite_report(options: CompositeReportOptions) -> dict[str, Any]:
         markdown_text=report_text,
         output_dir=output_dir,
         basename="composite-report",
-        title=f"SEO-отчёт для решения: {extract['project']}",
+        title=f"SEO decision report: {extract['project']}",
         subtitle=_subtitle(extract),
     )
     _assert_no_secret_markers(polished.html_path.read_text(encoding="utf-8"), artifact_name="composite-report.html")
@@ -184,30 +184,30 @@ def render_composite_markdown(extract: dict[str, Any]) -> str:
     serp = extract["evidence"]["serp"]
     metrics = extract["evidence"]["metrics"]
     lines = [
-        f"# SEO-отчёт для решения: {_safe_text(extract.get('project') or 'unknown')}",
+        f"# SEO decision report: {_safe_text(extract.get('project') or 'unknown')}",
         "",
-        "## Резюме для первого экрана",
+        "## Above-the-fold summary",
     ]
     lines.extend(f"- {item}" for item in decision["executive_summary"])
-    lines.extend(["", "## Охват источников"])
+    lines.extend(["", "## Source coverage"])
     lines.extend(_source_coverage_lines(decision))
     market_lines = _market_scope_decision_lines(extract.get("market_scope") or {})
     if market_lines:
         lines.extend(market_lines)
-    lines.extend(["", "## Приоритетные выводы"])
+    lines.extend(["", "## Prioritized findings"])
     lines.extend(_prioritized_finding_lines(decision))
-    lines.extend(["", "## Эффективность провайдеров"])
+    lines.extend(["", "## Provider performance"])
     lines.extend(_provider_performance_lines(extract["evidence"]["provider"]))
-    lines.extend(["", "## Техническая диагностика"])
+    lines.extend(["", "## Technical diagnostics"])
     lines.extend(_technical_diagnostic_lines(extract))
-    lines.extend(["", "## Наблюдения по конкурентам"])
+    lines.extend(["", "## Competitor observations"])
     lines.extend(_competitor_observation_lines(extract))
     if _has_deterministic_serp(serp) and not _serp_scope_gate_blocks_report(extract):
         lines.extend(["", "## SERP / SOV"])
         lines.extend(_serp_decision_lines(serp, metrics))
-    lines.extend(["", "## Ограничения и заблокированные выводы"])
+    lines.extend(["", "## Limitations and blocked conclusions"])
     lines.extend(_limitation_lines(extract))
-    lines.extend(["", "## Приложение: полные строки и ссылки на артефакты"])
+    lines.extend(["", "## Appendix: full rows and artifact references"])
     lines.extend(_appendix_lines(extract))
     return "\n".join(lines) + "\n"
 
@@ -226,10 +226,10 @@ def _compose_extract(
     limitations: list[str] = []
     if serp is None:
         limitations.append(
-            "SERP-артефакт не передан; отчёт не включает выводы о позициях, SERP-фичах или доле видимости."
+            "No SERP artifact was provided; the report does not include rank, SERP feature, or share-of-voice conclusions."
         )
     if metrics is None:
-        limitations.append("Артефакт метрик конкурентов не передан; сравнение доли видимости недоступно.")
+        limitations.append("No competitor metrics artifact was provided; share-of-voice comparison is unavailable.")
     evidence = {
         "provider": _provider_summary(provider),
         "research": _research_summary(research),
@@ -577,7 +577,7 @@ def _market_scope_limitations(market_scope: dict[str, Any]) -> list[str]:
     limitations = []
     for note in _market_scope_interpretation_notes(market_scope):
         if "out of scope" in note or "secondary" in note:
-            limitations.append(f"Ограничение рынка: {_market_note_ru(note)}")
+            limitations.append(f"Market scope limitation: {_market_note_ru(note)}")
     return limitations
 
 
@@ -913,10 +913,10 @@ def _blocked_claim_limitations(claim_gate: dict[str, Any]) -> list[str]:
         if finding.get("status") != "blocked":
             continue
         claim_type = str(finding.get("claim_type") or "")
-        prefix = "Вывод по SOV/позиции заблокирован: " if claim_type == "sov" else "Вывод заблокирован: "
+        prefix = "SOV/rank conclusion blocked: " if claim_type == "sov" else "Conclusion blocked: "
         limitations.append(
             f"{prefix}{_russian_claim_text(claim_type, str(finding.get('text') or ''))} "
-            f"(причина: `{finding.get('reason')}`; evidence ID: {', '.join(finding.get('evidence_ids') or ['нет'])})"
+            f"(reason: `{finding.get('reason')}`; evidence ID: {', '.join(finding.get('evidence_ids') or ['none'])})"
         )
     return limitations
 
@@ -1162,15 +1162,15 @@ def _next_actions(extract: dict[str, Any]) -> list[str]:
 
 
 QUALITY_EXPLANATIONS = {
-    "live": "живые данные источника",
-    "partial": "неполные данные: источник доступен частично или часть блоков не собрана",
-    "research-only": "исследовательская выборка, не равна подтверждённой статистике источника",
-    "unsupported": "источник не поддержан текущей конфигурацией",
-    "stale": "устаревшие данные, нельзя использовать для свежих выводов без перепроверки",
-    "failed": "сбор данных не состоялся",
-    "local-only": "локальный снимок без свежего сетевого замера",
-    "not_comparable": "данные несопоставимы из-за различий в метриках или baseline",
-    "not_provided": "опциональный артефакт не передан",
+    "live": "live data from the source",
+    "partial": "incomplete data: the source is partially available or some blocks were not collected",
+    "research-only": "a research sample, not equivalent to confirmed source statistics",
+    "unsupported": "the source is not supported by the current configuration",
+    "stale": "stale data; cannot be used for fresh conclusions without re-verification",
+    "failed": "data collection failed",
+    "local-only": "a local snapshot without a fresh network measurement",
+    "not_comparable": "data is not comparable due to metric or baseline differences",
+    "not_provided": "the optional artifact was not provided",
 }
 
 
@@ -1189,7 +1189,7 @@ def _decision_report_model(extract: dict[str, Any]) -> dict[str, Any]:
     ]
     return {
         "schema": "seo-observer.decision_report.v1",
-        "language": "ru",
+        "language": "en",
         "deterministic_serp": deterministic_serp,
         "executive_summary": summary,
         "source_coverage": _source_coverage_model(evidence),
@@ -1206,42 +1206,42 @@ def _source_coverage_model(evidence: dict[str, Any]) -> list[dict[str, Any]]:
     metrics = evidence["metrics"]
     rows = [
         {
-            "name": "Провайдеры статистики",
+            "name": "Statistics providers",
             "quality": provider["overall_quality"],
-            "coverage": f"{provider['source_count']} источника(ов); строки запросов и страниц используются как подтверждённая внутренняя статистика.",
+            "coverage": f"{provider['source_count']} source(s); query and page rows are used as confirmed first-party statistics.",
         },
         {
-            "name": "Исследование конкурентов",
+            "name": "Competitor research",
             "quality": research["overall_quality"],
-            "coverage": f"{research['row_count']} строк(и) кандидатов; это гипотезы до независимого подтверждения.",
+            "coverage": f"{research['row_count']} candidate row(s); these are hypotheses until independently confirmed.",
         },
         {
-            "name": "Контент страниц",
+            "name": "Page content",
             "quality": content["overall_quality"],
-            "coverage": f"{content['page_count']} извлечённые страницы; пригодно для выводов о темах только при успешном извлечении текста.",
+            "coverage": f"{content['page_count']} extracted page(s); usable for topic conclusions only when text extraction succeeded.",
         },
     ]
     if serp["present"]:
-        determinism = "детерминированный протокол есть" if _has_deterministic_serp(serp) else "нет protocol_hashes, ранги скрыты из выводов"
+        determinism = "deterministic protocol present" if _has_deterministic_serp(serp) else "no protocol_hashes, ranks are withheld from conclusions"
         rows.append(
             {
                 "name": "SERP",
                 "quality": "live" if _has_deterministic_serp(serp) else "partial",
-                "coverage": f"{serp['row_count']} строк(и), покрытие {serp['coverage']}; {determinism}.",
+                "coverage": f"{serp['row_count']} row(s), coverage {serp['coverage']}; {determinism}.",
             }
         )
     else:
-        rows.append({"name": "SERP", "quality": "not_provided", "coverage": "артефакт не передан; ранги и SOV не заявляются."})
+        rows.append({"name": "SERP", "quality": "not_provided", "coverage": "artifact not provided; no rank or SOV claims are made."})
     if metrics["present"]:
         rows.append(
             {
-                "name": "Метрики конкурентов",
+                "name": "Competitor metrics",
                 "quality": metrics.get("quality") or "partial",
-                "coverage": f"статус {_status_ru(metrics.get('conclusion_status') or 'нет')}; сравнимость {_status_ru(metrics.get('comparability') or 'нет')}.",
+                "coverage": f"status {_status_ru(metrics.get('conclusion_status') or 'none')}; comparability {_status_ru(metrics.get('comparability') or 'none')}.",
             }
         )
     else:
-        rows.append({"name": "Метрики конкурентов", "quality": "not_provided", "coverage": "артефакт не передан; сравнение видимости недоступно."})
+        rows.append({"name": "Competitor metrics", "quality": "not_provided", "coverage": "artifact not provided; visibility comparison is unavailable."})
     return rows
 
 
@@ -1310,19 +1310,19 @@ def _decision_finding_from_claim(finding: dict[str, Any]) -> dict[str, Any]:
 def _russian_claim_title(claim_type: str, text: str) -> str:
     if claim_type == "source_performance":
         if " page " in text:
-            return "Есть страница с подтверждённым органическим спросом"
-        return "Есть запрос с подтверждённым органическим спросом"
+            return "A page with confirmed organic demand exists"
+        return "A query with confirmed organic demand exists"
     if claim_type == "candidate_observation":
-        return "Найден кандидат для конкурентного анализа"
+        return "A candidate for competitor analysis was found"
     if claim_type == "topic_observation":
-        return "Найдена тема страницы для контентного решения"
+        return "A page topic for a content decision was found"
     if claim_type == "rank":
-        return "Есть подтверждённое SERP-наблюдение по позиции"
+        return "A confirmed SERP rank observation exists"
     if claim_type == "sov":
-        return "Есть подтверждённая доля видимости по конкуренту"
+        return "A confirmed share-of-voice value exists for a competitor"
     if claim_type == "trend":
-        return "Есть подтверждённое изменение позиции"
-    return "Есть проверяемое наблюдение"
+        return "A confirmed rank change exists"
+    return "A verifiable observation exists"
 
 
 def _russian_claim_text(claim_type: str, text: str) -> str:
@@ -1332,46 +1332,46 @@ def _russian_claim_text(claim_type: str, text: str) -> str:
         page = _match_text(r"page (https?://\S+)", text)
         clicks = _match_text(r"recorded ([0-9.]+) clicks", text)
         impressions = _match_text(r"and ([0-9.]+) impressions", text)
-        subject = f"запрос `{query}`" if query else f"страница {page}" if page else "строка"
-        return f"`{source}`: {subject} получил(а) {clicks or '?'} кликов и {impressions or '?'} показов."
+        subject = f"query `{query}`" if query else f"page {page}" if page else "row"
+        return f"`{source}`: {subject} recorded {clicks or '?'} clicks and {impressions or '?'} impressions."
     if claim_type == "candidate_observation":
-        return text.replace("Research-only row suggests a candidate competitor/topic:", "Исследовательская строка указывает на кандидата/тему:")
+        return text
     if claim_type == "topic_observation":
-        return text.replace("Research-only content row suggests page/topic coverage:", "Извлечённый контент указывает на тему страницы:")
+        return text
     if claim_type == "rank":
         if "out of market scope" in text:
-            return "Вывод о позиции намеренно вне скоупа рынка."
+            return "The rank conclusion is intentionally out of market scope."
         if "require" in text:
-            return "Вывод о позиции требует SERP-артефакт с детерминированными protocol_hashes."
+            return "The rank conclusion requires a SERP artifact with deterministic protocol_hashes."
         keyword = _match_text(r"`([^`]+)`", text)
         rank = _match_text(r"rank ([0-9.]+)", text)
         domain = _match_text(r"for ([^.]+(?:\.[^. ]+)+)", text)
-        return f"Запрос `{keyword}` имеет детерминированную позицию {rank} для домена {domain}."
+        return f"Query `{keyword}` has deterministic rank {rank} for domain {domain}."
     if claim_type == "sov":
         if "out of market scope" in text:
-            return "Вывод о доле видимости намеренно вне скоупа рынка."
+            return "The share-of-voice conclusion is intentionally out of market scope."
         if "require" in text:
             competitor = _match_text(r"`([^`]+)`", text)
-            kind = "Конкурент" if text.startswith("Competitor") else "Свой сайт"
-            return f"{kind} `{competitor}`: вывод о доле видимости требует совпадающую детерминированную SERP-строку."
-        kind = "Конкурент" if text.startswith("Competitor") else "Свой сайт"
+            kind = "Competitor" if text.startswith("Competitor") else "Owned site"
+            return f"{kind} `{competitor}`: the share-of-voice conclusion requires a matching deterministic SERP row."
+        kind = "Competitor" if text.startswith("Competitor") else "Owned site"
         competitor = _match_text(r"`([^`]+)`", text)
         sov_raw = _match_text(r"SOV ([0-9.]+)", text)
         sov = _safe_number(float(sov_raw)) if sov_raw else None
         best_rank = _match_text(r"best rank ([0-9]+(?:\.[0-9]+)?)", text)
         sov_text = f"{sov * 100:.1f}%" if isinstance(sov, (int, float)) else "?"
-        return f"{kind} `{competitor}`: доля видимости {sov_text}, лучшая позиция {best_rank}."
+        return f"{kind} `{competitor}`: share of voice {sov_text}, best rank {best_rank}."
     if claim_type == "trend":
         if "out of market scope" in text:
-            return "Вывод о динамике намеренно вне скоупа рынка."
+            return "The trend conclusion is intentionally out of market scope."
         if "require" in text:
-            return "Вывод о динамике требует сопоставимый baseline и подтверждённые movement-данные."
-        kind = "Конкурент" if text.startswith("Competitor") else "Свой сайт" if text.startswith("Owned") else ""
+            return "The trend conclusion requires a comparable baseline and confirmed movement data."
+        kind = "Competitor" if text.startswith("Competitor") else "Owned site" if text.startswith("Owned") else ""
         competitor = _match_text(r"`([^`]+)`", text)
         delta = _match_text(r"by ([0-9]+(?:\.[0-9]+)?)", text)
-        direction = "улучшилась" if "improved" in text else "ухудшилась" if "declined" in text else "не изменилась"
+        direction = "improved" if "improved" in text else "declined" if "declined" in text else "held"
         prefix = f"{kind} " if kind else ""
-        return f"{prefix}`{competitor}`: медианная позиция {direction} на {delta}."
+        return f"{prefix}`{competitor}`: median rank {direction} by {delta}."
     return text
 
 
@@ -1387,102 +1387,102 @@ def _finding_severity(claim_type: str, text: str = "") -> str:
         clicks = float(clicks_match.group(1)) if clicks_match else 0.0
         impressions = float(impressions_match.group(1)) if impressions_match else 0.0
         if clicks >= 5 or impressions >= 50:
-            return "высокая"
+            return "high"
         if clicks > 0 or impressions > 0:
-            return "средняя"
-        return "низкая"
+            return "medium"
+        return "low"
 
     if claim_type == "sov":
         sov_match = re.search(r"SOV ([0-9]+(?:\.[0-9]+)?)", text)
         sov = float(sov_match.group(1)) if sov_match else 0.0
-        return "высокая" if sov >= 0.05 else "средняя"
+        return "high" if sov >= 0.05 else "medium"
 
     if claim_type == "trend":
         delta_match = re.search(r"by ([0-9]+(?:\.[0-9]+)?)", text)
         delta = float(delta_match.group(1)) if delta_match else 0.0
-        return "высокая" if delta >= 5.0 else "средняя"
+        return "high" if delta >= 5.0 else "medium"
 
     if claim_type == "rank":
         rank_match = re.search(r"rank ([0-9]+(?:\.[0-9]+)?)", text)
         rank = float(rank_match.group(1)) if rank_match else 10.0
-        return "высокая" if rank <= 3.0 else "средняя"
+        return "high" if rank <= 3.0 else "medium"
 
     return {
-        "candidate_observation": "средняя",
-        "topic_observation": "средняя",
-    }.get(claim_type, "низкая")
+        "candidate_observation": "medium",
+        "topic_observation": "medium",
+    }.get(claim_type, "low")
 
 
 def _finding_confidence(claim_type: str, quality: str | None = None) -> str:
     base = {
-        "source_performance": "высокая",
-        "sov": "высокая",
-        "rank": "высокая",
-        "trend": "средняя",
-        "candidate_observation": "средняя",
-        "topic_observation": "средняя",
-    }.get(claim_type, "низкая")
+        "source_performance": "high",
+        "sov": "high",
+        "rank": "high",
+        "trend": "medium",
+        "candidate_observation": "medium",
+        "topic_observation": "medium",
+    }.get(claim_type, "low")
     if not quality or quality == "live":
         return base
     if quality in {"partial", "local-only"}:
-        return "средняя" if base == "высокая" else base
+        return "medium" if base == "high" else base
     if quality in {"stale", "unsupported", "failed", "not_comparable"}:
-        return "низкая"
+        return "low"
     return base
 
 
 def _why_it_matters(claim_type: str) -> str:
     return {
-        "source_performance": "Это уже подтверждённый спрос или посадочная страница; решение можно принимать без ожидания внешних SERP-замеров.",
-        "candidate_observation": "Кандидат помогает сузить ручную проверку конкурентов и не распылять анализ на нерелевантные домены.",
-        "topic_observation": "Тема показывает, какой контент можно сравнивать или дорабатывать в первую очередь.",
-        "rank": "Позиция подтверждает видимость в конкретном SERP-протоколе и пригодна для точечного действия.",
-        "sov": "Доля видимости показывает, у кого сейчас больше места в выдаче по сопоставимому набору запросов.",
-        "trend": "Динамика помогает отличить разовый снимок от изменения, которое стоит учитывать в плане работ.",
-    }.get(claim_type, "Наблюдение пригодно только вместе с указанными доказательствами.")
+        "source_performance": "This is already confirmed demand or a landing page; a decision can be made without waiting for external SERP measurements.",
+        "candidate_observation": "The candidate helps narrow manual competitor review instead of spreading analysis across irrelevant domains.",
+        "topic_observation": "The topic shows which content can be compared or reworked first.",
+        "rank": "The rank confirms visibility within a specific SERP protocol and is suitable for a targeted action.",
+        "sov": "Share of voice shows who currently holds more of the SERP for a comparable keyword set.",
+        "trend": "The trend helps distinguish a one-off snapshot from a change worth factoring into the work plan.",
+    }.get(claim_type, "The observation is usable only together with the cited evidence.")
 
 
 def _finding_action(claim_type: str) -> str:
     return {
-        "source_performance": "Проверить сниппет и контент этой страницы/запроса, затем поставить задачу на рост CTR или расширение интента.",
-        "candidate_observation": "Подтвердить домен независимым SERP-замером перед выводами о рангах или доле видимости.",
-        "topic_observation": "Сравнить структуру страницы с текущими посадочными и выделить недостающие блоки.",
-        "rank": "Разобрать URL и сниппет в этой выдаче; не переносить вывод на другие регионы и устройства без нового протокола.",
-        "sov": "Разобрать страницы конкурента с максимальной долей и определить, какие интенты закрыты лучше.",
-        "trend": "Проверить причины изменения и обновить baseline после следующего сопоставимого замера.",
-    }.get(claim_type, "Использовать вывод только вместе с его evidence ID.")
+        "source_performance": "Review the snippet and content of this page/query, then schedule work to grow CTR or expand intent coverage.",
+        "candidate_observation": "Confirm the domain with an independent SERP measurement before drawing rank or share-of-voice conclusions.",
+        "topic_observation": "Compare the page structure with current landing pages and identify missing blocks.",
+        "rank": "Inspect the URL and snippet in this SERP; do not extrapolate the conclusion to other regions or devices without a new protocol.",
+        "sov": "Inspect the competitor pages with the highest share and determine which intents they cover better.",
+        "trend": "Investigate the causes of the change and refresh the baseline after the next comparable measurement.",
+    }.get(claim_type, "Use the conclusion only together with its evidence ID.")
 
 
 def _severity_weight(value: str) -> int:
-    return {"высокая": 0, "средняя": 1, "низкая": 2}.get(value, 3)
+    return {"high": 0, "medium": 1, "low": 2}.get(value, 3)
 
 
 def _missing_finding_reasons(extract: dict[str, Any], *, target: int, actual: int) -> list[str]:
     evidence = extract["evidence"]
-    reasons = [f"Поддержанных выводов {actual} из {target}: недостающие пункты не синтезированы без доказательств."]
+    reasons = [f"Supported findings: {actual} of {target}; missing items are not synthesized without evidence."]
     if not _has_deterministic_serp(evidence["serp"]):
-        reasons.append("Нет детерминированного SERP-протокола; rank/SOV выводы заблокированы.")
+        reasons.append("No deterministic SERP protocol; rank/SOV conclusions are blocked.")
     if not evidence["metrics"].get("present"):
-        reasons.append("Нет артефакта метрик конкурентов; сравнение видимости недоступно.")
+        reasons.append("No competitor metrics artifact; visibility comparison is unavailable.")
     if evidence["research"]["row_count"] == 0:
-        reasons.append("Нет строк исследования конкурентов.")
+        reasons.append("No competitor research rows.")
     if evidence["content"]["page_count"] == 0:
-        reasons.append("Нет извлечённых страниц контента.")
+        reasons.append("No extracted content pages.")
     return reasons
 
 
 def _summary_coverage_sentence(evidence: dict[str, Any]) -> str:
     return (
-        f"Охват: {evidence['provider']['source_count']} источника(ов) провайдеров, "
-        f"{evidence['research']['row_count']} исследовательских строк, "
-        f"{evidence['content']['page_count']} страниц контента."
+        f"Coverage: {evidence['provider']['source_count']} provider source(s), "
+        f"{evidence['research']['row_count']} research rows, "
+        f"{evidence['content']['page_count']} content pages."
     )
 
 
 def _summary_priority_sentence(prioritized: list[dict[str, Any]], missing_reasons: list[str]) -> str:
     if prioritized:
-        return f"Приоритетных выводов: {len(prioritized)}; каждый привязан к evidence ID и действию."
-    return "Приоритетные выводы не сформированы: " + " ".join(missing_reasons)
+        return f"Prioritized findings: {len(prioritized)}; each is bound to an evidence ID and an action."
+    return "No prioritized findings were formed: " + " ".join(missing_reasons)
 
 
 def _has_eligible_matching_sov(serp: dict[str, Any], metrics: dict[str, Any]) -> bool:
@@ -1503,18 +1503,18 @@ def _serp_scope_gate_blocks_report(extract: dict[str, Any]) -> bool:
 
 def _summary_serp_sentence(serp: dict[str, Any], metrics: dict[str, Any], deterministic_serp: bool, serp_scope_blocked: bool = False) -> str:
     if serp_scope_blocked:
-        return "SERP/SOV не вынесены в отдельный раздел: рыночный scope gate заблокировал выводы по этому SERP-артефакту."
+        return "SERP/SOV are not promoted to a separate section: the market scope gate blocked conclusions for this SERP artifact."
     if deterministic_serp:
         if not metrics.get("present"):
-            suffix = "SOV недоступен без metrics."
+            suffix = "SOV is unavailable without metrics."
         elif _has_eligible_matching_sov(serp, metrics):
-            suffix = "SOV доступен при совпадении идентичности SERP и metrics."
+            suffix = "SOV is available when SERP and metrics identities match."
         else:
-            suffix = "SOV недоступен: метрики не пригодны или не сопоставлены с SERP."
-        return f"Детерминированные SERP-наблюдения доступны: {serp['row_count']} строк(и). {suffix}"
+            suffix = "SOV is unavailable: metrics are ineligible or not matched to SERP."
+        return f"Deterministic SERP observations are available: {serp['row_count']} row(s). {suffix}"
     if serp.get("present"):
-        return "SERP/SOV не вынесены в отдельный раздел: в SERP-артефакте нет детерминированных protocol_hashes."
-    return "SERP/SOV не вынесены в отдельный раздел: SERP-артефакт не передан."
+        return "SERP/SOV are not promoted to a separate section: the SERP artifact has no deterministic protocol_hashes."
+    return "SERP/SOV are not promoted to a separate section: no SERP artifact was provided."
 
 
 def _source_coverage_lines(decision: dict[str, Any]) -> list[str]:
@@ -1522,43 +1522,36 @@ def _source_coverage_lines(decision: dict[str, Any]) -> list[str]:
     explained: set[str] = set()
     for source in decision["source_coverage"]:
         quality = source["quality"]
-        explanation = QUALITY_EXPLANATIONS.get(quality, "код качества без отдельного словаря; трактовать осторожно")
+        explanation = QUALITY_EXPLANATIONS.get(quality, "quality code without a dedicated dictionary entry; interpret with caution")
         suffix = f" ({explanation})" if quality not in explained else ""
         explained.add(quality)
-        lines.append(f"- {source['name']}: {source['coverage']} Качество: `{quality}`{suffix}.")
+        lines.append(f"- {source['name']}: {source['coverage']} Quality: `{quality}`{suffix}.")
     return lines
 
 
 def _market_note_ru(note: str) -> str:
-    translations = {
-        "Google GSC can support owned-site performance, but it does not change the default competitor lens.": "Google Search Console помогает оценивать собственный сайт, но не меняет основную конкурентную оптику.",
-        "Google-worldwide SERP competitor conclusions are intentionally out of scope unless explicitly requested.": "Выводы о конкурентах по Google worldwide SERP намеренно вне скоупа без отдельного запроса.",
-        "Yandex evidence is secondary unless explicitly requested.": "Данные Яндекса вторичны без отдельного запроса.",
-    }
-    if note in translations:
-        return translations[note]
     if note.startswith("Primary Yandex sources: ") and note.endswith("."):
         raw_sources = note.removeprefix("Primary Yandex sources: ").removesuffix(".").split(", ")
         source_map = {
-            "Yandex Webmaster": "Яндекс.Вебмастер",
-            "Yandex Metrica": "Яндекс.Метрика",
+            "Yandex Webmaster": "Yandex Webmaster",
+            "Yandex Metrica": "Yandex Metrica",
             "Wordstat": "Wordstat",
         }
         sources = [source_map.get(source, source) for source in raw_sources]
-        return _primary_sources_sentence(sources, scope="для проекта")
+        return _primary_sources_sentence(sources, scope="for the project")
     if note.startswith("Primary Google-worldwide sources: ") and note.endswith("."):
         raw_sources = note.removeprefix("Primary Google-worldwide sources: ").removesuffix(".").split(", ")
-        return _primary_sources_sentence(_google_source_labels_ru(raw_sources, worldwide=True), scope="для глобального продвижения")
+        return _primary_sources_sentence(_google_source_labels_ru(raw_sources, worldwide=True), scope="for worldwide promotion")
     if note.startswith("Primary Google sources: ") and note.endswith("."):
         raw_sources = note.removeprefix("Primary Google sources: ").removesuffix(".").split(", ")
-        return _primary_sources_sentence(_google_source_labels_ru(raw_sources, worldwide=False), scope="для продвижения")
+        return _primary_sources_sentence(_google_source_labels_ru(raw_sources, worldwide=False), scope="for promotion")
     return note
 
 
 def _primary_sources_sentence(sources: list[str], *, scope: str) -> str:
     if len(sources) == 1:
-        return f"{sources[0]} является основным источником {scope}."
-    return f"{_join_ru(sources)} являются основными источниками {scope}."
+        return f"{sources[0]} is the primary source {scope}."
+    return f"{_join_ru(sources)} are the primary sources {scope}."
 
 
 def _join_ru(items: list[str]) -> str:
@@ -1567,8 +1560,8 @@ def _join_ru(items: list[str]) -> str:
     if len(items) == 1:
         return items[0]
     if len(items) == 2:
-        return f"{items[0]} и {items[1]}"
-    return f"{', '.join(items[:-1])} и {items[-1]}"
+        return f"{items[0]} and {items[1]}"
+    return f"{', '.join(items[:-1])} and {items[-1]}"
 
 
 def _google_source_labels_ru(sources: list[str], *, worldwide: bool) -> list[str]:
@@ -1586,9 +1579,9 @@ def _google_source_labels_ru(sources: list[str], *, worldwide: bool) -> list[str
 def _market_scope_decision_lines(market_scope: dict[str, Any]) -> list[str]:
     lines = []
     for market in market_scope.get("markets") or []:
-        intent = "основной" if market["intent"] == "primary" else "вторичный"
+        intent = "primary" if market["intent"] == "primary" else "secondary"
         lines.append(
-            f"- Рынок `{market['id']}`: {intent}; поисковик `{market['search_engine']}`, провайдер `{market['provider']}`."
+            f"- Market `{market['id']}`: {intent}; engine `{market['search_engine']}`, provider `{market['provider']}`."
         )
     lines.extend(f"- {_market_note_ru(note)}" for note in _market_scope_interpretation_notes(market_scope))
     return lines
@@ -1598,27 +1591,27 @@ def _prioritized_finding_lines(decision: dict[str, Any]) -> list[str]:
     findings = decision["prioritized_findings"]
     if not findings:
         lines = [f"- {reason}" for reason in decision["missing_finding_reasons"]]
-        lines.append("- Рекомендуемое действие: предоставить необходимые SERP и metrics артефакты для формирования подтверждённых выводов.")
+        lines.append("- Recommended action: provide the required SERP and metrics artifacts to form confirmed conclusions.")
         return lines
     lines = []
     for index, finding in enumerate(findings, start=1):
-        evidence = ", ".join(f"`{item}`" for item in finding["evidence_ids"]) or "`нет`"
+        evidence = ", ".join(f"`{item}`" for item in finding["evidence_ids"]) or "`none`"
         evidence_text = str(finding["evidence"]).rstrip(".")
         lines.append(f"{index}. {finding['title']}")
-        lines.append(f"   Серьёзность: {finding['severity']}. Уверенность: {finding['confidence']}.")
-        lines.append(f"   Доказательства: {evidence_text}. ID доказательств: {evidence}.")
-        lines.append(f"   Почему важно: {finding['why_it_matters']}")
-        lines.append(f"   Действие: {finding['action']}")
+        lines.append(f"   Severity: {finding['severity']}. Confidence: {finding['confidence']}.")
+        lines.append(f"   Evidence: {evidence_text}. Evidence IDs: {evidence}.")
+        lines.append(f"   Why it matters: {finding['why_it_matters']}")
+        lines.append(f"   Action: {finding['action']}")
     return lines
 
 
 def _provider_performance_lines(provider: dict[str, Any]) -> list[str]:
-    lines = [f"- Общая оценка качества провайдеров: `{provider['overall_quality']}`."]
+    lines = [f"- Overall provider quality rating: `{provider['overall_quality']}`."]
     for source in provider["sources"]:
         msg = f" ({source['message']})" if source.get("message") else ""
         lines.append(
-            f"- `{source['source']}`: качество `{source['quality']}`, диагностик {source['finding_count']}, "
-            f"запросов в выдержке {len(source['top_queries'])}, страниц в выдержке {len(source['top_pages'])}{msg}."
+            f"- `{source['source']}`: quality `{source['quality']}`, diagnostics {source['finding_count']}, "
+            f"queries in excerpt {len(source['top_queries'])}, pages in excerpt {len(source['top_pages'])}{msg}."
         )
     return lines
 
@@ -1629,15 +1622,15 @@ def _technical_diagnostic_lines(extract: dict[str, Any]) -> list[str]:
     for source in provider["sources"]:
         msg = f" ({source['message']})" if source.get("message") else ""
         if source["finding_count"]:
-            lines.append(f"- `{source['source']}` сообщил диагностик: {source['finding_count']}{msg}.")
+            lines.append(f"- `{source['source']}` reported diagnostics: {source['finding_count']}{msg}.")
         elif source["quality"] != "live":
-            lines.append(f"- `{source['source']}` имеет качество `{source['quality']}`; выводы по нему ограничены{msg}.")
+            lines.append(f"- `{source['source']}` has quality `{source['quality']}`; conclusions based on it are limited{msg}.")
     blocked = [item for item in extract.get("claim_gate", {}).get("findings") or [] if item.get("status") == "blocked"]
     lines.extend(
-        f"- Заблокировано: `{item.get('reason')}`; {_russian_claim_text(str(item.get('claim_type') or ''), str(item.get('text') or ''))}"
+        f"- Blocked: `{item.get('reason')}`; {_russian_claim_text(str(item.get('claim_type') or ''), str(item.get('text') or ''))}"
         for item in blocked[:8]
     )
-    return lines or ["- Критических технических диагностик в переданных артефактах нет."]
+    return lines or ["- No critical technical diagnostics in the provided artifacts."]
 
 
 def _competitor_observation_lines(extract: dict[str, Any]) -> list[str]:
@@ -1645,33 +1638,33 @@ def _competitor_observation_lines(extract: dict[str, Any]) -> list[str]:
     content = extract["evidence"]["content"]
     lines = []
     for row in research["rows"]:
-        lines.append(f"- Гипотеза из исследования: {row['title']} - {row['url']} (`{row['citation_id']}`).")
+        lines.append(f"- Research hypothesis: {row['title']} - {row['url']} (`{row['citation_id']}`).")
     for page in content["pages"]:
         if _successful_content_page(page):
-            lines.append(f"- Гипотеза по контенту конкурента/темы: {page['title']} - {page['url']} (`{page['citation_id']}`, {page['word_count']} слов).")
-    return lines or ["- Конкурентные наблюдения не подтверждены переданными строками исследования или контента."]
+            lines.append(f"- Competitor/topic content hypothesis: {page['title']} - {page['url']} (`{page['citation_id']}`, {page['word_count']} words).")
+    return lines or ["- Competitor observations were not confirmed by the provided research or content rows."]
 
 
 def _serp_decision_lines(serp: dict[str, Any], metrics: dict[str, Any]) -> list[str]:
     lines = [
-        f"- Детерминированные SERP-наблюдения доступны: строк {serp['row_count']}, покрытие {serp['coverage']}.",
-        f"- Протоколы: {', '.join(serp['protocol_hashes'])}.",
+        f"- Deterministic SERP observations are available: {serp['row_count']} rows, coverage {serp['coverage']}.",
+        f"- Protocols: {', '.join(serp['protocol_hashes'])}.",
     ]
     for row in serp.get("display_rows") or []:
-        lines.append(f"- `{row['keyword']}`: позиция {row['rank']}, домен {row['domain']}, URL {row['url']}.")
+        lines.append(f"- `{row['keyword']}`: rank {row['rank']}, domain {row['domain']}, URL {row['url']}.")
     if metrics.get("present"):
         lines.append(
-            f"- Метрики: статус `{_status_ru(metrics['conclusion_status'])}`, сравнимость `{_status_ru(metrics['comparability'])}`, покрытие {metrics['coverage']}."
+            f"- Metrics: status `{_status_ru(metrics['conclusion_status'])}`, comparability `{_status_ru(metrics['comparability'])}`, coverage {metrics['coverage']}."
         )
         if _serp_metrics_identity_matches(serp, metrics):
             for row in metrics["competitors"]:
                 if _sov_metric_eligible(metrics, row) and _matching_serp_ids(serp, row):
-                    lines.append(f"- Конкурент `{row['competitor_id']}`: доля видимости {row['share_of_voice'] * 100:.1f}%, лучшая позиция {row['best_rank']}.")
+                    lines.append(f"- Competitor `{row['competitor_id']}`: share of voice {row['share_of_voice'] * 100:.1f}%, best rank {row['best_rank']}.")
             for row in metrics["owned"]:
                 if _sov_metric_eligible(metrics, row) and _matching_serp_ids(serp, row):
-                    lines.append(f"- Свой сайт `{row['competitor_id']}`: доля видимости {row['share_of_voice'] * 100:.1f}%, лучшая позиция {row['best_rank']}.")
+                    lines.append(f"- Owned site `{row['competitor_id']}`: share of voice {row['share_of_voice'] * 100:.1f}%, best rank {row['best_rank']}.")
         else:
-            lines.append("- SOV-строки скрыты: идентичность SERP и metrics не совпадает.")
+            lines.append("- SOV rows are withheld: SERP and metrics identities do not match.")
     return lines
 
 
@@ -1679,34 +1672,34 @@ def _limitation_lines(extract: dict[str, Any]) -> list[str]:
     lines = [f"- {item}" for item in extract.get("limitations") or []]
     missing = (extract.get("decision_report") or {}).get("missing_finding_reasons") or []
     lines.extend(f"- {item}" for item in missing)
-    return lines or ["- Существенных ограничений в переданных артефактах не зафиксировано."]
+    return lines or ["- No significant limitations were recorded in the provided artifacts."]
 
 
 def _appendix_lines(extract: dict[str, Any]) -> list[str]:
     inputs = extract.get("inputs") or {}
-    lines = ["### Артефакты"]
+    lines = ["### Artifacts"]
     for name in ("provider", "research", "content", "serp", "metrics"):
         item = inputs.get(name) or {}
-        state = "передан" if item.get("present") else "не передан"
-        path = item.get("path") or "нет"
-        lines.append(f"- `{name}`: {state}; путь: {path}.")
-    lines.extend(["", "### Выдержки строк в extract"])
-    lines.append("- Выдержки строк провайдеров находятся в `composite-extract.json` -> `evidence.provider.sources` (полные данные — в исходном артефакте).")
-    lines.append("- Выдержки строк исследования находятся в `evidence.research.rows`; выдержки контента - в `evidence.content.pages` (полные данные — в исходных артефактах).")
+        state = "provided" if item.get("present") else "not provided"
+        path = item.get("path") or "none"
+        lines.append(f"- `{name}`: {state}; path: {path}.")
+    lines.extend(["", "### Row excerpts in the extract"])
+    lines.append("- Provider row excerpts are in `composite-extract.json` -> `evidence.provider.sources` (full data is in the source artifact).")
+    lines.append("- Research row excerpts are in `evidence.research.rows`; content excerpts are in `evidence.content.pages` (full data is in the source artifacts).")
     if _has_deterministic_serp(extract["evidence"]["serp"]):
-        lines.append("- Выдержки SERP-строк находятся в `evidence.serp.rows`; SOV-метрики - в `evidence.metrics` (полные данные — в исходных артефактах).")
+        lines.append("- SERP row excerpts are in `evidence.serp.rows`; SOV metrics are in `evidence.metrics` (full data is in the source artifacts).")
     else:
-        lines.append("- SERP-строки сохранены в структурном артефакте, но не используются для выводов о позициях/SOV без детерминированных protocol_hashes.")
+        lines.append("- SERP rows are stored in the structured artifact but are not used for rank/SOV conclusions without deterministic protocol_hashes.")
     return lines
 
 
 def _status_ru(value: Any) -> str:
     return {
-        "available": "доступно",
-        "comparable": "сопоставимо",
-        "not_comparable": "не сопоставимо",
-        "insufficient_coverage": "недостаточное покрытие",
-        "нет": "нет",
+        "available": "available",
+        "comparable": "comparable",
+        "not_comparable": "not comparable",
+        "insufficient_coverage": "insufficient coverage",
+        "none": "none",
     }.get(str(value), str(value))
 
 
@@ -1754,7 +1747,7 @@ def _subtitle(extract: dict[str, Any]) -> str:
     period = extract.get("period") if isinstance(extract.get("period"), dict) else {}
     start = period.get("start") or "?"
     end = period.get("end") or "?"
-    return f"Локальная сборка доказательств. Период: {start} - {end}."
+    return f"Local evidence assembly. Period: {start} - {end}."
 
 
 def _safe_mapping(value: Any) -> dict[str, Any]:

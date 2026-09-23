@@ -576,7 +576,7 @@ def _ensure_compatible_v1_schema(con: sqlite3.Connection) -> None:
 
 
 def _replay_v1_migration(con: sqlite3.Connection) -> None:
-    """Долить недостающие таблицы схемы v1 в базу, где версия уже отмечена как 1."""
+    """Backfill missing v1 schema tables into a database already marked as version 1."""
     migrations = _load_migrations()
     for version, sql in migrations:
         if version == 1:
@@ -588,10 +588,11 @@ def _replay_v1_migration(con: sqlite3.Connection) -> None:
 def _ensure_actions_v1_schema(con: sqlite3.Connection) -> None:
     actions_columns = _table_columns(con, "seo_actions")
     if not actions_columns:
-        # База версии 1, созданная до появления журнала действий: `bootstrap()` пропускает
-        # миграцию (версия уже 1), и `actions add` падает с `no such table: seo_actions`.
-        # Миграция целиком идемпотентна (все CREATE — с IF NOT EXISTS), поэтому недостающие
-        # таблицы доливаются ею же: отдельная копия DDL разошлась бы с миграцией.
+        # A version-1 database created before the action journal existed: `bootstrap()`
+        # skips the migration (version is already 1), and `actions add` fails with
+        # `no such table: seo_actions`. The whole migration is idempotent (all CREATE
+        # statements use IF NOT EXISTS), so missing tables are backfilled by the same
+        # migration: a separate DDL copy would drift from it.
         _replay_v1_migration(con)
         return
     pk_cols = [
@@ -599,12 +600,13 @@ def _ensure_actions_v1_schema(con: sqlite3.Connection) -> None:
         for row in con.execute("PRAGMA table_info(seo_actions)").fetchall()
         if row["pk"] > 0
     ]
-    # Ремонт идёт по таблицам НЕЗАВИСИМО. `executescript()` неявно коммитит текущую
-    # транзакцию, поэтому перестройка каждой таблицы фиксируется отдельно: прерывание
-    # (краш, OOM, таймаут) между ними оставляет `seo_actions` уже с новым PK, а детей —
-    # со старой схемой. Пока весь блок висел под одной проверкой PK `seo_actions`,
-    # следующий `bootstrap()` считал базу починенной и уходил, а `actions add` падал с
-    # `no such column: action_revision_hash` — навсегда (замечание ревью на #2305).
+    # Repair proceeds per table INDEPENDENTLY. `executescript()` implicitly commits the
+    # current transaction, so each table rebuild is committed separately: an interruption
+    # (crash, OOM, timeout) between them leaves `seo_actions` with the new PK while its
+    # children keep the old schema. While this whole block hung on a single `seo_actions`
+    # PK check, the next `bootstrap()` considered the database repaired and moved on, and
+    # `actions add` failed with `no such column: action_revision_hash` — permanently
+    # (review comment on #2305).
     con.execute("PRAGMA foreign_keys = OFF")
     if "action_revision_hash" not in pk_cols:
         con.executescript(

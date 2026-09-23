@@ -1,17 +1,18 @@
-"""Живой транспорт для Yandex Cloud Search API v2.
+"""Live transport for Yandex Cloud Search API v2.
 
-`serp.py` намеренно провайдер-нейтрален: `SerpAdapter` формирует канонический
-дескриптор запроса и ждёт от транспорта канонический же ответ
+`serp.py` is intentionally provider-neutral: `SerpAdapter` builds a canonical
+request descriptor and expects a canonical response from the transport
 (`{"request_id", "results": [{"position", "url", "title", "snippet"}]}`).
-Этот модуль — переходник между каноническим форматом и реальным API Яндекса.
+This module is the bridge between the canonical format and the real Yandex API.
 
-Проверено живым API 2026-07-31:
+Verified against the live API on 2026-07-31:
 
-* авторизация — `Api-Key <key>`; тот же ключ с `OAuth` даёт HTTP 401
+* authorization is `Api-Key <key>`; the same key with `OAuth` yields HTTP 401
   "IAM token or API key has to be passed in request";
-* `region` действует только на верхнем уровне тела (внутри `query` игнорируется):
-  213/Москва и 2/Санкт-Петербург дают разный топ;
-* ответ приходит как base64 в поле `rawData`, внутри — XML `<yandexsearch>`.
+* `region` only works at the top level of the body (inside `query` it is
+  ignored): 213/Moscow and 2/Saint Petersburg produce different tops;
+* the response arrives as base64 in the `rawData` field, containing
+  XML `<yandexsearch>`.
 """
 
 from __future__ import annotations
@@ -21,9 +22,9 @@ import binascii
 from typing import Any, Protocol
 from xml.etree.ElementTree import Element, ParseError
 
-# Ответ приходит от внешнего API, поэтому разбор идёт через defusedxml:
-# stdlib-парсер по умолчанию уязвим к раскрытию сущностей (billion laughs)
-# и внешним ссылкам в DTD.
+# The response comes from an external API, so it is parsed via defusedxml:
+# the default stdlib parser is vulnerable to entity expansion (billion laughs)
+# and external DTD references.
 from defusedxml.common import DefusedXmlException
 from defusedxml.ElementTree import fromstring as _xml_fromstring
 
@@ -31,7 +32,7 @@ DEFAULT_BASE_URL = "https://searchapi.api.cloud.yandex.net"
 YANDEX_SEARCH_ENDPOINT = "/v2/web/search"
 DEFAULT_TIMEOUT_SECONDS = 40
 
-# Яндекс различает поисковые типы по рынку, а не по языку интерфейса.
+# Yandex distinguishes search types by market, not by interface language.
 _SEARCH_TYPE_BY_LANGUAGE = {
     "ru": "SEARCH_TYPE_RU",
     "be": "SEARCH_TYPE_BE",
@@ -41,16 +42,16 @@ _SEARCH_TYPE_BY_LANGUAGE = {
 }
 _DEFAULT_SEARCH_TYPE = "SEARCH_TYPE_COM"
 
-# `generate_protocol_slots` подставляет этот маркер, когда срез не разбит по
-# регионам/устройствам. Отправлять его в API буквально нельзя.
+# `generate_protocol_slots` substitutes this marker when the slice is not split
+# by regions/devices. It must not be sent to the API literally.
 _ALL_SENTINEL = "__all__"
 
 _REQUIRED_AUTH_SCHEME = "Api-Key"
 
 
 class JsonTransport(Protocol):
-    """Контракт транспорта, принятый в плагине (`_JsonHttpTransport` в cli.py):
-    относительный endpoint, базовый URL держит сам транспорт."""
+    """Transport contract adopted by the plugin (`_JsonHttpTransport` in cli.py):
+    a relative endpoint; the transport itself holds the base URL."""
 
     def post_json(
         self, endpoint: str, *, json: dict[str, Any], headers: dict[str, str]
@@ -59,7 +60,7 @@ class JsonTransport(Protocol):
 
 
 def build_yandex_request(payload: dict[str, Any], *, folder_id: str | None = None) -> dict[str, Any]:
-    """Канонический дескриптор -> тело запроса Yandex Search API v2."""
+    """Canonical descriptor -> Yandex Search API v2 request body."""
     language = str(payload.get("language") or "").lower()
     depth = int(payload.get("depth") or 10)
     request: dict[str, Any] = {
@@ -79,24 +80,24 @@ def build_yandex_request(payload: dict[str, Any], *, folder_id: str | None = Non
 
 
 def parse_yandex_response(raw: dict[str, Any]) -> dict[str, Any]:
-    """Ответ Yandex Search API v2 -> канонический формат для `SerpAdapter`."""
+    """Yandex Search API v2 response -> canonical format for `SerpAdapter`."""
     if not isinstance(raw, dict) or "rawData" not in raw:
         raise ValueError(
-            "Yandex Search API ответил без поля rawData; получены ключи: "
+            "Yandex Search API responded without a rawData field; received keys: "
             f"{sorted(raw) if isinstance(raw, dict) else type(raw).__name__}"
         )
     try:
         xml_bytes = base64.b64decode(str(raw["rawData"]), validate=True)
     except (binascii.Error, ValueError) as exc:
-        raise ValueError(f"Yandex Search API вернул нечитаемый base64 в rawData: {exc}") from exc
+        raise ValueError(f"Yandex Search API returned unreadable base64 in rawData: {exc}") from exc
     try:
         root = _xml_fromstring(xml_bytes.decode("utf-8", "replace"))
     except DefusedXmlException as exc:
         raise ValueError(
-            f"Yandex Search API вернул XML с запрещённой конструкцией (DTD/сущности): {exc}"
+            f"Yandex Search API returned XML with a forbidden construct (DTD/entities): {exc}"
         ) from exc
     except ParseError as exc:
-        raise ValueError(f"Yandex Search API вернул невалидный XML: {exc}") from exc
+        raise ValueError(f"Yandex Search API returned invalid XML: {exc}") from exc
 
     results: list[dict[str, Any]] = []
     for position, doc in enumerate(root.iterfind(".//doc"), start=1):
@@ -117,7 +118,7 @@ def parse_yandex_response(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 class YandexSearchTransport:
-    """Транспорт `SerpTransport` поверх Yandex Cloud Search API v2."""
+    """`SerpTransport` transport on top of Yandex Cloud Search API v2."""
 
     def __init__(
         self,
@@ -142,15 +143,15 @@ class YandexSearchTransport:
     def _require_api_key_scheme(headers: dict[str, str]) -> None:
         authorization = str(headers.get("Authorization") or "")
         if not authorization.startswith(f"{_REQUIRED_AUTH_SCHEME} "):
-            scheme = authorization.split(" ", 1)[0] or "<пусто>"
+            scheme = authorization.split(" ", 1)[0] or "<empty>"
             raise ValueError(
-                "Yandex Search API v2 принимает только Api-Key (или IAM-токен), "
-                f"получена схема {scheme!r}. Схема OAuth даёт HTTP 401."
+                "Yandex Search API v2 accepts only Api-Key (or an IAM token), "
+                f"got scheme {scheme!r}. The OAuth scheme yields HTTP 401."
             )
 
 
 def _flatten(element: Element | None) -> str:
-    """Склеивает текст с учётом инлайновой разметки `<hlword>` внутри title/passages."""
+    """Joins text accounting for the inline `<hlword>` markup inside title/passages."""
     if element is None:
         return ""
     return " ".join("".join(element.itertext()).split())
@@ -167,14 +168,14 @@ def _found_count(root: Element) -> int | None:
 
 
 class YandexSerpProviderAdapter:
-    """Адаптер Яндекса под общий шов `SerpProviderAdapter` из `competitors.py`.
+    """Yandex adapter for the shared `SerpProviderAdapter` seam from `competitors.py`.
 
-    Аудит-цикл разбирает `rows` одинаково для всех движков, поэтому форма ответа
-    здесь совпадает с DataForSEO: `rank_absolute`, `result_type`, `url`, `title`,
+    The audit loop parses `rows` the same way for every engine, so the response
+    shape matches DataForSEO: `rank_absolute`, `result_type`, `url`, `title`,
     `description`, `serp_features`, `quality`.
 
-    Стоимость всегда 0: Yandex Search API оплачивается по подписке Yandex Cloud,
-    а не поштучно через budget guard плагина.
+    Cost is always 0: Yandex Search API is billed via the Yandex Cloud
+    subscription, not per request through the plugin's budget guard.
     """
 
     def __init__(
@@ -210,7 +211,7 @@ class YandexSerpProviderAdapter:
                 json=payload,
                 headers={"Authorization": f"{_REQUIRED_AUTH_SCHEME} {self._token}"},
             )
-        except Exception as exc:  # транспорт/сеть/разбор — деградируем в статус, не в traceback
+        except Exception as exc:  # transport/network/parsing — degrade to a status, not a traceback
             return {
                 "rows": [],
                 "quality": "unsupported",

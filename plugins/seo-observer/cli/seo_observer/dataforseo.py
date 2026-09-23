@@ -190,10 +190,11 @@ class DataForSEOAdapter:
         device: str = "desktop",
         depth: int = 10,
     ) -> dict[str, Any]:
-        """Движко-нейтральное имя шва `SerpProviderAdapter`.
+        """Engine-neutral name of the `SerpProviderAdapter` seam.
 
-        У DataForSEO выдача всегда гугловая, поэтому реализация одна; отдельное
-        имя нужно, чтобы аудит-цикл не знал, каким движком собран контур.
+        DataForSEO SERPs are always Google, so there is a single implementation;
+        the separate name exists so the audit loop does not need to know which
+        engine the market is built on.
         """
         return self.fetch_google_organic_serp(
             keyword, location_code, location_name, language_code, device, depth

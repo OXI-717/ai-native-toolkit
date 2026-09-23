@@ -107,7 +107,7 @@ def _render_toc(items: list[tuple[int, str, str]]) -> str:
     links = "\n".join(
         f'<a class="toc-link toc-level-{level}" href="#{anchor}">{html.escape(text)}</a>' for level, text, anchor in visible[:36]
     )
-    return f'<nav class="toc" aria-label="Оглавление"><h2>Оглавление</h2><div class="toc-grid">{links}</div></nav>'
+    return f'<nav class="toc" aria-label="Contents"><h2>Contents</h2><div class="toc-grid">{links}</div></nav>'
 
 
 def _render_blocks(markdown_text: str) -> tuple[str, list[tuple[int, str, str]]]:

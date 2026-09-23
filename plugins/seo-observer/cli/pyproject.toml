@@ -13,8 +13,8 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
-# PDF-рендер отчётов. Помимо пакета нужен браузер: `playwright install chromium`.
-# Без него команды не падают — HTML остаётся, причина пишется в pdf_error.
+# PDF report rendering. Besides the package a browser is needed: `playwright install chromium`.
+# Without it commands do not fail — HTML remains, and the reason is written to pdf_error.
 pdf = [
     "playwright>=1.40",
 ]
