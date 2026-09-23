@@ -87,6 +87,14 @@ and will not work — see [Runtime support](#runtime-support).
 | seo-hub | Read-only SEO hub CLI over existing OpenSEO/Elmo/Observer evidence |
 <!-- PLUGINS:END -->
 
+For SEO setup, start with [seo-observer](plugins/seo-observer/README.md), then
+[seo-hub](plugins/seo-hub/README.md). Install both plugins from the marketplace
+and install each CLI separately with `uv tool install --force
+<installed-plugin-root>/cli`. Plugin versions and their Python CLI package
+versions are versioned independently; check `seo-hub --version` /
+`seo-observer --version` for the installed CLI release.
+
+
 ## Runtime support
 
 Claude Code is the reference runtime: everything works there. opencode loads skills

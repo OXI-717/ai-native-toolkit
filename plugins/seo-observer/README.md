@@ -38,8 +38,8 @@ seo-observer snapshot --project myproject --json
 seo-observer report --project myproject --json
 ```
 
-A minimal `project.toml` needs `config_schema_version = 1`, a `[project]`
-id and timezone, at least one `[[properties]]` entry with a URL, and a
+A minimal `project.toml` needs `config_schema_version = 1`, top-level
+`project = "myproject"` and `timezone = "UTC"`, at least one `[[properties]]` entry with a URL, and a
 `[[keyword_sets]]` entry pointing at a keyword file. Provider integrations
 (Google Search Console, Yandex Webmaster/Metrica/Wordstat, DataForSEO, Exa,
 Topvisor) are optional and configured per source; each declares a
