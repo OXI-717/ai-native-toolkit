@@ -32,7 +32,7 @@ Project config schema is in `$PLUGIN_ROOT/references/project-config.md`: it uses
 
 1. Orient: identify project, requested window, artifact target, and whether the user asks for collect/live data, weekly, snapshot, report, compare, actions,
    outcomes, opportunities (quick wins, second-page, decay, cannibalisation, refresh, crawl findings),
-   ai-readiness (llms.txt audit, AI-referral traffic), competitors, or keyword research. Do not make live provider calls unless the user
+   ai-readiness (llms.txt audit, AI-referral traffic), AI long-tail prompt generation (`prompts`), competitors, or keyword research. Do not make live provider calls unless the user
    explicitly asks and valid local credentials/config already exist.
 2. Doctor/config: run `seo-observer doctor --json`, adding `--config` or
    `--project` when supplied. If config is invalid or absent, stop with the
@@ -70,16 +70,9 @@ Load only the references needed for the current request:
   `$PLUGIN_ROOT/references/opportunities.md`
 - AI-search readiness (llms.txt audit, AI-referral traffic):
   `$PLUGIN_ROOT/references/ai-readiness.md`
+- AI prompts: `$PLUGIN_ROOT/references/ai-prompts.md`
 - Local change journal (`actions`): `$PLUGIN_ROOT/references/actions.md`
 
 Provider-specific details remain in `gsc.md`, `metrica.md`, `webmaster.md`,
 `wordstat.md`, `serp.md`, and `outcomes.md`; load them only when that source is
 in scope.
-
-## Forward Test Prompts
-
-Use these prompts to validate routing, invariants, and guardrails without
-encoding final SEO answers:
-
-- `$PLUGIN_ROOT/skills/seo-observer/forward-tests/weekly-partial-sources.md`
-- `$PLUGIN_ROOT/skills/seo-observer/forward-tests/seo-action-not-comparable.md`

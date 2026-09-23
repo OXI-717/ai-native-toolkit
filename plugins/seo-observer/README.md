@@ -31,12 +31,40 @@ without live provider calls.
 ## Quick start
 
 ```bash
-mkdir -p .seo-observer
+mkdir -p .seo-observer/keywords
+printf '%s\n' 'example query' > .seo-observer/keywords/core.txt
+cat > .seo-observer/project.toml <<'TOML'
+config_schema_version = 1
+project = "myproject"
+timezone = "UTC"
+
+[[properties]]
+id = "main"
+url = "https://example.com/"
+
+[sources.google_search_console]
+enabled = false
+
+[[source_bindings]]
+property = "main"
+source = "google_search_console"
+remote_id = "sc-domain:example.com"
+
+[[keyword_sets]]
+id = "core"
+path = "keywords/core.txt"
+locale = "en-US"
+regions = ["2840"]
+devices = ["desktop"]
+TOML
 seo-observer doctor --config .seo-observer/project.toml --json
 seo-observer projects register myproject --config .seo-observer/project.toml --json
-seo-observer snapshot --project myproject --json
-seo-observer report --project myproject --json
 ```
+
+This creates a local project with a disabled sample source, so no credentials
+or live calls are needed. After collecting data and approving a baseline, run
+`seo-observer snapshot --project myproject --json` and
+`seo-observer report --project myproject --json`.
 
 A minimal `project.toml` needs `config_schema_version = 1`, top-level
 `project = "myproject"` and `timezone = "UTC"`, at least one `[[properties]]` entry with a URL, and a

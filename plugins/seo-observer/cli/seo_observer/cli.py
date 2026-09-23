@@ -17,6 +17,7 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from seo_observer import __version__
+from seo_observer import ai_prompts as ai_prompts_mod
 from seo_observer import ai_readiness as ai_readiness_mod
 from seo_observer.actions import ActionError, load_action, persist_action, persist_actions
 from seo_observer.config import (
@@ -449,7 +450,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="seo-observer",
         description="Evidence-first SEO observer CLI.",
-        parents=[common],
+        parents=[common, selectors],
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -619,6 +620,40 @@ def build_parser() -> argparse.ArgumentParser:
     ai_readiness = subparsers.add_parser("ai-readiness", parents=[common, selectors])
     ai_readiness.add_argument("--output-dir", default=None)
     ai_readiness.set_defaults(handler=_handle_ai_readiness)
+
+    prompts = subparsers.add_parser("prompts", parents=[common, selectors])
+    prompts.add_argument("--keyword-set", default=None, help="keyword set ID to generate prompts from")
+    prompts.add_argument("--keywords", default=None, help="comma-separated list of keywords")
+    prompts.add_argument("--keyword-file", default=None, help="path to custom keyword text file")
+    prompts.add_argument("--brand", dest="brand", action="append", default=[], help="explicit brand name")
+    prompts.add_argument("--locale", default=None, help="locale for prompt templates (e.g. ru-RU, en-US)")
+    prompts.add_argument("--region", default=None, help="region name or code")
+    prompts.add_argument("--from-gsc", action="store_true", default=False, help="include GSC search queries")
+    prompts.add_argument("--from-wordstat", action="store_true", default=False, help="include Wordstat queries")
+    prompts.add_argument("--llm-paraphrase", action="store_true", default=False, help="enable LLM paraphrase of prompts")
+    prompts.add_argument("--llm-model", default="gpt-4o", help="model name for LLM paraphrase")
+    prompts.add_argument("--llm-fixture", default=None, help="path to JSON fixture for LLM paraphrase")
+    prompts.add_argument("--limit", type=int, default=None, help="limit total prompts generated")
+    prompts.add_argument("--provider-brand-id", default=None, help="configured provider brand ID (e.g. for Elmo)")
+    prompts.add_argument("--output-dir", default=None, help="output directory for prompt artifacts")
+    prompts.set_defaults(handler=_handle_ai_prompts)
+
+    ai_prompts = subparsers.add_parser("ai-prompts", parents=[common, selectors])
+    ai_prompts.add_argument("--keyword-set", default=None, help="keyword set ID to generate prompts from")
+    ai_prompts.add_argument("--keywords", default=None, help="comma-separated list of keywords")
+    ai_prompts.add_argument("--keyword-file", default=None, help="path to custom keyword text file")
+    ai_prompts.add_argument("--brand", dest="brand", action="append", default=[], help="explicit brand name")
+    ai_prompts.add_argument("--locale", default=None, help="locale for prompt templates (e.g. ru-RU, en-US)")
+    ai_prompts.add_argument("--region", default=None, help="region name or code")
+    ai_prompts.add_argument("--from-gsc", action="store_true", default=False, help="include GSC search queries")
+    ai_prompts.add_argument("--from-wordstat", action="store_true", default=False, help="include Wordstat queries")
+    ai_prompts.add_argument("--llm-paraphrase", action="store_true", default=False, help="enable LLM paraphrase of prompts")
+    ai_prompts.add_argument("--llm-model", default="gpt-4o", help="model name for LLM paraphrase")
+    ai_prompts.add_argument("--llm-fixture", default=None, help="path to JSON fixture for LLM paraphrase")
+    ai_prompts.add_argument("--limit", type=int, default=None, help="limit total prompts generated")
+    ai_prompts.add_argument("--provider-brand-id", default=None, help="configured provider brand ID (e.g. for Elmo)")
+    ai_prompts.add_argument("--output-dir", default=None, help="output directory for prompt artifacts")
+    ai_prompts.set_defaults(handler=_handle_ai_prompts)
 
     doctor = subparsers.add_parser("doctor", parents=[common, selectors])
     doctor.set_defaults(handler=_handle_doctor)
@@ -944,6 +979,65 @@ def build_ai_readiness_payload(args: argparse.Namespace) -> dict[str, Any]:
         else observer_home() / "projects" / config.project.namespace / "ai-readiness"
     )
     return ai_readiness_mod.build_ai_readiness_payload(config=config, output_dir=output_dir)
+
+
+def _handle_ai_prompts(args: argparse.Namespace) -> int:
+    try:
+        payload = build_ai_prompts_cli_payload(args)
+    except ConfigError as exc:
+        return _emit_error(args, exc)
+    except (OSError, ValueError, TypeError) as exc:
+        payload = _structured_error_payload(
+            "AI_PROMPTS_FAILED",
+            "AI prompt generation failed.",
+            {"error_type": exc.__class__.__name__, "error": str(exc)},
+        )
+    return _emit_payload(args, payload)
+
+
+def build_ai_prompts_cli_payload(args: argparse.Namespace) -> dict[str, Any]:
+    config_path = _selected_config_path(args)
+    if config_path is None:
+        return _structured_error_payload(
+            "CONFIG_NOT_FOUND",
+            "Project config was not found.",
+            {"path": str(Path.cwd() / ".seo-observer" / "project.toml")},
+        )
+    config = load_project_config(config_path)
+
+    keywords_raw = getattr(args, "keywords", None)
+    keywords = [k.strip() for k in keywords_raw.split(",") if k.strip()] if keywords_raw else None
+
+    keyword_file_arg = getattr(args, "keyword_file", None)
+    keyword_file = Path(str(keyword_file_arg)).expanduser() if keyword_file_arg else None
+
+    llm_fixture_arg = getattr(args, "llm_fixture", None)
+    llm_fixture = Path(str(llm_fixture_arg)).expanduser() if llm_fixture_arg else None
+
+    output_dir_arg = getattr(args, "output_dir", None)
+    output_dir = (
+        Path(str(output_dir_arg)).expanduser()
+        if output_dir_arg
+        else observer_home() / "projects" / config.project.namespace / "ai-prompts"
+    )
+
+    return ai_prompts_mod.build_ai_prompts_payload(
+        config=config,
+        keyword_set_id=getattr(args, "keyword_set", None),
+        keywords=keywords,
+        keyword_file=keyword_file,
+        brand_names=getattr(args, "brand", []),
+        provider_brand_id=getattr(args, "provider_brand_id", None),
+        locale=getattr(args, "locale", None),
+        region=getattr(args, "region", None),
+        from_gsc=bool(getattr(args, "from_gsc", False)),
+        from_wordstat=bool(getattr(args, "from_wordstat", False)),
+        llm_paraphrase=bool(getattr(args, "llm_paraphrase", False)),
+        llm_model=getattr(args, "llm_model", "gpt-4o"),
+        llm_fixture=llm_fixture,
+        limit=getattr(args, "limit", None),
+        output_dir=output_dir,
+    )
 
 
 def _handle_opportunities(args: argparse.Namespace) -> int:

@@ -82,6 +82,7 @@ seo-observer composite-report --provider-artifact /tmp/demo-provider-audit/provi
 seo-observer outcomes --project demo --action-id action:abc123 --start 2026-07-08 --end 2026-07-14 --json
 seo-observer opportunities --project demo --start 2026-07-01 --end 2026-07-07 --json
 seo-observer ai-readiness --project demo --output-dir /tmp/demo-ai-readiness --json
+seo-observer prompts --project demo --keyword-set core --output-dir /tmp/demo-ai-prompts --json
 ```
 
 `collect` is the live-provider entrypoint. It requires enabled supported
@@ -263,6 +264,22 @@ Before live competitor discovery, use `doctor --project demo --json` to verify
 `[sources.competitor_discovery]`, `[sources.competitor_research]`, market
 defaults, and configured competitors. `doctor` does not spend provider credits
 or call external services.
+
+## AI Prompts Generation
+
+`prompts` builds deterministic long-tail AI prompts from configured `[[keyword_sets]]`,
+Wordstat demand, or GSC search queries for visibility tracking in AI engines (Elmo, GEORank):
+
+```bash
+seo-observer prompts --project demo --keyword-set core --output-dir /tmp/demo-ai-prompts --json
+seo-observer prompts --keywords "exam preparation, demo exam tickets" --brand demo --locale en-US --json
+```
+
+It exports local artifacts (`manifest.json`, `prompts-extract.json`, `prompts-export.csv`,
+`query-fan-out.json`, `prompts-report.md`) with a deterministic `prompt_set_hash`.
+Branded control prompts are tagged with `cohort = "branded_control"` and `control = "branded"`
+so they are excluded from discovery metrics.
+Details are documented in `plugins/seo-observer/references/ai-prompts.md`.
 
 ## Keyword Research
 

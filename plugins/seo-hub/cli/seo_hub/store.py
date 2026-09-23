@@ -106,6 +106,9 @@ class RunStore:
             return False
         except PermissionError:
             return True
+        except OverflowError:
+            # A value pid_t cannot hold can never name a live process.
+            return False
         return True
 
     def _idempotency_path(self, project_id: str, idempotency_key: str) -> Path:

@@ -42,8 +42,8 @@ def render_index(api: HubAPI, principal: Principal) -> str:
         latest = status["latest_run"]
         latest_cell = _run_link(project["id"], latest) if latest else "No runs yet"
         links = " ".join(filter(None, (
-            _external_link(project['deep_links']['elmo'], 'Elmo'),
-            _external_link(project['deep_links']['openseo'], 'OpenSEO'),
+            _external_link(project['deep_links'].get('elmo'), 'Elmo'),
+            _external_link(project['deep_links'].get('openseo'), 'OpenSEO'),
         ))) or '<span class="muted">No links available</span>'
         rows.append(
             "<tr>"

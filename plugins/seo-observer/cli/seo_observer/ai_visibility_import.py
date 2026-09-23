@@ -5,6 +5,8 @@ import hashlib
 import json
 from typing import Any
 
+from seo_observer.ai_prompts import compute_prompt_set_hash
+
 
 def import_elmo_ai_visibility(
     envelope: dict[str, Any],
@@ -214,18 +216,7 @@ def _quality(coverage: str, freshness: str, comparability: str) -> str:
     return "complete"
 
 
-def _prompt_set_hash(prompt_rows: list[dict[str, Any]]) -> str:
-    stable = [
-        {
-            "prompt_id": row["prompt_id"],
-            "text": row["text"],
-            "cohort": row["cohort"],
-            "control": row["control"],
-        }
-        for row in sorted(prompt_rows, key=lambda item: item["prompt_id"])
-    ]
-    body = json.dumps(stable, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+_prompt_set_hash = compute_prompt_set_hash
 
 
 def _discovery_metrics(prompt_rows: list[dict[str, Any]]) -> dict[str, int]:
