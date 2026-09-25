@@ -52,7 +52,7 @@ def channel_group(source: str | None, medium: str | None) -> str:
     if med == "organic":
         return "Organic Search"
     if med in PAID_SEARCH_MEDIUMS:
-        return "Paid Search"
+        return "Paid Social" if src in SOCIAL_SOURCES else "Paid Search"
     if med in SOCIAL_MEDIUMS or src in SOCIAL_SOURCES:
         return "Organic Social"
     if med == "email":

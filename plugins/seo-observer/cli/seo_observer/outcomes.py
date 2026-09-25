@@ -289,6 +289,14 @@ class AggregateOutcomeAdapter:
         dataset_coverage = quality["dataset_coverage"]
         if (invalid_rows or out_of_window_rows) and dataset_coverage == "complete":
             dataset_coverage = "partial"
+            observations = [
+                dataclasses.replace(
+                    fact,
+                    dataset_coverage="partial",
+                    lineage={**fact.lineage, "dataset_coverage": "partial"},
+                )
+                for fact in observations
+            ]
         return {
             "collection": "outcome_metrics",
             "metadata": {
@@ -329,10 +337,18 @@ class AggregateOutcomeAdapter:
                 row.get(descriptor.medium_field) if descriptor.medium_field else None,
             ))
         value_minor = None
-        if descriptor.value_minor_field and row.get(descriptor.value_minor_field) is not None:
+        if descriptor.value_minor_field:
+            if row.get(descriptor.value_minor_field) is None:
+                raise AggregateOutcomeError(
+                    f"Aggregate outcome row requires non-empty {descriptor.value_minor_field}."
+                )
             value_minor = _non_negative_count(row, descriptor.value_minor_field)
         currency = None
-        if descriptor.currency_field and row.get(descriptor.currency_field):
+        if descriptor.currency_field:
+            if not row.get(descriptor.currency_field):
+                raise AggregateOutcomeError(
+                    f"Aggregate outcome row requires non-empty {descriptor.currency_field}."
+                )
             currency = str(row[descriptor.currency_field]).upper()
         count = _non_negative_count(row, descriptor.count_field)
         period_start = _required_row_value(row, descriptor.period_start_field)

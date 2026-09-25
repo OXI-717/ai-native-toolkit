@@ -141,7 +141,7 @@ class GA4Adapter:
         specs = (
             GA4ReportSpec(
                 "channel_landing_source_medium",
-                ("sessionDefaultChannelGroup", "sessionSource", "sessionMedium",
+                ("date", "sessionDefaultChannelGroup", "sessionSource", "sessionMedium",
                  "landingPagePlusQueryString"),
                 GA4_TRAFFIC_METRICS,
             ),
@@ -331,13 +331,14 @@ def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: 
         session_medium = _clean_text(row.get("sessionMedium"))
         source_medium = f"{session_source} / {session_medium}" if session_source or session_medium else "__all__"
         landing_page = _clean_text(row.get("landingPagePlusQueryString")) or "__all__"
+        day = _ga4_date(row.get("date"))
         observations.append(
             {
                 "project_id": "__pending__",
                 "property_id": source.property_id,
                 "source": "ga4",
-                "effective_start": period.start_date,
-                "effective_end": period.end_date,
+                "effective_start": day or period.start_date,
+                "effective_end": day or period.end_date,
                 "source_timezone": source.channel_timezone,
                 "channel": channel_slug(group),
                 "search_engine": source_medium,
@@ -473,6 +474,13 @@ def google_oauth_access_token_from_file(path: str | Path) -> str:
     if not credentials.token:
         raise GA4RequestError("GA4 OAuth token file did not produce an access token.")
     return str(credentials.token)
+
+
+def _ga4_date(value: Any) -> str | None:
+    text = _clean_text(value)
+    if text and len(text) == 8 and text.isdigit():
+        return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+    return None
 
 
 def _clean_text(value: Any) -> str | None:

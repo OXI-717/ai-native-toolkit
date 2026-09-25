@@ -2217,11 +2217,13 @@ def _metric_delta(
     }
 
 
-def _today() -> dt.date:
+def _today(timezone_name: str | None = None) -> dt.date:
+    if timezone_name:
+        return dt.datetime.now(ZoneInfo(timezone_name)).date()
     return dt.date.today()
 
 
-def _daily_dates(args: argparse.Namespace) -> list[dt.date]:
+def _daily_dates(args: argparse.Namespace, *, timezone_name: str | None = None) -> list[dt.date]:
     if getattr(args, "start", None) or getattr(args, "end", None):
         start_s, end_s = _collect_period(args, "1d")
         start, end = dt.date.fromisoformat(start_s), dt.date.fromisoformat(end_s)
@@ -2230,7 +2232,7 @@ def _daily_dates(args: argparse.Namespace) -> list[dt.date]:
         days = int(days_raw if days_raw is not None else 3)
         if days < 1:
             raise ConfigError("COLLECT_PERIOD_INVALID", "`--days` must be >= 1.", {"days": days})
-        end = _today() - dt.timedelta(days=1)
+        end = _today(timezone_name) - dt.timedelta(days=1)
         start = end - dt.timedelta(days=days - 1)
     return [start + dt.timedelta(days=offset) for offset in range((end - start).days + 1)]
 
@@ -2243,9 +2245,17 @@ def _collect_daily_payload(args: argparse.Namespace) -> dict[str, Any]:
             "`--pause-seconds` must be a finite number >= 0.",
             {"pause_seconds": pause},
         )
+    config_path = _selected_config_path(args)
+    if config_path is None:
+        return _structured_error_payload(
+            "CONFIG_NOT_FOUND",
+            "Project config was not found.",
+            {"path": str(Path.cwd() / ".seo-observer" / "project.toml")},
+        )
+    config = load_project_config(config_path)
     day_payloads: list[dict[str, Any]] = []
     failed: list[str] = []
-    dates = _daily_dates(args)
+    dates = _daily_dates(args, timezone_name=config.project.timezone)
     for index, day in enumerate(dates):
         day_args = argparse.Namespace(**{**vars(args), "start": day.isoformat(), "end": day.isoformat(),
                                          "period_id": "1d", "daily": False})
