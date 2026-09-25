@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 import sqlite3
 import ssl
 import sys
 import tempfile
+import time
 import urllib.parse
 import urllib.request
 import uuid
@@ -71,7 +74,15 @@ from seo_observer.gsc import (
     doctor_gsc_source,
 )
 from seo_observer.metrica import MetricaAdapter, MetricaSource, Period as MetricaPeriod, doctor_metrica_source
-from seo_observer.outcomes import doctor_outcome_source
+from seo_observer.outcomes import (
+    AggregateOutcomeAdapter,
+    AggregateOutcomeSource,
+    HttpAggregateTransport,
+    Period as OutcomePeriod,
+    descriptor_from_source_fields,
+    doctor_outcome_source,
+    reduce_outcome_facts,
+)
 from seo_observer.opportunities import OpportunityOptions, build_opportunity_report
 from seo_observer.provider_audit import build_provider_audit_payload, collect_provider_audit_sources
 from seo_observer.report_rendering import write_polished_report_artifacts
@@ -81,6 +92,7 @@ from seo_observer.wordstat import doctor_wordstat_source
 from seo_observer.storage import (
     CollectionRun,
     CrawlPageObservation,
+    OutcomeMetricObservation,
     RawArtifact,
     SEOStorage,
     SearchPerformanceObservation,
@@ -503,6 +515,12 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--period-id", default="30d")
     collect.add_argument("--start", default=None)
     collect.add_argument("--end", default=None)
+    collect.add_argument("--daily", action="store_true",
+                         help="Collect one period per calendar day; re-collecting a day supersedes it.")
+    collect.add_argument("--days", type=int, default=3,
+                         help="With --daily and no --start/--end: re-collect the last N finished days.")
+    collect.add_argument("--pause-seconds", type=float, default=0.0,
+                         help="With --daily: pause between days (provider quotas during backfill).")
     collect.set_defaults(handler=_handle_collect)
 
     crawl = subparsers.add_parser("crawl", parents=[common, selectors])
@@ -722,7 +740,7 @@ def _handle_not_implemented(args: argparse.Namespace) -> int:
 
 def _handle_collect(args: argparse.Namespace) -> int:
     try:
-        payload = _collect_payload(args)
+        payload = _collect_daily_payload(args) if getattr(args, "daily", False) else _collect_payload(args)
     except ConfigError as exc:
         return _emit_error(args, exc)
     return _emit_payload(args, payload)
@@ -1884,6 +1902,7 @@ def _load_compare_window(
         FROM search_performance
         WHERE project_id = ?
           AND is_current = 1
+          AND segment_id NOT IN ('total', 'brand')
           AND effective_start <= ?
           AND effective_end >= ?
         """,
@@ -1904,6 +1923,7 @@ def _load_compare_window(
             FROM traffic_metrics
             WHERE project_id = ?
               AND is_current = 1
+              AND attribution_model != 'ga4_session_all_channels'
               AND effective_start <= ?
               AND effective_end >= ?
             """,
@@ -2195,6 +2215,58 @@ def _metric_delta(
         },
         "comparison_state": "ready" if comparable and result.state in {"ready", "not_ready"} else result.state,
     }
+
+
+def _today(timezone: str | None = None) -> dt.date:
+    if timezone:
+        return dt.datetime.now(ZoneInfo(timezone)).date()
+    return dt.date.today()
+
+
+def _daily_dates(args: argparse.Namespace, *, timezone: str | None = None) -> list[dt.date]:
+    if getattr(args, "start", None) or getattr(args, "end", None):
+        start_s, end_s = _collect_period(args, "1d")
+        start, end = dt.date.fromisoformat(start_s), dt.date.fromisoformat(end_s)
+    else:
+        days_raw = getattr(args, "days", None)
+        days = int(days_raw if days_raw is not None else 3)
+        if days < 1:
+            raise ConfigError("COLLECT_PERIOD_INVALID", "`--days` must be >= 1.", {"days": days})
+        end = _today(timezone) - dt.timedelta(days=1)
+        start = end - dt.timedelta(days=days - 1)
+    return [start + dt.timedelta(days=offset) for offset in range((end - start).days + 1)]
+
+
+def _collect_daily_timezone(args: argparse.Namespace) -> str | None:
+    if getattr(args, "start", None) or getattr(args, "end", None):
+        return None
+    config_path = _selected_config_path(args)
+    if config_path is None:
+        return None
+    return load_project_config(config_path).project.timezone
+
+
+def _collect_daily_payload(args: argparse.Namespace) -> dict[str, Any]:
+    pause = getattr(args, "pause_seconds", 0.0) or 0.0
+    if not isinstance(pause, (int, float)) or not math.isfinite(pause) or pause < 0:
+        raise ConfigError(
+            "COLLECT_PERIOD_INVALID",
+            "`--pause-seconds` must be a finite number >= 0.",
+            {"pause_seconds": pause},
+        )
+    day_payloads: list[dict[str, Any]] = []
+    failed: list[str] = []
+    dates = _daily_dates(args, timezone=_collect_daily_timezone(args))
+    for index, day in enumerate(dates):
+        day_args = argparse.Namespace(**{**vars(args), "start": day.isoformat(), "end": day.isoformat(),
+                                         "period_id": "1d", "daily": False})
+        payload = _collect_payload(day_args)
+        day_payloads.append(payload)
+        if not payload.get("ok", False):
+            failed.append(day.isoformat())
+        if args.pause_seconds and index < len(dates) - 1:
+            time.sleep(args.pause_seconds)
+    return {"ok": not failed, "command": "collect", "mode": "daily", "days": day_payloads, "failed_days": failed}
 
 
 def _collect_payload(args: argparse.Namespace) -> dict[str, Any]:
@@ -2682,15 +2754,30 @@ def _collect_missing_required_inputs(plan: list[dict[str, Any]], env: dict[str, 
                     missing.append({"source": source_name, "env": str(primary_env), "reason": "missing environment variable"})
                 else:
                     missing.append({"source": source_name, "env": str(primary_env), "reason": "credential file does not exist"})
+
+        endpoint_env = fields.get("endpoint_env")
+        if source_name.startswith("outcome_") and endpoint_env and not env.get(str(endpoint_env), ""):
+            key = (source_name, str(endpoint_env))
+            if key not in checked:
+                checked.add(key)
+                missing.append({"source": source_name, "env": str(endpoint_env), "reason": "missing environment variable"})
     return missing
 
 
+_COLLECT_SUPPORTED = {"google_search_console", "yandex_metrica", "yandex_webmaster", "ga4"}
+
+
+def _collect_supports(source_name: str, source: Any) -> bool:
+    if source_name in _COLLECT_SUPPORTED:
+        return True
+    return source_name.startswith("outcome_") and source.fields.get("adapter") == "http_aggregate"
+
+
 def _collect_source_plan(config: Any) -> list[dict[str, Any]]:
-    supported = {"google_search_console", "yandex_metrica", "yandex_webmaster", "ga4"}
     plan: list[dict[str, Any]] = []
     for binding in config.source_bindings:
         source = config.sources.get(binding.source)
-        if source is None or not source.enabled or binding.source not in supported:
+        if source is None or not source.enabled or not _collect_supports(binding.source, source):
             continue
         for property_id in binding.properties:
             plan.append(
@@ -2706,10 +2793,9 @@ def _collect_source_plan(config: Any) -> list[dict[str, Any]]:
 
 
 def _collect_unsupported_sources(config: Any) -> list[dict[str, Any]]:
-    supported = {"google_search_console", "yandex_metrica", "yandex_webmaster", "ga4"}
     unsupported: list[dict[str, Any]] = []
     for source_name, source in sorted(config.sources.items()):
-        if not source.enabled or source_name in supported:
+        if not source.enabled or _collect_supports(source_name, source):
             continue
         unsupported.append(
             {
@@ -2767,6 +2853,8 @@ def _collect_provider_results(
 
 
 def _collect_collection_for_source(source_name: str) -> str:
+    if source_name.startswith("outcome_"):
+        return "outcome_metrics"
     if source_name in {"yandex_metrica", "ga4"}:
         return "traffic_metrics"
     return "search_performance"
@@ -2785,7 +2873,7 @@ def _collect_one_provider(
     property_id = str(item["property_id"])
     remote_id = str(item["remote_id"])
     if source_name == "google_search_console":
-        result = GSCAdapter(
+        adapter = GSCAdapter(
             GSCSource(
                 site_url=remote_id,
                 credential_file_env=str(fields.get("credential_file_env") or ""),
@@ -2797,10 +2885,19 @@ def _collect_one_provider(
                 finalize_after=fields.get("finalize_after"),
             ),
             _JsonHttpTransport("https://www.googleapis.com"),
-        ).fetch_search_performance(
+        )
+        result = adapter.fetch_search_performance(
             GSCPeriod(period_start, period_end),
             query=SearchAnalyticsQuery(dimensions=("query", "page", "device", "country")),
         )
+        split = adapter.fetch_brand_split(GSCPeriod(period_start, period_end), config.channels.brand_terms)
+        result = {
+            **result,
+            "metadata": _merge_source_metadata(
+                result.get("metadata") or {}, split.get("metadata") or {}
+            ),
+            "observations": list(result.get("observations") or []) + list(split["observations"]),
+        }
     elif source_name == "yandex_metrica":
         result = MetricaAdapter(
             MetricaSource(
@@ -2814,7 +2911,7 @@ def _collect_one_provider(
             _JsonHttpTransport("https://api-metrika.yandex.net"),
         ).fetch_organic_traffic(MetricaPeriod(period_start, period_end))
     elif source_name == "ga4":
-        result = GA4Adapter(
+        adapter = GA4Adapter(
             GA4Source(
                 property_resource=remote_id,
                 token=_ga4_access_token(fields, os.environ),
@@ -2822,9 +2919,35 @@ def _collect_one_provider(
                 timezone=config.project.timezone,
                 limit=int(fields.get("limit") or 10000),
                 finalize_after=fields.get("finalize_after"),
+                channel_timezone=str(fields.get("timezone") or "property_timezone"),
             ),
             _JsonHttpTransport("https://analyticsdata.googleapis.com"),
-        ).fetch_organic_traffic_bundle(GA4Period(period_start, period_end))
+        )
+        organic = adapter.fetch_organic_traffic_bundle(GA4Period(period_start, period_end))
+        channels = adapter.fetch_channel_traffic_bundle(GA4Period(period_start, period_end))
+        result = {
+            **organic,
+            "metadata": _merge_source_metadata(
+                organic.get("metadata") or {}, channels.get("metadata") or {}
+            ),
+            "observations": organic["observations"] + channels["observations"],
+        }
+    elif source_name.startswith("outcome_"):
+        descriptor = descriptor_from_source_fields(source_name, fields, timezone=config.project.timezone)
+        adapter = AggregateOutcomeAdapter(
+            AggregateOutcomeSource(source_id=source_name, adapter="http_aggregate", approved_views=(descriptor,)),
+            HttpAggregateTransport(os.environ[str(fields["endpoint_env"])], os.environ[str(fields["credential_env"])]),
+            project_id=config.project.namespace,
+            property_id=property_id,
+        )
+        facts = adapter.fetch_outcome_facts(OutcomePeriod(period_start, period_end), view_id=descriptor.view_id)
+        result = {
+            "collection": "outcome_metrics",
+            "metadata": facts["metadata"],
+            "observations": [
+                dataclasses.asdict(fact) for fact in reduce_outcome_facts(facts["observations"])
+            ],
+        }
     elif source_name == "yandex_webmaster":
         result = WebmasterAdapter(
             WebmasterSource(
@@ -2844,12 +2967,14 @@ def _collect_one_provider(
             "Collect source is not supported.",
             {"source": source_name},
         )
+    coverage = str((result.get("metadata") or {}).get("dataset_coverage") or "")
+    status = "partial" if coverage in {"partial", "truncated"} else "ok"
     return {
         "source": source_name,
         "property_id": property_id,
         "remote_id": remote_id,
         "required": item["required"],
-        "status": "ok",
+        "status": status,
         "collection": result["collection"],
         "metadata": result.get("metadata") or {},
         "observations": result.get("observations") or [],
@@ -3028,7 +3153,7 @@ def _write_collect_results(
             block["invalid_observations"] = int(block.get("invalid_observations", 0)) + len(invalid_rows)
         if result.get("error"):
             block["error"] = result["error"]
-        if collection not in {"search_performance", "traffic_metrics"}:
+        if collection not in {"search_performance", "traffic_metrics", "outcome_metrics"}:
             continue
         request, artifact, artifact_text = _collect_request_artifact(
             result=result,
@@ -3061,7 +3186,7 @@ def _write_collect_results(
                 raise
             observations_written += len(search_rows)
             block["observations_written"] += len(search_rows)
-        else:
+        elif collection == "traffic_metrics":
             traffic_rows = [
                 _collect_traffic_observation(
                     config=config,
@@ -3074,12 +3199,51 @@ def _write_collect_results(
                 for row in observations
             ]
             try:
-                storage.ingest_traffic_metrics(run, request, [artifact], traffic_rows)
+                storage.ingest_traffic_metrics(
+                    run,
+                    request,
+                    [artifact],
+                    traffic_rows,
+                    authoritative=_collect_authoritative_refresh(
+                        result=result,
+                        period_start=period_start,
+                        period_end=period_end,
+                    ),
+                )
             except Exception:
                 artifact_path.unlink(missing_ok=True)
                 raise
             observations_written += len(traffic_rows)
             block["observations_written"] += len(traffic_rows)
+        elif collection == "outcome_metrics":
+            outcome_rows = [
+                _collect_outcome_observation(
+                    config=config,
+                    row=row,
+                    period_start=period_start,
+                    period_end=period_end,
+                    request=request,
+                    artifact=artifact,
+                )
+                for row in observations
+            ]
+            try:
+                storage.ingest_outcome_metrics(
+                    run,
+                    request,
+                    [artifact],
+                    outcome_rows,
+                    authoritative=_collect_authoritative_refresh(
+                        result=result,
+                        period_start=period_start,
+                        period_end=period_end,
+                    ),
+                )
+            except Exception:
+                artifact_path.unlink(missing_ok=True)
+                raise
+            observations_written += len(outcome_rows)
+            block["observations_written"] += len(outcome_rows)
     final_status = "partial" if partial_sources or failed_sources else "complete"
     storage.update_collection_run_status(run.run_id, final_status, finished_at=run.finished_at)
     return {
@@ -3184,7 +3348,10 @@ def _collect_request_artifact(
         byte_size=len(artifact_text.encode("utf-8")),
     )
     metadata = result.get("metadata") or {}
-    logical_key = f"{source}:{property_id}:{period_id}:{collection}"
+    if collection == "outcome_metrics":
+        logical_key = f"{source}:{property_id}:day:{collection}"
+    else:
+        logical_key = f"{source}:{property_id}:{period_id}:{collection}"
     error = result.get("error") or {}
     request = SourceRequest(
         request_id=request_id,
@@ -3200,6 +3367,7 @@ def _collect_request_artifact(
             "period_start": period_start,
             "period_end": period_end,
             "period_id": period_id,
+            "collection": collection,
         },
         attempt=1,
         queried_at=run.started_at,
@@ -3214,6 +3382,21 @@ def _collect_request_artifact(
         error_summary=str(error.get("message"))[:500] if error.get("message") else None,
     )
     return request, artifact, artifact_text
+
+
+def _collect_authoritative_refresh(
+    *,
+    result: dict[str, Any],
+    period_start: str,
+    period_end: str,
+) -> bool:
+    """True only when a successful complete single-day result may retire absent facts."""
+    metadata = result.get("metadata") or {}
+    return (
+        str(result.get("status") or "ok") == "ok"
+        and str(metadata.get("dataset_coverage") or "") == "complete"
+        and period_start == period_end
+    )
 
 
 def _collect_aggregate_status(current: str, new: str) -> str:
@@ -3294,6 +3477,13 @@ def _collect_traffic_observation(
     request: SourceRequest,
     artifact: RawArtifact,
 ) -> TrafficMetricObservation:
+    attribution_model = str(row.get("attribution_model") or "__all__")
+    logical_key = request.logical_observation_key
+    if attribution_model == "ga4_session_all_channels":
+        descriptor = request.request_descriptor if isinstance(request.request_descriptor, dict) else {}
+        key_source = str(descriptor.get("source") or request.source)
+        key_property = str(descriptor.get("property_id") or request.property_id or "__all__")
+        logical_key = f"{key_source}:{key_property}:day:traffic_metrics"
     return TrafficMetricObservation(
         project_id=config.project.namespace,
         property_id=str(row.get("property_id") or "__all__"),
@@ -3303,14 +3493,14 @@ def _collect_traffic_observation(
         source_timezone=str(row.get("source_timezone") or config.project.timezone),
         request_id=request.request_id,
         artifact_id=artifact.artifact_id,
-        logical_observation_key=request.logical_observation_key,
+        logical_observation_key=logical_key,
         collection_attempt_key=request.collection_attempt_key,
         channel=str(row.get("channel") or "__all__"),
         search_engine=str(row.get("search_engine") or "__all__"),
         landing_page_id=str(row.get("landing_page_id") or "__all__"),
         device=str(row.get("device") or "__all__"),
         region=str(row.get("region") or "__all__"),
-        attribution_model=str(row.get("attribution_model") or "__all__"),
+        attribution_model=attribution_model,
         visits=_optional_int(row.get("visits")),
         users=_optional_int(row.get("users")),
         pageviews=_optional_int(row.get("pageviews")),
@@ -3320,6 +3510,45 @@ def _collect_traffic_observation(
         freshness=str(row.get("freshness") or "provisional"),
         comparability=_storage_comparability(str(row.get("comparability") or "comparable")),
         normalizer_version=str(row.get("normalizer_version") or "metrica-v1"),
+    )
+
+
+def _collect_outcome_observation(
+    *,
+    config: Any,
+    row: dict[str, Any],
+    period_start: str,
+    period_end: str,
+    request: SourceRequest,
+    artifact: RawArtifact,
+) -> OutcomeMetricObservation:
+    return OutcomeMetricObservation(
+        project_id=config.project.namespace,
+        property_id=str(row.get("property_id") or "__all__"),
+        source=str(row.get("source") or "outcome"),
+        effective_start=str(row.get("period_start") or period_start),
+        effective_end=str(row.get("period_end") or period_end),
+        source_timezone=str(row.get("timezone") or config.project.timezone),
+        request_id=request.request_id,
+        artifact_id=artifact.artifact_id,
+        logical_observation_key=request.logical_observation_key,
+        collection_attempt_key=request.collection_attempt_key,
+        outcome_id=str(row["outcome_id"]),
+        evidence_kind=str(row.get("evidence_kind") or "server_fact"),
+        counting_unit=str(row["counting_unit"]),
+        deduplication_rule=str(row.get("dedupe_key") or "__unknown__"),
+        population_scope=str(row.get("population_id") or "__all__"),
+        attribution_model=str(row.get("attribution_model") or "__all__"),
+        attribution_scope=str(row.get("attribution_scope") or "__all__"),
+        attribution_level="channel_aggregate" if row.get("traffic_channel") not in (None, "__all__") else "server_aggregate",
+        traffic_channel=str(row.get("traffic_channel") or "__all__"),
+        count=_optional_int(row.get("count")),
+        value_minor=_optional_int(row.get("value_minor")),
+        currency=row.get("currency"),
+        dataset_coverage=_storage_dataset_coverage(str(row.get("dataset_coverage") or "unknown")),
+        freshness=str(row.get("freshness") or "provisional"),
+        comparability="comparable",
+        normalizer_version="http-aggregate-v1",
     )
 
 
@@ -3405,6 +3634,7 @@ def _crawl_known_current_pages(storage: SEOStorage, *, project_id: str) -> list[
         FROM search_performance
         WHERE project_id = ?
           AND is_current = 1
+          AND segment_id NOT IN ('total', 'brand')
         ORDER BY page_url
         """,
         (project_id,),
@@ -3482,6 +3712,48 @@ def _optional_float(value: Any) -> float | None:
 
 def _utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+_COVERAGE_WORST_FIRST = (
+    "unavailable", "unknown", "truncated", "privacy_thresholded",
+    "empty", "top_rows", "partial", "available", "complete",
+)
+_FRESHNESS_WORST_FIRST = ("stale", "incomplete", "local", "provisional", "final")
+
+
+def _worst_ranked(values: list[str], order: tuple[str, ...]) -> str | None:
+    if not values:
+        return None
+    ranks = {value: index for index, value in enumerate(order)}
+
+    def rank(value: str) -> int:
+        return ranks.get(value, 0)
+
+    return min(values, key=rank)
+
+
+def _merge_source_metadata(*items: dict[str, Any]) -> dict[str, Any]:
+    """Combine per-part source metadata conservatively.
+
+    Coverage and freshness keep the worst value seen in any part so a
+    truncated or provisional sub-report is never masked by a complete one.
+    Row counts are summed; all other keys keep the first part's values.
+    """
+    merged: dict[str, Any] = {}
+    for item in items:
+        for key, value in item.items():
+            if key not in merged or merged.get(key) is None:
+                merged[key] = value
+    coverages = [str(item["dataset_coverage"]) for item in items if item.get("dataset_coverage")]
+    freshness = [str(item["freshness"]) for item in items if item.get("freshness")]
+    coverage = _worst_ranked(coverages, _COVERAGE_WORST_FIRST)
+    fresh = _worst_ranked(freshness, _FRESHNESS_WORST_FIRST)
+    if coverage is not None:
+        merged["dataset_coverage"] = coverage
+    if fresh is not None:
+        merged["freshness"] = fresh
+    merged["rows_received"] = sum(int(item.get("rows_received") or 0) for item in items)
+    return merged
 
 
 def _collect_period(args: argparse.Namespace, period_id: str) -> tuple[str, str]:

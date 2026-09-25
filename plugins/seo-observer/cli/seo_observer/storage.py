@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import json
 import sqlite3
@@ -8,6 +9,7 @@ from dataclasses import asdict, dataclass
 from importlib import resources
 from pathlib import Path
 from typing import Any, Iterator
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from seo_observer import __version__
 from seo_observer.config import ProjectConfig, observer_home
@@ -267,6 +269,45 @@ class TrafficMetricObservation:
 
 
 @dataclass(frozen=True)
+class OutcomeMetricObservation:
+    project_id: str
+    source: str
+    effective_start: str
+    effective_end: str
+    source_timezone: str
+    request_id: str
+    artifact_id: str
+    logical_observation_key: str
+    collection_attempt_key: str
+    outcome_id: str
+    evidence_kind: str
+    counting_unit: str
+    deduplication_rule: str
+    population_scope: str
+    attribution_scope: str
+    attribution_level: str
+    dataset_coverage: str
+    freshness: str
+    comparability: str
+    property_id: str = RESERVED_ALL
+    attribution_model: str = RESERVED_ALL
+    traffic_channel: str = RESERVED_ALL
+    search_engine: str = RESERVED_ALL
+    landing_page_id: str = RESERVED_ALL
+    device: str = RESERVED_ALL
+    count: int | None = None
+    unique_actors: int | None = None
+    value_minor: int | None = None
+    currency: str | None = None
+    fact_schema_version: int = 1
+    normalizer_version: str = "outcome-v1"
+    effective_instant_start: str | None = None
+    effective_instant_end: str | None = None
+    observed_at: str | None = None
+    reporting_period_id: str | None = None
+
+
+@dataclass(frozen=True)
 class CrawlPageObservation:
     project_id: str
     property_id: str
@@ -480,6 +521,8 @@ class SEOStorage:
         request: SourceRequest,
         artifacts: list[RawArtifact],
         observations: list[TrafficMetricObservation],
+        *,
+        authoritative: bool = False,
     ) -> None:
         self.bootstrap()
         _validate_traffic_batch(run, request, artifacts, observations, self.observer_home)
@@ -490,6 +533,30 @@ class SEOStorage:
                 _insert_artifact(con, artifact)
             for obs in observations:
                 _insert_traffic_metric(con, obs)
+            _retire_overlapping_period_grain_ga4_channel_facts(con, observations)
+            if request.transport_status == "success" and authoritative:
+                _retire_absent_ga4_channel_facts(con, request, observations)
+
+    def ingest_outcome_metrics(
+        self,
+        run: CollectionRun,
+        request: SourceRequest,
+        artifacts: list[RawArtifact],
+        observations: list[OutcomeMetricObservation],
+        *,
+        authoritative: bool = False,
+    ) -> None:
+        self.bootstrap()
+        _validate_outcome_batch(run, request, artifacts, observations, self.observer_home)
+        with self.connect() as con:
+            _insert_run(con, run)
+            _insert_request(con, request)
+            for artifact in artifacts:
+                _insert_artifact(con, artifact)
+            for obs in observations:
+                _insert_outcome_metric(con, obs)
+            if request.transport_status == "success" and authoritative:
+                _retire_absent_outcome_facts(con, request, observations)
 
     def ingest_crawl_pages(
         self,
@@ -857,12 +924,31 @@ def _validate_batch(
             raise StorageError("CTR must be non-negative.")
 
 
-def _validate_traffic_batch(
+def _day_logical_key(request: SourceRequest) -> str:
+    """Day-grain identity independent of the invocation period_id.
+
+    Outcome facts and GA4 all-channel rows carry a day grain, so a ``30d``
+    collect and a ``collect --daily`` run must supersede each other instead of
+    double-counting. When the request descriptor does not record the collection
+    (requests written before this contract), the request's own key is returned.
+    """
+    descriptor = request.request_descriptor if isinstance(request.request_descriptor, dict) else {}
+    collection = str(descriptor.get("collection") or "")
+    if not collection:
+        return request.logical_observation_key
+    source = str(descriptor.get("source") or request.source)
+    property_id = str(descriptor.get("property_id") or request.property_id or RESERVED_ALL)
+    return f"{source}:{property_id}:day:{collection}"
+
+
+def _validate_batch_common(
     run: CollectionRun,
     request: SourceRequest,
     artifacts: list[RawArtifact],
-    observations: list[TrafficMetricObservation],
+    observations: list[Any],
     home: Path,
+    *,
+    allow_day_key: bool = False,
 ) -> None:
     if request.run_id != run.run_id:
         raise StorageError("Request run_id does not match the collection run.")
@@ -870,6 +956,9 @@ def _validate_traffic_batch(
     logical = request.logical_observation_key
     if logical == attempt:
         raise StorageError("Logical observation key and collection attempt key must differ.")
+    allowed_logical = {logical}
+    if allow_day_key:
+        allowed_logical.add(_day_logical_key(request))
     artifact_ids = {artifact.artifact_id for artifact in artifacts}
     for artifact in artifacts:
         if artifact.request_id != request.request_id:
@@ -886,10 +975,28 @@ def _validate_traffic_batch(
             raise StorageError("Observation request_id does not match the source request.")
         if obs.collection_attempt_key != attempt:
             raise StorageError("Observation collection_attempt_key does not match the request.")
-        if obs.logical_observation_key != logical:
+        if obs.logical_observation_key not in allowed_logical:
             raise StorageError("Observation logical_observation_key does not match the request.")
         if obs.artifact_id not in artifact_ids:
             raise StorageError("Observation artifact_id was not included in the artifact batch.")
+
+
+def _validate_traffic_batch(
+    run: CollectionRun,
+    request: SourceRequest,
+    artifacts: list[RawArtifact],
+    observations: list[TrafficMetricObservation],
+    home: Path,
+) -> None:
+    _validate_batch_common(run, request, artifacts, observations, home, allow_day_key=True)
+    day_key = _day_logical_key(request)
+    for obs in observations:
+        if (
+            obs.attribution_model == GA4_ALL_CHANNELS_MODEL
+            and day_key != request.logical_observation_key
+            and obs.logical_observation_key != day_key
+        ):
+            raise StorageError("GA4 all-channel observations must use the day-grain logical key.")
         for metric_name in ("visits", "users", "pageviews"):
             value = getattr(obs, metric_name)
             if value is not None and value < 0:
@@ -898,6 +1005,21 @@ def _validate_traffic_batch(
             raise StorageError("Bounce rate must be non-negative.")
         if obs.avg_visit_duration_seconds is not None and obs.avg_visit_duration_seconds < 0:
             raise StorageError("Average visit duration must be non-negative.")
+
+
+def _validate_outcome_batch(
+    run: CollectionRun,
+    request: SourceRequest,
+    artifacts: list[RawArtifact],
+    observations: list[OutcomeMetricObservation],
+    home: Path,
+) -> None:
+    _validate_batch_common(run, request, artifacts, observations, home)
+    for obs in observations:
+        for metric_name in ("count", "unique_actors"):
+            value = getattr(obs, metric_name)
+            if value is not None and value < 0:
+                raise StorageError("Outcome metric counts must be non-negative.")
 
 
 def _validate_crawl_batch(
@@ -1177,6 +1299,239 @@ def _insert_traffic_metric(con: sqlite3.Connection, obs: TrafficMetricObservatio
         )
 
 
+def _insert_outcome_metric(con: sqlite3.Connection, obs: OutcomeMetricObservation) -> None:
+    row = _outcome_row(obs)
+    current = con.execute(
+        """
+        SELECT fact_id FROM outcome_metrics
+        WHERE is_current = 1
+          AND logical_observation_key = ?
+          AND effective_start = ?
+          AND effective_end = ?
+          AND outcome_id = ?
+          AND traffic_channel = ?
+          AND search_engine = ?
+          AND landing_page_id = ?
+          AND device = ?
+          AND attribution_model = ?
+        """,
+        (
+            row["logical_observation_key"],
+            row["effective_start"],
+            row["effective_end"],
+            row["outcome_id"],
+            row["traffic_channel"],
+            row["search_engine"],
+            row["landing_page_id"],
+            row["device"],
+            row["attribution_model"],
+        ),
+    ).fetchone()
+    supersedes_fact_id = int(current["fact_id"]) if current else None
+    cursor = con.execute(
+        """
+        INSERT INTO outcome_metrics(
+          project_id, property_id, source, effective_start, effective_end, source_timezone,
+          effective_instant_start, effective_instant_end, observed_at, reporting_period_id,
+          request_id, artifact_id, logical_observation_key, collection_attempt_key,
+          outcome_id, evidence_kind, counting_unit, deduplication_rule, population_scope,
+          attribution_model, attribution_scope, traffic_channel, search_engine,
+          landing_page_id, device, attribution_level, count, unique_actors, value_minor,
+          currency, dataset_coverage, freshness, comparability, fact_schema_version,
+          normalizer_version, is_current, supersedes_fact_id
+        )
+        VALUES (
+          :project_id, :property_id, :source, :effective_start, :effective_end, :source_timezone,
+          :effective_instant_start, :effective_instant_end, :observed_at, :reporting_period_id,
+          :request_id, :artifact_id, :logical_observation_key, :collection_attempt_key,
+          :outcome_id, :evidence_kind, :counting_unit, :deduplication_rule, :population_scope,
+          :attribution_model, :attribution_scope, :traffic_channel, :search_engine,
+          :landing_page_id, :device, :attribution_level, :count, :unique_actors, :value_minor,
+          :currency, :dataset_coverage, :freshness, :comparability, :fact_schema_version,
+          :normalizer_version, :is_current, :supersedes_fact_id
+        )
+        """,
+        {
+            **row,
+            "is_current": 0 if supersedes_fact_id is not None else 1,
+            "supersedes_fact_id": supersedes_fact_id,
+        },
+    )
+    new_fact_id = int(cursor.lastrowid)
+    if supersedes_fact_id is not None:
+        con.execute(
+            """
+            UPDATE outcome_metrics
+            SET is_current = 0, superseded_by_fact_id = ?
+            WHERE fact_id = ?
+            """,
+            (new_fact_id, supersedes_fact_id),
+        )
+        con.execute(
+            "UPDATE outcome_metrics SET is_current = 1 WHERE fact_id = ?",
+            (new_fact_id,),
+        )
+
+
+GA4_ALL_CHANNELS_MODEL = "ga4_session_all_channels"
+
+
+def _request_windows(
+    request: SourceRequest,
+    observations: list[Any],
+) -> set[tuple[str, str]]:
+    windows = {(str(obs.effective_start), str(obs.effective_end)) for obs in observations}
+    if windows:
+        return windows
+    descriptor = request.request_descriptor if isinstance(request.request_descriptor, dict) else {}
+    start, end = descriptor.get("period_start"), descriptor.get("period_end")
+    if start and end:
+        return {(str(start), str(end))}
+    return windows
+
+
+def _retire_overlapping_period_grain_ga4_channel_facts(
+    con: sqlite3.Connection,
+    observations: list[TrafficMetricObservation],
+) -> None:
+    """Retire legacy multi-day GA4 channel facts that overlap a new day-grain row.
+
+    Pre-upgrade all-channel rows used the day-grain logical key with the whole
+    requested window as effective bounds. Exact-window supersession cannot
+    replace them, so current totals would double-count after the first daily
+    collection.
+    """
+    seen: set[tuple[str, str]] = set()
+    for obs in observations:
+        if obs.attribution_model != GA4_ALL_CHANNELS_MODEL:
+            continue
+        start, end = str(obs.effective_start), str(obs.effective_end)
+        if start != end:
+            continue
+        key = (obs.logical_observation_key, start)
+        if key in seen:
+            continue
+        seen.add(key)
+        con.execute(
+            """
+            UPDATE traffic_metrics
+            SET is_current = 0
+            WHERE is_current = 1
+              AND logical_observation_key = ?
+              AND attribution_model = ?
+              AND effective_start != effective_end
+              AND effective_start <= ?
+              AND effective_end >= ?
+            """,
+            (obs.logical_observation_key, GA4_ALL_CHANNELS_MODEL, start, start),
+        )
+
+
+def _retire_absent_ga4_channel_facts(
+    con: sqlite3.Connection,
+    request: SourceRequest,
+    observations: list[TrafficMetricObservation],
+) -> None:
+    """On a successful all-channel GA4 result, retire current facts absent from it.
+
+    A complete day/source refresh is authoritative for the
+    ga4_session_all_channels grain: facts that vanished from the response are
+    marked not current (history is preserved). Failed or partial results never
+    retire, and legacy traffic rows keep per-row supersession only.
+    """
+    kept = {
+        (
+            str(obs.effective_start),
+            str(obs.effective_end),
+            obs.channel or RESERVED_ALL,
+            obs.search_engine or RESERVED_ALL,
+            obs.landing_page_id or RESERVED_ALL,
+            obs.device or RESERVED_ALL,
+            obs.region or RESERVED_ALL,
+        )
+        for obs in observations
+        if obs.attribution_model == GA4_ALL_CHANNELS_MODEL
+    }
+    for start, end in _request_windows(request, observations):
+        stale = con.execute(
+            """
+            SELECT fact_id, channel, search_engine, landing_page_id, device, region
+            FROM traffic_metrics
+            WHERE is_current = 1
+              AND logical_observation_key IN (?, ?)
+              AND effective_start = ?
+              AND effective_end = ?
+              AND attribution_model = ?
+            """,
+            (request.logical_observation_key, _day_logical_key(request), start, end, GA4_ALL_CHANNELS_MODEL),
+        ).fetchall()
+        for row in stale:
+            key = (
+                start,
+                end,
+                row["channel"],
+                row["search_engine"],
+                row["landing_page_id"],
+                row["device"],
+                row["region"],
+            )
+            if key not in kept:
+                con.execute(
+                    "UPDATE traffic_metrics SET is_current = 0 WHERE fact_id = ?",
+                    (int(row["fact_id"]),),
+                )
+
+
+def _retire_absent_outcome_facts(
+    con: sqlite3.Connection,
+    request: SourceRequest,
+    observations: list[OutcomeMetricObservation],
+) -> None:
+    """On a successful outcome result, retire current facts absent from it."""
+    kept = {
+        (
+            str(obs.effective_start),
+            str(obs.effective_end),
+            obs.outcome_id,
+            obs.traffic_channel or RESERVED_ALL,
+            obs.search_engine or RESERVED_ALL,
+            obs.landing_page_id or RESERVED_ALL,
+            obs.device or RESERVED_ALL,
+            obs.attribution_model or RESERVED_ALL,
+        )
+        for obs in observations
+    }
+    for start, end in _request_windows(request, observations):
+        stale = con.execute(
+            """
+            SELECT fact_id, outcome_id, traffic_channel, search_engine,
+                   landing_page_id, device, attribution_model
+            FROM outcome_metrics
+            WHERE is_current = 1
+              AND logical_observation_key IN (?, ?)
+              AND effective_start = ?
+              AND effective_end = ?
+            """,
+            (request.logical_observation_key, _day_logical_key(request), start, end),
+        ).fetchall()
+        for row in stale:
+            key = (
+                start,
+                end,
+                row["outcome_id"],
+                row["traffic_channel"],
+                row["search_engine"],
+                row["landing_page_id"],
+                row["device"],
+                row["attribution_model"],
+            )
+            if key not in kept:
+                con.execute(
+                    "UPDATE outcome_metrics SET is_current = 0 WHERE fact_id = ?",
+                    (int(row["fact_id"]),),
+                )
+
+
 def _insert_crawl_page(con: sqlite3.Connection, obs: CrawlPageObservation) -> None:
     row = _crawl_page_row(obs)
     current = con.execute(
@@ -1256,6 +1611,44 @@ def _traffic_row(obs: TrafficMetricObservation) -> dict[str, Any]:
     row["effective_instant_end"] = (
         row["effective_instant_end"] or f"{row['effective_end']}T23:59:59Z"
     )
+    row["observed_at"] = row["observed_at"] or row["effective_instant_end"]
+    row["reporting_period_id"] = (
+        row["reporting_period_id"] or f"{row['effective_start']}..{row['effective_end']}"
+    )
+    return row
+
+
+def _outcome_day_instants(start: str, end: str, source_timezone: str) -> tuple[str, str]:
+    """UTC instants of the source-local day boundaries; naive UTC on failure."""
+    zone_name = str(source_timezone).removesuffix(" provider dates")
+    try:
+        zone = ZoneInfo(zone_name)
+        begin = dt.datetime.combine(dt.date.fromisoformat(start), dt.time.min, tzinfo=zone)
+        finish = dt.datetime.combine(dt.date.fromisoformat(end), dt.time(23, 59, 59), tzinfo=zone)
+    except (ValueError, ZoneInfoNotFoundError):
+        return f"{start}T00:00:00Z", f"{end}T23:59:59Z"
+    return (
+        begin.astimezone(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        finish.astimezone(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    )
+
+
+def _outcome_row(obs: OutcomeMetricObservation) -> dict[str, Any]:
+    row = asdict(obs)
+    for field in (
+        "property_id",
+        "attribution_model",
+        "traffic_channel",
+        "search_engine",
+        "landing_page_id",
+        "device",
+    ):
+        row[field] = row[field] or RESERVED_ALL
+    instant_start, instant_end = _outcome_day_instants(
+        row["effective_start"], row["effective_end"], row["source_timezone"]
+    )
+    row["effective_instant_start"] = row["effective_instant_start"] or instant_start
+    row["effective_instant_end"] = row["effective_instant_end"] or instant_end
     row["observed_at"] = row["observed_at"] or row["effective_instant_end"]
     row["reporting_period_id"] = (
         row["reporting_period_id"] or f"{row['effective_start']}..{row['effective_end']}"

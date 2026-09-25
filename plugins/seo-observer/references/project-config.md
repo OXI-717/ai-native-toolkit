@@ -124,6 +124,14 @@ user_id = "42"
 credential_env = "YANDEX_WEBMASTER_TOKEN"
 finalize_after = "P3D"
 
+[sources.ga4]
+enabled = true
+required = false
+token_file_env = "GOOGLE_OAUTH_TOKEN_FILE"
+timezone = "Europe/Moscow"
+limit = 10000
+finalize_after = "P3D"
+
 [sources.wordstat]
 enabled = true
 required = false
@@ -174,6 +182,10 @@ required = false
 adapter = "fixture_aggregate"
 approved_views = ["demo_pay.paid_purchase_outcomes_daily_v1"]
 parameter_names = ["period_start", "period_end"]
+
+[channels]
+brand_terms = ["demobrand", "demo brand"]
+noise_referrers = ["pay.demo.example"]
 
 [[source_bindings]]
 property = "main"
@@ -237,6 +249,26 @@ Required local validation covers:
   `credential_env`, `accuracy`, `finalize_after`, and fixture/config-driven goal
   mappings consumed by `seo_observer.metrica`; doctor checks validate shape and
   token presence without live calls.
+- `[sources.ga4]` can carry local adapter fields such as `credential_env`,
+  `credential_file_env`, `token_file_env`, `limit`, `finalize_after`, and the
+  optional `timezone`. When present, `timezone` must be a non-empty string and
+  is used as `source_timezone` on GA4 all-channel traffic rows; when omitted
+  those rows carry the literal `"property_timezone"` (the GA4 property's own
+  reporting timezone). Source bindings must use the `properties/<id>` resource
+  name as `remote_id`. Collect fetches both the legacy organic bundle and the
+  all-channel bundle (`sessionDefaultChannelGroup` × `sessionSource` ×
+  `sessionMedium` × `landingPagePlusQueryString`, attribution model
+  `ga4_session_all_channels`); noise-referrer exclusion and engagedSessions are
+  Plan 2 export behavior, not collection filters.
+- `[channels]` is optional and tunes channel classification shared by sources.
+  Both lists default to empty. `brand_terms` lists brand name variants; GSC
+  uses them to fetch a brand-only aggregate segment so `non-brand = total -
+  brand` matches the Search Console UI (anonymized queries never arrive as
+  rows). `noise_referrers` lists referrer substrings that are not real traffic
+  (payment processors, auth flows). Matching is a case-insensitive substring
+  match implemented as a regex alternative: `pay.demo.example` also catches
+  `secure.pay.demo.example`. Noise-referrer exclusion is applied at export
+  time in Plan 2, not during collection.
 - `[sources.yandex_webmaster]` can carry local adapter fields such as `user_id`,
   `credential_env`, `finalize_after`, and `limit`; source bindings must use the
   Yandex remote `host-id` string (for example `https:demo.example:443`) as
@@ -291,6 +323,25 @@ Required local validation covers:
   free-form query fields including `sql`, `query`, `table`, `where`,
   `where_clause`, `sql_fragment`, and `report_query`. Doctor checks validate
   shape only and do not perform live DB calls or credential logging.
+- `adapter = "http_aggregate"` reads daily aggregate counters from a tenant
+  HTTP endpoint. Required fields are `endpoint_env` (env var name holding the
+  endpoint URL), `credential_env` (env var name holding the bearer token),
+  `outcome_id`, `counting_unit`, `dedupe_key`, `timestamp_field`, and
+  `attribution_model` (payment sources use `"registration_source"` so payments
+  are attributed by the source of the registration). The endpoint is called as
+  `GET {endpoint}?view_id=...&period_start=...&period_end=...` with an
+  `Authorization: Bearer <token>` header; production endpoints must use `https`
+  (`http://127.0.0.1` is accepted only for local test stands). The response is
+  a JSON object of the form `{"source": "tenant_api", "dataset_coverage":
+  "complete", "freshness": "final", "rows": [{"grain_start": "2026-09-24",
+  "period_start": "2026-09-24", "period_end": "2026-09-24", "source":
+  "google", "medium": "organic", "count": 3, "value_minor": 490000,
+  "currency": "RUB"}]}` where `count` is the daily registration or payment
+  counter depending on the approved view, and `value_minor`/`currency` are
+  present only on payment rows. Rows must never carry person identifiers
+  (`user_id`, `email`, `phone`, `login`, `username`, `ip`, `payment_id`,
+  `account_id`, `distinct_id`) — rows containing identifier fields are
+  rejected outright.
 
 Invalid config returns `CONFIG_INVALID` with a stable `validation_code`.
 

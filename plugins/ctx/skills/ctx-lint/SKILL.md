@@ -46,7 +46,15 @@ Force flags: `--all` (all), `--here` (strictly enclosing, ignores nested).
 
 ## Agent procedure
 
-1. Run `python3 ${CLAUDE_PLUGIN_ROOT}/lib/ctx-lint.py --json` → structured report like `{"scope": {...}, "reports": [...]}`.
+0. Resolve the plugin root (`CLAUDE_PLUGIN_ROOT` can be empty under Codex) and the repo to check:
+
+   ```bash
+   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<installed-plugin-root>}"
+   REPO="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+   ```
+
+   `ctx-lint` parses frontmatter with PyYAML. If `python3 -c 'import yaml'` fails, run the commands below as `uv run --with pyyaml python3 …` (or install it: `python3 -m pip install pyyaml`).
+1. Run `python3 "$PLUGIN_ROOT/lib/ctx-lint.py" "$REPO" --json` → structured report like `{"scope": {...}, "reports": [...]}`. Pass the path explicitly: without it, project discovery relies on local registries that a fresh install does not have, and the report comes back empty. Use `--all` only when the user asks for every project.
 2. Check `scope.kind` — `all` / `container` / `project` / `explicit` / `none`. If unexpected — show the scope string and suggest `--all`.
 3. Show the user a human-readable summary (run again without `--json`).
 4. If there are `confidence: high` auto-fixes → suggest `ctx-lint --fix` (same scope flags).

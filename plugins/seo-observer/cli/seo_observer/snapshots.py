@@ -364,6 +364,7 @@ def _search_performance_rows(
         SELECT *
         FROM search_performance
         WHERE project_id = ? AND reporting_period_id = ? AND is_current = 1
+          AND segment_id NOT IN ('total', 'brand')
         ORDER BY logical_observation_key, effective_start, effective_end, query_id,
                  page_id, search_engine, device, country, region, segment_id
         """,

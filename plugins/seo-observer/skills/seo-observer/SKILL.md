@@ -72,6 +72,7 @@ Load only the references needed for the current request:
   `$PLUGIN_ROOT/references/ai-readiness.md`
 - AI prompts: `$PLUGIN_ROOT/references/ai-prompts.md`
 - Local change journal (`actions`): `$PLUGIN_ROOT/references/actions.md`
+- Forward tests: `forward-tests/weekly-partial-sources.md`, `forward-tests/seo-action-not-comparable.md`
 
 Provider-specific details remain in `gsc.md`, `metrica.md`, `webmaster.md`,
 `wordstat.md`, `serp.md`, and `outcomes.md`; load them only when that source is

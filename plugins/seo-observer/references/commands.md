@@ -66,6 +66,7 @@ These are the public CLI routes agents should choose for user intent:
 
 ```bash
 seo-observer collect --project demo --json
+seo-observer collect --project demo --daily --days 3 --json
 seo-observer provider-audit --project demo --start 2026-06-28 --end 2026-07-27 --output-dir /tmp/demo-provider-audit --json
 seo-observer weekly --project demo --json
 seo-observer snapshot --project demo --json
@@ -89,14 +90,37 @@ seo-observer prompts --project demo --keyword-set core --output-dir /tmp/demo-ai
 sources, valid credentials from the project config, and an explicit selector.
 The current public collect path stores Google Search Console and Yandex
 Webmaster search rows in `search_performance`, and Yandex Metrica organic
-traffic plus GA4 organic traffic rows in `traffic_metrics`. Unsupported enabled
-sources are reported in the JSON payload as `unsupported` instead of blocking
-supported live collection.
+traffic plus GA4 organic traffic rows in `traffic_metrics`, next to GA4
+all-channel traffic rows (`attribution_model = "ga4_session_all_channels"`).
+Unsupported enabled sources are reported in the JSON payload as `unsupported`
+instead of blocking supported live collection.
 It writes local SQLite evidence under `SEO_OBSERVER_HOME`; it does not
 publish Telegram or commit Git artifacts.
 Operational details, evidence layout, repeat-run semantics, and Demo acceptance
 checks are documented in
 `plugins/seo-observer/references/live-collect-runbook.md`.
+
+`collect --daily` runs the same collect path once per calendar day with
+`period_id="1d"` and `start == end == day`. Without `--start`/`--end` it
+re-collects the last `--days N` finished days (default `3`); with an explicit
+`--start`/`--end` it backfills every day of the range inclusive. The window is
+computed on the host calendar; the default 3-day refresh re-collects the most
+recent days, so a source still finishing "yesterday" in its own time zone is
+picked up on the next run.
+`--pause-seconds S` adds a pause between days for provider quotas during
+backfill. Re-collecting a day supersedes its revision instead of duplicating
+facts. The JSON payload reports `mode: "daily"`, per-day responses in `days`,
+and `failed_days`; the exit code is non-zero when any day failed.
+A day's absent facts are retired only on a complete, successful single-day
+response: GA4 all-channel and outcome facts missing from the day's response
+become non-current only when the source result is `ok` and its merged
+`dataset_coverage` is `complete`. Partial, truncated, failed, or multi-day
+responses keep absent rows current.
+
+```bash
+seo-observer collect --daily --days 3 --json
+seo-observer collect --daily --start 2026-06-01 --end 2026-09-24 --pause-seconds 2 --json
+```
 
 `provider-audit` is a reusable live provider export for debugging source-level
 SEO evidence before writing client reports. It is config-driven, requires

@@ -16,6 +16,7 @@ from typing import Any
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from seo_observer.channels import ChannelsConfig
 from seo_observer.serp import Competitor, CompetitorConfig
 from seo_observer.webmaster import validate_host_id
 
@@ -77,7 +78,9 @@ FORBIDDEN_OUTCOME_QUERY_FIELDS = frozenset(
         "report_query",
     }
 )
-KNOWN_OUTCOME_AGGREGATE_ADAPTERS = frozenset({"fixture_aggregate", "postgres_aggregate"})
+KNOWN_OUTCOME_AGGREGATE_ADAPTERS = frozenset(
+    {"fixture_aggregate", "postgres_aggregate", "http_aggregate"}
+)
 
 
 class ConfigError(Exception):
@@ -211,6 +214,7 @@ class ProjectConfig:
     outcomes: list[OutcomeConfig]
     markets: tuple[MarketConfig, ...] = ()
     credential_source: CredentialSource = CredentialSource()
+    channels: ChannelsConfig = ChannelsConfig()
 
 
 def observer_home() -> Path:
@@ -260,6 +264,7 @@ def load_project_config(path: Path) -> ProjectConfig:
     bindings = _parse_source_bindings(raw, properties, sources, config_path)
     keyword_sets = _parse_keyword_sets(raw, config_path, markets)
     outcomes = _parse_outcomes(raw, sources, config_path)
+    channels = _parse_channels(raw, config_path)
     return ProjectConfig(
         path=config_path,
         project=project,
@@ -280,6 +285,7 @@ def load_project_config(path: Path) -> ProjectConfig:
         outcomes=outcomes,
         markets=markets,
         credential_source=credential_source,
+        channels=channels,
     )
 
 
@@ -943,6 +949,29 @@ def _parse_outcomes(
     return outcomes
 
 
+def _parse_channels(raw: dict[str, Any], path: Path) -> ChannelsConfig:
+    section = raw.get("channels")
+    if section is None:
+        return ChannelsConfig()
+    if not isinstance(section, dict):
+        _invalid("CHANNELS_INVALID", path)
+    unknown = sorted(set(section) - {"brand_terms", "noise_referrers"})
+    if unknown:
+        _invalid("CHANNELS_UNKNOWN_FIELD", path, unknown[0])
+    values: dict[str, tuple[str, ...]] = {}
+    for key, code in (
+        ("brand_terms", "CHANNELS_BRAND_TERMS_INVALID"),
+        ("noise_referrers", "CHANNELS_NOISE_REFERRERS_INVALID"),
+    ):
+        items = section.get(key, [])
+        if not isinstance(items, list) or not all(
+            isinstance(item, str) and item.strip() for item in items
+        ):
+            _invalid(code, path)
+        values[key] = tuple(item.strip() for item in items)
+    return ChannelsConfig(**values)
+
+
 def _required_str(section: dict[str, Any], key: str, path: Path, validation_code: str) -> str:
     value = section.get(key)
     if not isinstance(value, str) or not value:
@@ -1049,6 +1078,10 @@ def _validate_source_specific(name: str, source: dict[str, Any], path: Path) -> 
         supports_devices = source.get("supports_devices")
         if supports_devices is not None and not isinstance(supports_devices, bool):
             _invalid("SOURCE_WORDSTAT_SUPPORTS_DEVICES_INVALID", path, supports_devices)
+    if name == "ga4":
+        timezone = source.get("timezone")
+        if timezone is not None and (not isinstance(timezone, str) or not timezone):
+            _invalid("SOURCE_GA4_TIMEZONE_INVALID", path, name)
     if name.startswith("outcome_"):
         adapter = source.get("adapter")
         if adapter is not None and (not isinstance(adapter, str) or not adapter):
@@ -1071,6 +1104,25 @@ def _validate_source_specific(name: str, source: dict[str, Any], path: Path) -> 
             or len(parameter_names) != 2
         ):
             _invalid("SOURCE_OUTCOME_PARAMETERS_INVALID", path, name)
+        if adapter == "http_aggregate":
+            for key in (
+                "endpoint_env",
+                "credential_env",
+                "outcome_id",
+                "counting_unit",
+                "dedupe_key",
+                "timestamp_field",
+            ):
+                value = source.get(key)
+                if not isinstance(value, str) or not value:
+                    _invalid("SOURCE_OUTCOME_HTTP_FIELD_MISSING", path, key)
+            if (
+                isinstance(approved_views, list)
+                and approved_views
+                and all(isinstance(item, str) and item for item in approved_views)
+                and len(approved_views) != 1
+            ):
+                _invalid("SOURCE_OUTCOME_HTTP_VIEWS_INVALID", path, name)
 
 
 def _validate_source_provider(

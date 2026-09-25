@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import quote, urlparse
 
+from seo_observer.channels import brand_regex
 from seo_observer.config import ConfigError
 
 GSC_SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
@@ -121,6 +122,48 @@ class GSCAdapter:
             self._search_observation(row, period, query, metadata)
             for row in _rows(pages)
         ]
+        return {"collection": "search_performance", "metadata": metadata, "observations": observations}
+
+    def fetch_brand_split(self, period: GSCPeriod | None, brand_terms: tuple[str, ...]) -> dict[str, Any]:
+        """Totals and brand-only totals for the period in the same aggregation.
+
+        Both requests use no dimensions (property aggregation), so
+        non-brand = total - brand stays consistent with the GSC UI. Summing
+        visible query rows would undercount: anonymized queries never arrive
+        as rows.
+        """
+        period = _require_period(period)
+        pattern = brand_regex(brand_terms)
+        if pattern is None:
+            return {"collection": "search_performance", "metadata": {}, "observations": []}
+        specs = (
+            ("total", SearchAnalyticsQuery(dimensions=())),
+            ("brand", SearchAnalyticsQuery(
+                dimensions=(),
+                filters=({"dimension": "query", "operator": "includingRegex", "expression": pattern},),
+            )),
+        )
+        observations: list[dict[str, Any]] = []
+        all_pages: list[dict[str, Any]] = []
+        for segment_id, query in specs:
+            pages = self._fetch_search_pages(period, query, max_rows=1)
+            all_pages.extend(pages)
+            metadata = _search_metadata(
+                pages, query=query, row_limit=self.source.row_limit, max_rows=1, start_row=0,
+                request_data_state=query.data_state or self.source.data_state,
+                finalize_after=self.source.finalize_after,
+                property_aggregate=True,
+            )
+            rows = _rows(pages) or [{"clicks": 0, "impressions": 0, "ctr": 0, "position": None}]
+            observation = self._search_observation(rows[0], period, query, metadata)
+            observation["segment_id"] = segment_id
+            observations.append(observation)
+        metadata = _search_metadata(
+            all_pages, query=SearchAnalyticsQuery(dimensions=()), row_limit=self.source.row_limit,
+            max_rows=1, start_row=0, request_data_state=self.source.data_state,
+            finalize_after=self.source.finalize_after,
+            property_aggregate=True,
+        )
         return {"collection": "search_performance", "metadata": metadata, "observations": observations}
 
     def fetch_search_appearance_breakdown(
@@ -552,18 +595,30 @@ def _search_metadata(
     start_row: int,
     request_data_state: str,
     finalize_after: str | None,
+    property_aggregate: bool = False,
 ) -> dict[str, Any]:
     rows = _rows(pages)
     response_metadata = _response_metadata(pages)
-    coverage = "empty" if not rows else "top_rows"
+    if property_aggregate and all(len(page.get("rows") or []) <= 1 for page in pages):
+        # A dimensionless property aggregate returns at most one row per
+        # response; it is not a capped top-rows list.
+        coverage = "complete"
+    else:
+        coverage = "empty" if not rows else "top_rows"
     freshness = _freshness(finalize_after)
     if response_metadata.get("first_incomplete_date") or response_metadata.get("first_incomplete_hour"):
         freshness = "incomplete"
     capped = bool(rows) and (len(rows) >= max_rows or start_row + len(rows) >= GSC_DAILY_SEARCH_TYPE_CAP)
+    if property_aggregate:
+        capped = False
     metadata = {
         "dataset_coverage": coverage,
         "freshness": freshness,
-        "comparability": "insufficient_history" if coverage == "empty" else "incomplete_top_rows",
+        "comparability": (
+            "insufficient_history" if coverage == "empty"
+            else "comparable" if coverage == "complete"
+            else "incomplete_top_rows"
+        ),
         "rows_received": len(rows),
         "total_rows": None,
         "pages_received": len(pages),

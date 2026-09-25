@@ -178,6 +178,7 @@ def collect_ai_referrals(config: ProjectConfig) -> dict[str, Any]:
                 WHERE project_id = ?
                   AND source IN ('ga4', 'yandex_metrica')
                   AND is_current = 1
+                  AND attribution_model != 'ga4_session_all_channels'
                 GROUP BY search_engine
                 ORDER BY visits DESC, users DESC, search_engine ASC
                 """,

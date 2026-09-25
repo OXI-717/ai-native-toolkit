@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import datetime as dt
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+
+from seo_observer.channels import channel_slug
 
 
 GA4_RUN_REPORT_ENDPOINT = "/v1beta/{property_resource}:runReport"
@@ -53,6 +56,7 @@ class GA4Source:
     timezone: str
     limit: int = DEFAULT_LIMIT
     finalize_after: str | None = None
+    channel_timezone: str = GA4_TIMEZONE
 
 
 @dataclass(frozen=True)
@@ -130,6 +134,29 @@ class GA4Adapter:
         for report in reports:
             observations.extend(_traffic_observations(self.source, period, report))
         metadata = _combined_metadata([report["metadata"] for report in reports], self.source.finalize_after)
+        return {"collection": "traffic_metrics", "metadata": metadata, "observations": observations}
+
+    def fetch_channel_traffic_bundle(self, period: GA4Period | None) -> dict[str, Any]:
+        """Sessions by default channel group, source/medium and landing page, all channels."""
+        period = _require_period(period)
+        specs = (
+            GA4ReportSpec(
+                "channel_landing_source_medium",
+                ("sessionDefaultChannelGroup", "sessionSource", "sessionMedium",
+                 "landingPagePlusQueryString", "date"),
+                GA4_TRAFFIC_METRICS,
+            ),
+        )
+        reports = [self.run_report(period, spec) for spec in specs]
+        observations: list[dict[str, Any]] = []
+        dropped_dates = 0
+        for report in reports:
+            kept, dropped = _channel_traffic_observations(self.source, period, report)
+            observations.extend(kept)
+            dropped_dates += dropped
+        metadata = _combined_metadata([report["metadata"] for report in reports], self.source.finalize_after)
+        if dropped_dates:
+            metadata = {**metadata, "dataset_coverage": "partial", "comparability": "partial"}
         return {"collection": "traffic_metrics", "metadata": metadata, "observations": observations}
 
     def _report_body(self, period: GA4Period, spec: GA4ReportSpec, *, offset: int) -> dict[str, Any]:
@@ -298,6 +325,53 @@ def _traffic_observations(source: GA4Source, period: GA4Period, report: dict[str
     return observations
 
 
+def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: dict[str, Any]) -> tuple[list[dict[str, Any]], int]:
+    metadata = report.get("metadata") if isinstance(report.get("metadata"), dict) else {}
+    rows = report.get("rows") if isinstance(report.get("rows"), list) else []
+    observations = []
+    dropped = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        group = _clean_text(row.get("sessionDefaultChannelGroup")) or "Unassigned"
+        session_source = _clean_text(row.get("sessionSource"))
+        session_medium = _clean_text(row.get("sessionMedium"))
+        source_medium = f"{session_source} / {session_medium}" if session_source or session_medium else "__all__"
+        landing_page = _clean_text(row.get("landingPagePlusQueryString")) or "__all__"
+        day = _ga4_date(row.get("date"))
+        if day is None or day < period.start_date or day > period.end_date:
+            dropped += 1
+            continue
+        observations.append(
+            {
+                "project_id": "__pending__",
+                "property_id": source.property_id,
+                "source": "ga4",
+                "effective_start": day,
+                "effective_end": day,
+                "source_timezone": source.channel_timezone,
+                "channel": channel_slug(group),
+                "search_engine": source_medium,
+                "landing_page_id": _page_id(landing_page),
+                "device": "__all__",
+                "region": "__all__",
+                "attribution_model": "ga4_session_all_channels",
+                "visits": _int_or_none(row.get("sessions")),
+                "users": _int_or_none(row.get("activeUsers")),
+                "pageviews": _int_or_none(row.get("screenPageViews")),
+                "bounce_rate": _number_or_none(row.get("bounceRate")),
+                "avg_visit_duration_seconds": _number_or_none(row.get("averageSessionDuration")),
+                "dataset_coverage": metadata.get("dataset_coverage") or "unknown",
+                "freshness": metadata.get("freshness") or "provisional",
+                "comparability": metadata.get("comparability") or "comparable",
+                "sampled": False,
+                "sample_share": None,
+                "normalizer_version": "ga4-channels-v1",
+            }
+        )
+    return observations, dropped
+
+
 def _metadata(pages: list[dict[str, Any]], finalize_after: str | None) -> dict[str, Any]:
     rows_received = len(_rows(pages))
     total_rows = _total_rows(pages)
@@ -372,6 +446,21 @@ def _cell_value(cells: Any, index: int) -> str | None:
 
 def _page_id(page_url: str) -> str:
     return "__all__" if page_url == "__all__" else f"page:{page_url or '/'}"
+
+
+def _ga4_date(value: Any) -> str | None:
+    text = _clean_text(value)
+    if not text:
+        return None
+    if len(text) == 8 and text.isdigit():
+        try:
+            return dt.datetime.strptime(text, "%Y%m%d").date().isoformat()
+        except ValueError:
+            return None
+    try:
+        return dt.date.fromisoformat(text).isoformat()
+    except ValueError:
+        return None
 
 
 def _region(country: str | None, city: str | None) -> str:

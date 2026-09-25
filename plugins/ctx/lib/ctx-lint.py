@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate @-imports across all ctx AGENTS.md files.
+"""Validate @-imports and key_people across all ctx AGENTS.md files.
 
 Usage:
   ctx-lint.py                   # auto-scope check (human output)
@@ -11,7 +11,7 @@ Usage:
   ctx-lint.py --list-projects   # list discovered project paths, one per line
   ctx-lint.py --bootstrap       # regenerate ~/.ctx/config.json and exit
 
-Flags can combine: ctx-lint.py ~/myproject --json --fix
+Flags can combine: ctx-lint.py ~/projects --json --fix
 
 Scope resolution (no explicit path, no --all/--here):
   * CWD is inside a discovered project → only that project
@@ -35,8 +35,14 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from people_matcher import find_person_cards
+
 
 LIB = Path(__file__).parent
+# Плагин лежит на два уровня выше `lib/` — резолв от файла верен на любой машине.
+# Раньше здесь стоял путь по личной раскладке `$HOME`, и вне её плагин не находил
+# собственные шаблоны.
 DEFAULT_PLUGIN_ROOT = LIB.parent
 PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT") or DEFAULT_PLUGIN_ROOT)
 PARSE_FM_SCRIPT = LIB / "parse-frontmatter.py"
@@ -47,7 +53,10 @@ CONFIG_FILE = CACHE_DIR / "config.json"
 CLAUDE_JSON = Path.home() / ".claude.json"
 
 # Auto-learn threshold: a namespace is considered "owned" once at least this
-# many repos from it have been cloned under user-marked scan_roots.
+# many repos from it have been cloned under user-marked scan_roots. Low enough
+# to capture small client orgs (3+ repos); false positives (e.g. public clones
+# you happen to have 3 of) are expected — user prunes `owned_namespaces` in
+# `~/.ctx/config.json` as needed.
 NAMESPACE_LEARN_THRESHOLD = 3
 
 # Directory names to prune during any recursive scan — build outputs, caches,
@@ -62,16 +71,53 @@ EXCLUDE_DIR_NAMES = {
 }
 
 # Top-level `$HOME` children skipped during bootstrap scan — macOS system
-# folders, third-party apps, media mounts.
+# folders, third-party apps, media mounts. Nothing user-managed lives here.
 HOME_SKIP_CHILDREN = {
     "Library", "Applications", "Applications (Parallels)",
     "Downloads", "Desktop", "Documents", "Pictures", "Music", "Movies",
-    "Public",
+    "Public", "Dropbox", "Tresors",
     "Parallels", "VirtualBox VMs", "Virtual Machines.localized",
-    "node_modules", ".cache", ".local",
+    "Yandex.Disk.localized", "Wondershare",
 }
 
-START_MARKER = "<!-- AUTO-INSERTED"
+def vault_people_dir():
+    """Каталог карточек людей в Obsidian-vault.
+
+    Путь берётся из `VAULT_PATH` — так же, как в остальных модулях плагина
+    (`ctx-meetings.py`, `ctx-people.py`, `ctx-research.py`). Раньше здесь стоял
+    абсолютный путь домашней директории конкретной машины: у любого другого
+    пользователя проверка `key_people` молча не находила ни одной карточки и
+    выдавала предупреждение на каждое имя.
+
+    Если переменная не задана, vault считается недоступным, и проверка карточек
+    пропускается — это осознанная деградация: линтер полезен и без vault, а
+    выдумывать чужую раскладку он не должен.
+    """
+    root = os.environ.get("VAULT_PATH")
+    return Path(root).expanduser() / _vault_layout()["people_dir"] if root else None
+
+
+def _vault_layout() -> dict:
+    """Vault folder names come from the plugin's optional
+    `config/vault-layout.json`, not from code: a published linter must not
+    carry one person's vault layout. Missing/broken config → neutral defaults
+    (a warning, not a crash — the linter stays useful without a vault)."""
+    layout = {"people_dir": "People", "volatile_segments": ["/meetings/"]}
+    cfg = LIB.parent / "config" / "vault-layout.json"
+    if cfg.is_file():
+        try:
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"ctx-lint: {cfg} unreadable ({type(exc).__name__}), using defaults", file=sys.stderr)
+            return layout
+        if isinstance(data.get("people_dir"), str) and data["people_dir"].strip():
+            layout["people_dir"] = data["people_dir"].strip()
+        segs = data.get("volatile_segments")
+        if isinstance(segs, list) and all(isinstance(x, str) for x in segs):
+            layout["volatile_segments"] = segs
+    return layout
+
+START_MARKER = "<!-- AUTO-INSERTED BY session-start hook"
 END_MARKER = "<!-- END AUTO-INSERTED -->"
 
 VALID_STRATEGIES = {"alpha", "orchestrator", "symlink-consumer"}
@@ -163,11 +209,12 @@ def _bootstrap_config():
 
     Walks `$HOME` up to depth 3 looking for `.gh-account` marker files. Each
     containing directory becomes a scan root. The file contents are collected
-    as initial owned namespaces.
+    as initial owned namespaces (typical values: your GitHub user and org names).
 
     Then sweeps every scan root (up to depth 3) counting git-remote namespaces.
-    Any namespace that shows up >= `NAMESPACE_LEARN_THRESHOLD` times is added
-    to `owned_namespaces`.
+    Any namespace that shows up ≥ `NAMESPACE_LEARN_THRESHOLD` times is added
+    to `owned_namespaces` — this is how 3rd-party client orgs (ExampleCorp,
+    sub-orgs, etc.) become trusted without hard-coding.
 
     Returns a config dict; does NOT persist it.
     """
@@ -185,7 +232,7 @@ def _bootstrap_config():
             return
         for child in children:
             if child.is_symlink():
-                continue  # never follow symlinks
+                continue  # never follow symlinks (e.g. vault mounts)
             if not child.is_dir():
                 continue
             if child.name.startswith("."):
@@ -272,9 +319,9 @@ def get_config():
     Config schema (all keys optional in user-provided file):
       {
         "scan_roots":       ["/abs/path", ...],    # where to look for projects
-        "owned_namespaces": ["my-org", ...],       # git orgs considered ours
+        "owned_namespaces": ["your-org", ...],     # git orgs considered ours
         "extra_roots":      ["/abs/path", ...],    # appended to scan_roots
-        "extra_namespaces": ["other-org", ...],    # appended to owned_namespaces
+        "extra_namespaces": ["examplecorp", ...], # appended to owned_namespaces
         "excluded_paths":   ["/abs/path", ...]     # never treated as projects
       }
 
@@ -305,7 +352,8 @@ def _is_owned(path: Path, owned_namespaces) -> bool:
     Rules (in order):
       1. Enclosing git repo → its `origin` remote decides. If its namespace is
          in `owned_namespaces` → owned. If the remote exists but namespace is
-         unknown → explicit reject (foreign clone).
+         unknown → explicit reject (foreign clone, e.g. `openai/openai-agents-
+         python` sitting under `~/projects/`).
       2. No enclosing git repo, or origin unreadable → fall back to the
          nearest `.gh-account` ancestor marker as a "user-managed area" hint.
     """
@@ -319,8 +367,9 @@ def _is_owned(path: Path, owned_namespaces) -> bool:
 
 
 def _is_sub_container(path: Path) -> bool:
-    """A directory that hosts multiple project dirs but isn't a project itself.
-    Detected via >= 2 immediate children with AGENTS.md.
+    """A directory that hosts multiple project dirs but isn't a project itself
+    (or is both, like `projects/team/app/`). We detect it via ≥2 immediate children
+    with AGENTS.md.
     """
     count = 0
     try:
@@ -342,7 +391,8 @@ def _scan_configured_roots(cfg):
     """Find owned AGENTS.md projects under configured scan roots.
 
     Strategy: depth-1 under each root, plus depth-1 under any child that looks
-    like a sub-container. No deep recursion.
+    like a sub-container (auto-detected via `_is_sub_container`). No deep
+    recursion — that surfaced too many inner-module AGENTS.md (src/, shared/).
     """
     owned_ns = cfg["owned_namespaces"]
     excluded = cfg["excluded_paths"]
@@ -511,6 +561,8 @@ def resolve_scope(all_projects, mode, cwd=None):
         )
 
     # auto: union of enclosing (if any) + all projects strictly under CWD.
+    # Covers nested container-like layouts such as `projects/team/app/` (itself a
+    # project, with 11 sub-projects inside) — both root and children are checked.
     encl = _find_enclosing_project(cwd, all_projects)
     under = _projects_under(cwd, all_projects)
 
@@ -542,7 +594,9 @@ def resolve_scope(all_projects, mode, cwd=None):
             selected,
         )
 
-    # Multiple projects — container-like scope.
+    # Multiple projects — container-like scope. Prefer the enclosing path as
+    # the scope anchor when present (e.g. `~/projects/team/app` rather than same),
+    # otherwise the CWD itself serves as the container root.
     scope_path = str(encl.resolve()) if encl is not None else cwd_str
     return (
         {"requested": "auto", "kind": "container",
@@ -558,19 +612,39 @@ def resolve_scope(all_projects, mode, cwd=None):
 # ---------------------------------------------------------------------------
 
 def parse_frontmatter(agents_path: Path) -> dict:
+    """Parse AGENTS.md frontmatter via the sibling helper script.
+
+    A subprocess/parse FAILURE (missing interpreter dependency, crash, timeout,
+    malformed JSON on stdout) is reported as ``{"_parse_error": "<message>"}`` —
+    distinct from a *successful* parse that legitimately found no frontmatter
+    (``{}``). Collapsing both into the same empty dict made every project look
+    like a plain "no load_strategy field" foreign AGENTS.md whenever the helper
+    itself couldn't run (e.g. pyyaml missing for whatever `python3` resolves to)
+    — a silent false "unmanaged, nothing to check" verdict across the whole
+    fleet instead of a visible error (issue 2208).
+    """
     try:
         r = subprocess.run(
             ["python3", str(PARSE_FM_SCRIPT), str(agents_path)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, timeout=10,
         )
-    except OSError:
-        return {}
+    except subprocess.TimeoutExpired:
+        return {"_parse_error": f"{PARSE_FM_SCRIPT.name} timed out after 10s"}
+    except OSError as e:
+        return {"_parse_error": f"failed to run {PARSE_FM_SCRIPT.name}: {e}"}
     if r.returncode != 0:
-        return {}
+        detail = (r.stderr or r.stdout or "").strip()
+        try:
+            structured = json.loads(detail)
+            if isinstance(structured, dict) and "_error" in structured:
+                detail = str(structured["_error"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return {"_parse_error": detail or f"{PARSE_FM_SCRIPT.name} exited {r.returncode}"}
     try:
         return json.loads(r.stdout or "{}")
-    except json.JSONDecodeError:
-        return {}
+    except json.JSONDecodeError as e:
+        return {"_parse_error": f"{PARSE_FM_SCRIPT.name} produced invalid JSON: {e}"}
 
 
 # ---------------------------------------------------------------------------
@@ -589,7 +663,7 @@ def resolve_import(raw: str, repo_path: Path) -> Path:
         return Path(s).resolve()
     if s.startswith("./"):
         return (repo_path / s[2:]).resolve()
-    # Bare relative path (e.g. "AGENTS.md" or "rules/x.md")
+    # Bare relative path (e.g. "AGENTS.md" or a file under the rules directory)
     return (repo_path / s).resolve()
 
 
@@ -638,16 +712,407 @@ def parse_imports(agents_path: Path):
 
 
 # ---------------------------------------------------------------------------
+# Key people check
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Context budget
+# ---------------------------------------------------------------------------
+#
+# Claude Code inlines the whole @-import tree of CLAUDE.md -> AGENTS.md into the
+# system prompt at session start AND again after every compact. A single fat
+# import (a vault person card that grows with meeting logs) can eat the window
+# before the first user message: after compact it refills at once and
+# autocompact thrashes. Claude Code warns per file only above 40k chars and
+# never reports the tree total. These checks make both visible at lint time
+# and at SessionStart (the hook runs ctx-lint --json).
+
+CONTEXT_BUDGET_DEFAULTS = {
+    "total_tokens": 40000,
+    "per_file_chars": 40000,
+    # Own text of AGENTS.md (no frontmatter, @-lines, auto-zone): it is an index.
+    "agents_body_chars": 6000,
+}
+# Claude Code loads only the head of the auto-memory index.
+MEMORY_INDEX_MAX_LINES = 200
+MEMORY_INDEX_MAX_BYTES = 25000
+MAX_IMPORT_TREE_FILES = 500
+MAX_IMPORT_DEPTH = 5
+_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token count without a tokenizer.
+
+    Latin text is ~4 UTF-8 bytes per token, Cyrillic ~2.6; blend by the share
+    of non-ASCII bytes. Good enough for a budget warning, not for billing.
+    """
+    data = text.encode("utf-8")
+    if not data:
+        return 0
+    non_ascii = sum(1 for b in data if b >= 0x80) / len(data)
+    return int(len(data) / (4.0 - 1.4 * non_ascii))
+
+
+def _classify_lines(text: str):
+    """Yield (line, raw_import_or_None), skipping @-lines inside code fences."""
+    fence_char = None
+    fence_length = 0
+    for line in text.splitlines():
+        marker = _FENCE_RE.match(line)
+        if marker and fence_char is None:
+            fence_char = marker.group(1)[0]
+            fence_length = len(marker.group(1))
+            yield line, None
+            continue
+        if fence_char is not None:
+            stripped = line.strip()
+            if stripped.startswith(fence_char * fence_length):
+                remainder = stripped.lstrip(fence_char)
+                if not remainder and len(stripped) >= fence_length:
+                    fence_char = None
+                    fence_length = 0
+            yield line, None
+            continue
+        stripped = line.strip()
+        if stripped.startswith("@") and len(stripped) > 1:
+            yield line, stripped[1:].split()[0]
+        else:
+            yield line, None
+
+
+def _import_targets(text: str):
+    """Yield raw @-import paths at line start, skipping fenced code blocks."""
+    for _line, raw in _classify_lines(text):
+        if raw is not None:
+            yield raw
+
+
+def walk_import_tree(root: Path, *, return_truncated: bool = False):
+    """Return every file inlined from ``root`` via recursive @-imports.
+
+    Paths resolve relative to the importing file (as Claude Code does), each
+    file is counted once, missing targets are skipped (reported elsewhere).
+    """
+    seen = set()
+    order = []
+    stack = [(root.resolve(), 0, None)]
+    truncated = False
+    while stack and len(order) < MAX_IMPORT_TREE_FILES:
+        path, depth, parent = stack.pop()
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        targets = list(_import_targets(text))
+        # Claude Code does not expand ${...} in @-imports, so such an import is
+        # never loaded even though resolve_import() can find it.
+        env_var = [raw for raw in targets if "${" in raw]
+        order.append({
+            "path": str(path),
+            "chars": len(text),
+            "tokens": estimate_tokens(text),
+            "depth": depth,
+            "parent": parent,
+            "env_var_imports": env_var,
+        })
+        children = []
+        for raw in targets:
+            if raw in env_var:
+                continue
+            try:
+                children.append(resolve_import(raw, path.parent))
+            except (OSError, RuntimeError, ValueError):
+                # Symlink loop or unresolvable path: skip, never crash the hook.
+                continue
+        unseen_children = [child for child in children if child not in seen]
+        if depth < MAX_IMPORT_DEPTH:
+            for child in reversed(children):
+                stack.append((child, depth + 1, str(path)))
+        elif unseen_children:
+            truncated = True
+    if stack:
+        truncated = True
+    return (order, truncated) if return_truncated else order
+
+
+def _is_volatile(path: str) -> bool:
+    people = vault_people_dir()
+    if people is not None:
+        try:
+            Path(path).relative_to(people.parent.resolve())
+            return True
+        except ValueError:
+            pass
+    return any(seg in path for seg in _vault_layout()["volatile_segments"])
+
+
+def claude_memory_index(repo_path: Path) -> Path:
+    """Path of Claude Code's auto-memory index for this repo (may not exist)."""
+    base = Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser()
+    slug = re.sub(r"[^A-Za-z0-9]", "-", str(repo_path.resolve()))
+    return base / "projects" / slug / "memory" / "MEMORY.md"
+
+
+def _budget_limits(fm: dict):
+    """Merge frontmatter ``context_budget`` over defaults; return (limits, issue)."""
+    limits = dict(CONTEXT_BUDGET_DEFAULTS)
+    raw = fm.get("context_budget")
+    if raw is None:
+        return limits, None
+    ok = isinstance(raw, dict)
+    if ok:
+        for key, value in raw.items():
+            if (key not in limits or isinstance(value, bool)
+                    or not isinstance(value, int) or value <= 0):
+                ok = False
+                break
+            limits[key] = value
+    if ok:
+        return limits, None
+    return dict(CONTEXT_BUDGET_DEFAULTS), {
+        "type": "invalid_context_budget",
+        "severity": "warn",
+        "description": (
+            "frontmatter `context_budget` must map "
+            f"{sorted(CONTEXT_BUDGET_DEFAULTS)} to positive ints; defaults used"
+        ),
+        "raw": repr(raw),
+        "confidence": "none",
+    }
+
+
+def _short(path: str) -> str:
+    return path.replace(str(Path.home()), "~")
+
+
+def _agents_body_sections(text: str):
+    """Return (body_chars, [(heading, chars)]) of AGENTS.md's own text.
+
+    Frontmatter, @-import lines (classified exactly as the import walker does)
+    and the auto-inserted zone (matched by substring, as the hook does) are
+    excluded: they are counted elsewhere or regenerated by the hook.
+    """
+    lines = text.splitlines()
+    if lines and lines[0].strip() == "---":
+        for i, line in enumerate(lines[1:], 1):
+            if line.strip() == "---":
+                lines = lines[i + 1:]
+                break
+    kept, in_auto = [], False
+    for line, raw in _classify_lines("\n".join(lines)):
+        if START_MARKER in line:
+            in_auto = True
+        if in_auto:
+            if END_MARKER in line:
+                in_auto = False
+            continue
+        if raw is None:
+            kept.append(line)
+    sections, heading = {}, "(preamble)"
+    for line in kept:
+        if line.startswith("## "):
+            heading = line[3:].strip()
+        sections[heading] = sections.get(heading, 0) + len(line) + 1
+    return sum(len(line) + 1 for line in kept), sorted(sections.items(), key=lambda kv: -kv[1])
+
+
+def _claude_loads_agents(claude: Path, agents: Path) -> bool:
+    """True if CLAUDE.md imports AGENTS.md outside HTML comments and fences."""
+    try:
+        text = strip_html_comments(claude.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return False
+    expected = agents.resolve()
+    for raw in _import_targets(text):
+        try:
+            if resolve_import(raw, claude.parent) == expected:
+                return True
+        except (OSError, RuntimeError, ValueError):
+            continue
+    return False
+
+
+def check_context_budget(agents: Path, repo_path: Path, fm: dict):
+    """Return (issues, budget_info) for the startup context of this project."""
+    issues = []
+    limits, bad = _budget_limits(fm)
+    if bad:
+        issues.append(bad)
+
+    claude = repo_path / "CLAUDE.md"
+    files, truncated = walk_import_tree(claude, return_truncated=True)
+    if truncated:
+        issues.append({
+            "type": "context_budget_incomplete",
+            "severity": "warn",
+            "description": (
+                "startup import tree was truncated at the file-count or depth "
+                "limit; budget is a lower bound"
+            ),
+            "confidence": "none",
+        })
+    for f in files:
+        if f["chars"] > limits["per_file_chars"]:
+            issues.append({
+                "type": "oversized_import",
+                "severity": "warn",
+                "path": f["path"],
+                "description": (
+                    f"{_short(f['path'])}: {f['chars'] / 1000:.1f}k chars "
+                    f"(~{f['tokens'] / 1000:.1f}k tokens) > "
+                    f"{limits['per_file_chars'] / 1000:.0f}k-char limit; inlined at "
+                    "every session start and after every compact"
+                ),
+                "confidence": "none",
+            })
+        # AGENTS.md imports are already reported as env_var_in_import.
+        for raw in f["env_var_imports"] if Path(f["path"]) != agents.resolve() else ():
+            issues.append({
+                "type": "nested_env_var_import",
+                "severity": "warn",
+                "path": f["path"],
+                "raw": raw,
+                "description": (
+                    f"@{raw} in {_short(f['path'])}: Claude Code does not expand "
+                    "${...} in @-imports, the file is never loaded; "
+                    "vendor it into the repo or use a relative/absolute path"
+                ),
+                "confidence": "none",
+            })
+        if f["depth"] > 0 and _is_volatile(f["path"]):
+            issues.append({
+                "type": "volatile_import",
+                "severity": "warn",
+                "path": f["path"],
+                "description": (
+                    f"{_short(f['path'])}: vault/meeting file grows over time; "
+                    "summarise it in AGENTS.md and read it on demand instead"
+                ),
+                "confidence": "none",
+            })
+
+    if _claude_loads_agents(claude, agents):
+        try:
+            body_chars, sections = _agents_body_sections(
+                agents.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            body_chars, sections = 0, []
+        if body_chars > limits["agents_body_chars"]:
+            heaviest = ", ".join(f"«{h}» {c / 1000:.1f}k" for h, c in sections[:3])
+            issues.append({
+                "type": "agents_md_inline_heavy",
+                "severity": "warn",
+                "path": str(agents),
+                "description": (
+                    f"AGENTS.md own text {body_chars / 1000:.1f}k chars > "
+                    f"{limits['agents_body_chars'] / 1000:.0f}k: keep it an index of links; "
+                    "move sections to reference/<topic>.md (read on demand) or rules/*.md "
+                    f"(if needed every session), trigger tables to SKILL.md; heaviest: {heaviest}"
+                ),
+                "confidence": "none",
+            })
+
+    memory = claude_memory_index(repo_path)
+    memory_tokens = 0
+    if memory.is_file():
+        try:
+            mtext = memory.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            mtext = ""
+        loaded_lines = "".join(mtext.splitlines(keepends=True)[:MEMORY_INDEX_MAX_LINES])
+        loaded_bytes = loaded_lines.encode("utf-8")[:MEMORY_INDEX_MAX_BYTES]
+        memory_tokens = estimate_tokens(loaded_bytes.decode("utf-8", errors="ignore"))
+        lines = len(mtext.splitlines())
+        size = len(mtext.encode("utf-8"))
+        if lines > MEMORY_INDEX_MAX_LINES or size > MEMORY_INDEX_MAX_BYTES:
+            issues.append({
+                "type": "memory_index_truncated",
+                "severity": "warn",
+                "path": str(memory),
+                "description": (
+                    f"MEMORY.md {lines} lines / {size / 1000:.1f} KB > "
+                    f"{MEMORY_INDEX_MAX_LINES} lines / {MEMORY_INDEX_MAX_BYTES / 1000:.0f} KB: "
+                    "Claude Code loads only the head, entries below are invisible"
+                ),
+                "confidence": "none",
+            })
+
+    total_tokens = sum(f["tokens"] for f in files) + memory_tokens
+    top = sorted(files, key=lambda f: -f["tokens"])[:5]
+    if total_tokens > limits["total_tokens"]:
+        heaviest = ", ".join(
+            f"{Path(f['path']).name} ~{f['tokens'] / 1000:.1f}k" for f in top[:3]
+        )
+        issues.append({
+            "type": "context_budget_exceeded",
+            "severity": "warn",
+            "description": (
+                f"startup context ~{total_tokens / 1000:.1f}k tokens across "
+                f"{len(files)} files > budget {limits['total_tokens'] / 1000:.0f}k; "
+                f"heaviest: {heaviest}"
+            ),
+            "confidence": "none",
+        })
+
+    info = {
+        "files": len(files),
+        "chars": sum(f["chars"] for f in files),
+        "tokens": total_tokens,
+        "memory_tokens": memory_tokens,
+        "limits": limits,
+        "complete": not truncated,
+        "top": [{"path": f["path"], "tokens": f["tokens"], "chars": f["chars"]} for f in top],
+    }
+    return issues, info
+
+
+def check_key_people(key_people):
+    issues = []
+    for name in key_people or []:
+        if not isinstance(name, str) or not name.strip():
+            continue
+        people_dir = vault_people_dir()
+        if people_dir is None:
+            continue
+        matches, glob_label = find_person_cards(name, people_dir)
+        if len(matches) == 0:
+            issues.append({
+                "type": "key_people_missing_card",
+                "severity": "warn",
+                "name": name,
+                "searched_glob": glob_label,
+                "suggest_fix": None,
+            })
+        elif len(matches) >= 2:
+            issues.append({
+                "type": "key_people_ambiguous",
+                "severity": "warn",
+                "name": name,
+                "candidates": [m.name for m in matches],
+            })
+    return issues
+
+
+# ---------------------------------------------------------------------------
 # Project check
 # ---------------------------------------------------------------------------
 
 def _check_symlink_consumer(repo_path: Path, report: dict) -> bool:
     """Validate the `_ecosystem` link for a symlink-consumer project.
 
-    Returns True if the link resolves, False if a blocking issue was recorded.
+    Returns True if the link resolves (directly or via a symlink to an
+    existing target), False if a blocking issue was recorded. The caller
+    uses the return value to decide whether the orchestrator @-import
+    check is meaningful (skipped when link is missing/broken to avoid
+    duplicate noise).
     """
     link = repo_path / "_ecosystem"
     if link.is_symlink():
+        # Resolve manually so we can distinguish "broken symlink" cleanly.
         try:
             raw_target = os.readlink(str(link))
         except OSError as e:
@@ -700,7 +1165,11 @@ def _check_symlink_consumer(repo_path: Path, report: dict) -> bool:
 
 
 def _consumer_has_orchestrator_import(imports, repo_path: Path) -> bool:
-    """True if any @-import resolves to `<repo>/_ecosystem/AGENTS.md`."""
+    """True if any @-import resolves to `<repo>/_ecosystem/AGENTS.md`.
+
+    Independent of the exact literal path (./_ecosystem/..., _ecosystem/...,
+    absolute path, or anything else that resolves to the same file).
+    """
     expected = (repo_path / "_ecosystem" / "AGENTS.md").resolve(strict=False)
     for _lineno, rest, _full in imports:
         if "${" in rest:
@@ -714,6 +1183,36 @@ def _consumer_has_orchestrator_import(imports, repo_path: Path) -> bool:
     return False
 
 
+# `.*?` up to the first `-->`, or to end of input when there is none.
+HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
+
+
+def strip_html_comments(text: str) -> str:
+    """Remove comments without joining tokens or losing line boundaries.
+
+    A comment is replaced by a space plus its own newlines, never by nothing:
+    dropping it outright would glue the text on either side together, and
+    `@AGE<!-- x -->NTS.md` would then read as a valid `@AGENTS.md` import.
+
+    Unterminated comments hide text through EOF only at a Markdown block start
+    (up to three leading spaces). Unclosed inline openers remain visible.
+
+    Deliberately not fence-aware: comments inside code fences are stripped too,
+    and an unterminated one there hides the rest of the file. Parsing fences is
+    not worth it for a file that should hold a single import line, and the
+    failure mode is a missed warning — never a false one.
+    """
+    def replace_comment(match: re.Match) -> str:
+        comment = match.group()
+        if not comment.endswith("-->"):
+            line_start = text.rfind("\n", 0, match.start()) + 1
+            if not re.fullmatch(r" {0,3}", text[line_start:match.start()]):
+                return comment
+        return " " + "".join(re.findall(r"[\r\n]", comment))
+
+    return HTML_COMMENT_RE.sub(replace_comment, text)
+
+
 def check_project(repo_path: Path) -> dict:
     agents = repo_path / "AGENTS.md"
     report = {
@@ -722,6 +1221,7 @@ def check_project(repo_path: Path) -> dict:
         "status": "ok",
         "info": {
             "import_count": 0,
+            "key_people_count": 0,
             "has_end_marker": True,
         },
         "issues": [],
@@ -752,8 +1252,8 @@ def check_project(repo_path: Path) -> dict:
                 claude_content = ""
             meaningful = [
                 ln.strip()
-                for ln in claude_content.splitlines()
-                if ln.strip() and not ln.strip().startswith("<!--")
+                for ln in strip_html_comments(claude_content).splitlines()
+                if ln.strip()
             ]
             has_agents_import = any(ln == "@AGENTS.md" for ln in meaningful)
             extras = [ln for ln in meaningful if ln != "@AGENTS.md"]
@@ -781,9 +1281,37 @@ def check_project(repo_path: Path) -> dict:
                     "suggest_fix": "replace CLAUDE.md content with single line: @AGENTS.md",
                 })
 
-        # Detect non-ctx AGENTS.md: no `load_strategy` field is the canonical marker.
+        # A parser FAILURE is not the same signal as "genuinely no load_strategy
+        # field" — surface it loudly (error) instead of silently falling into the
+        # unmanaged branch below, which would make a broken parser look like a
+        # clean fleet-wide report (issue 2208).
+        if "_parse_error" in fm:
+            report["status"] = "error"
+            report["project"] = report["project"] or "(frontmatter unreadable)"
+            report["issues"].append({
+                "type": "frontmatter_parse_error",
+                "severity": "error",
+                "description": (
+                    f"Could not parse AGENTS.md frontmatter: {fm['_parse_error']}. "
+                    "Import/key_people/load_strategy checks were skipped for this "
+                    "project — this is NOT the same as a clean 'unmanaged' verdict."
+                ),
+                "suggest_fix": None,
+            })
+            return report
+
+        # Detect a foreign AGENTS.md: no `load_strategy` field is the canonical marker.
+        # These files are typically auto-generated by other plugins (e.g. bk's generate-context)
+        # or hand-written without our frontmatter schema. We skip them from further validation
+        # to avoid noise (but the CLAUDE.md wrapper check above already ran — that applies
+        # universally). --list-projects still lists them so user knows they exist.
         is_managed = "load_strategy" in fm
         if not is_managed:
+            # Startup-context size matters to every Claude Code session, managed
+            # or not — run the budget check here too, like the wrapper check.
+            budget_issues, budget_info = check_context_budget(agents, repo_path, fm)
+            report["issues"].extend(budget_issues)
+            report["info"]["budget"] = budget_info
             has_issues = bool(report["issues"])
             if has_issues:
                 report["status"] = "warn"
@@ -791,7 +1319,7 @@ def check_project(repo_path: Path) -> dict:
                 report["status"] = "unmanaged"
             report["project"] = report["project"] or "(not ctx managed)"
             report["info"]["unmanaged_reason"] = (
-                "AGENTS.md has no `load_strategy` field — not ctx managed, skipping import checks"
+                "AGENTS.md has no `load_strategy` field — not ctx managed, skipping import/key_people checks"
             )
             return report
 
@@ -848,7 +1376,10 @@ def check_project(repo_path: Path) -> dict:
             count_imports += 1
 
             # Claude Code does NOT expand ${VAR} in project-level @-imports —
-            # such imports are silently ignored at runtime. Flag these as errors.
+            # such imports are silently ignored at runtime. Previously ctx-lint
+            # simulated the substitution (PLUGIN_ROOT default) and reported OK,
+            # masking the failure. Flag these as errors regardless of whether
+            # the "resolved" file exists on disk.
             if "${" in rest:
                 report["issues"].append({
                     "type": "env_var_in_import",
@@ -869,7 +1400,9 @@ def check_project(repo_path: Path) -> dict:
             if target.exists():
                 continue
             # Suppress duplicate noise for consumer projects whose broken
-            # _ecosystem link already failed above.
+            # _ecosystem link already failed above — all `_ecosystem/*`
+            # imports would otherwise be flagged as broken_import even though
+            # the root cause is the single link issue.
             normalized_rest = rest.lstrip("./")
             if (
                 strategy == "symlink-consumer"
@@ -905,6 +1438,19 @@ def check_project(repo_path: Path) -> dict:
                 "suggest_fix": "add line: @./_ecosystem/AGENTS.md",
             })
 
+        # key_people — optional for `orchestrator` and `symlink-consumer` by
+        # design (orchestrator has no project-level people, consumers defer
+        # to hub/orchestrator). For `alpha` it's also optional — check runs
+        # only when key_people is declared non-empty.
+        kp = fm.get("key_people") or []
+        if isinstance(kp, list):
+            report["info"]["key_people_count"] = len(kp)
+            report["issues"].extend(check_key_people(kp))
+
+        budget_issues, budget_info = check_context_budget(agents, repo_path, fm)
+        report["issues"].extend(budget_issues)
+        report["info"]["budget"] = budget_info
+
         # Final status
         severities = {i.get("severity") for i in report["issues"]}
         if "error" in severities:
@@ -928,6 +1474,8 @@ def check_project(repo_path: Path) -> dict:
 def _rebuild_import_line(rest: str, target: Path, suggest_name: str, repo_path: Path) -> str:
     """Rebuild an @-import line with the replacement file name, preserving the
     original prefix shape (${CLAUDE_PLUGIN_ROOT}/..., ./..., /abs, ~/..., bare)."""
+    # Figure out what directory-part of the original `rest` we need to keep
+    # by replacing the last path segment.
     if "/" in rest:
         head, _tail = rest.rsplit("/", 1)
         return f"@{head}/{suggest_name}"
@@ -1018,7 +1566,7 @@ def apply_fixes(report: dict) -> dict:
 # Output formatting
 # ---------------------------------------------------------------------------
 
-STATUS_EMOJI = {"ok": "OK", "warn": "WARN", "error": "ERROR", "unmanaged": "SKIP"}
+STATUS_EMOJI = {"ok": "✅", "warn": "⚠", "error": "❌", "unmanaged": "➖"}
 
 
 def _format_scope_header(scope):
@@ -1030,13 +1578,13 @@ def _format_scope_header(scope):
     path = scope.get("scope_path")
     count = scope.get("project_count", 0)
     if kind == "explicit":
-        return f"Scope: explicit path -> {path}"
+        return f"Scope: explicit path → {path}"
     if kind == "project":
         label = "auto: enclosing project" if req == "auto" else "--here: enclosing project"
-        return f"Scope: {label} -> {path}  (cwd={cwd})"
+        return f"Scope: {label} → {path}  (cwd={cwd})"
     if kind == "container":
         label = "container+self" if scope.get("includes_enclosing") else "container"
-        return f"Scope: auto: {label} -> {path}  ({count} projects, cwd={cwd})"
+        return f"Scope: auto: {label} → {path}  ({count} projects, cwd={cwd})"
     if kind == "all":
         note = "  (forced)" if req == "all" else ""
         reason = scope.get("reason")
@@ -1063,23 +1611,26 @@ def format_human(reports, scope=None):
         project = r.get("project") or "?"
         status = r.get("status", "ok")
         emoji = STATUS_EMOJI.get(status, "?")
-        out.append(f"## {path} ({project}) [{emoji}]")
+        out.append(f"## {path} ({project}) {emoji}")
 
         # Short-circuit for unmanaged projects — just note and skip
         if status == "unmanaged":
             reason = r.get("info", {}).get("unmanaged_reason", "not ctx managed")
-            out.append(f"  SKIP {reason}")
+            out.append(f"  ➖ {reason}")
             out.append("")
             total_unmanaged += 1
             continue
 
         info = r.get("info", {})
         import_count = info.get("import_count", 0)
+        kp_count = info.get("key_people_count", 0)
         strategy = info.get("strategy")
 
         issues = r.get("issues", [])
         broken = [i for i in issues if i.get("type") == "broken_import"]
         env_var = [i for i in issues if i.get("type") == "env_var_in_import"]
+        kp_missing = [i for i in issues if i.get("type") == "key_people_missing_card"]
+        kp_ambig = [i for i in issues if i.get("type") == "key_people_ambiguous"]
         missing_end = [i for i in issues if i.get("type") == "missing_end_marker"]
         ecosystem_issues = [
             i for i in issues
@@ -1101,7 +1652,8 @@ def format_human(reports, scope=None):
             i for i in issues
             if i.get("type") not in (
                 "broken_import", "env_var_in_import",
-                "missing_end_marker",
+                "key_people_missing_card",
+                "key_people_ambiguous", "missing_end_marker",
                 "missing_ecosystem_link", "broken_ecosystem_link",
                 "consumer_missing_orchestrator_import", "unknown_load_strategy",
                 "claude_md_missing_agents_import",
@@ -1122,50 +1674,80 @@ def format_human(reports, scope=None):
             ok_imports = import_count - len(bad_imports)
             out.append(f"  {ok_imports}/{import_count} @-imports OK, {len(bad_imports)} issue(s):")
             for i in env_var:
-                out.append(f"    ERROR line {i.get('line')}: {i.get('raw')}")
-                out.append(f"       -> ${{...}} not expanded in project-level @-import (silently ignored at runtime)")
+                out.append(f"    ❌ line {i.get('line')}: {i.get('raw')}")
+                out.append(f"       → ${{...}} not expanded in project-level @-import (silently ignored at runtime)")
             for i in broken:
-                out.append(f"    ERROR line {i.get('line')}: {i.get('raw')}")
-                out.append(f"       -> file missing: {i.get('resolved')}")
+                out.append(f"    ❌ line {i.get('line')}: {i.get('raw')}")
+                out.append(f"       → file missing: {i.get('resolved')}")
                 conf = i.get("confidence", "none")
                 sug = i.get("suggest_fix")
                 if sug:
-                    out.append(f"       -> suggestion ({conf} confidence): {sug}")
+                    out.append(f"       → suggestion ({conf} confidence): {sug}")
                 elif conf == "none":
-                    out.append("       -> no close match found")
+                    out.append("       → no close match found")
                 if i.get("_fixed"):
-                    out.append("       OK auto-fixed: rewrote line")
+                    out.append("       ✅ auto-fixed: rewrote line")
+
+        # key_people
+        if kp_count == 0:
+            out.append("  0 key_people")
+        else:
+            found = kp_count - len(kp_missing) - len(kp_ambig)
+            if not kp_missing and not kp_ambig:
+                out.append(f"  {kp_count} key_people: {kp_count} cards found")
+            else:
+                parts = [f"{found} cards found"]
+                if kp_missing:
+                    parts.append(f"{len(kp_missing)} missing")
+                if kp_ambig:
+                    parts.append(f"{len(kp_ambig)} ambiguous")
+                out.append(f"  {kp_count} key_people: " + ", ".join(parts) + ":")
+                for i in kp_missing:
+                    out.append(
+                        f'    ⚠ "{i.get("name")}" — no card matching {i.get("searched_glob")}'
+                    )
+                for i in kp_ambig:
+                    cands = ", ".join(i.get("candidates", []))
+                    out.append(
+                        f'    ⚠ "{i.get("name")}" — ambiguous match: {cands}'
+                    )
 
         # End marker
         if missing_end:
-            msg = "  end marker: missing"
+            msg = "  end marker: missing — will be added by next session-start"
             if missing_end[0].get("_fixed"):
-                msg += " — OK auto-fixed: appended marker"
+                msg += " ✅ auto-fixed: appended marker"
             out.append(msg)
         else:
             out.append("  end marker: present")
 
         # Ecosystem-link / consumer issues
         for i in ecosystem_issues:
-            sev = i.get("severity", "warn").upper()
+            sev_emoji = STATUS_EMOJI.get(i.get("severity"), "?")
             itype = i.get("type")
-            out.append(f"  {sev} {itype}: {i.get('description', '')}")
+            out.append(f"  {sev_emoji} {itype}: {i.get('description', '')}")
             if itype == "broken_ecosystem_link" and i.get("target_path"):
                 out.append(f"     target: {i['target_path']}")
             sug = i.get("suggest_fix")
             if sug:
-                out.append(f"     -> {sug}")
+                out.append(f"     → {sug}")
+
+        budget = info.get("budget")
+        if budget:
+            out.append(
+                f"  startup context: ~{budget['tokens'] / 1000:.1f}k tokens, "
+                f"{budget['files']} files (budget {budget['limits']['total_tokens'] / 1000:.0f}k)"
+            )
 
         # CLAUDE.md wrapper
         for i in claude_wrapper:
-            out.append(f"  WARN CLAUDE.md: {i.get('description', '')}")
+            out.append(f"  ⚠ CLAUDE.md: {i.get('description', '')}")
             sug = i.get("suggest_fix")
             if sug:
-                out.append(f"     -> {sug}")
+                out.append(f"     → {sug}")
 
         for i in other:
-            sev = i.get("severity", "warn").upper()
-            out.append(f"  {sev} {i.get('type')}: {i.get('description', '')}")
+            out.append(f"  {STATUS_EMOJI.get(i.get('severity'), '?')} {i.get('type')}: {i.get('description', '')}")
 
         out.append("")
 
