@@ -44,7 +44,7 @@ REPO_ROOTS = (
     ".agents/",
 )
 
-MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)[^)]*\)")
+MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)")
 # Backtick spans (single or double) containing a path-like token.
 CODE_SPAN_RE = re.compile(r"`{1,2}([^`\n]+)`{1,2}")
 # Candidate path token inside a code span: starts with a repo root and has no
@@ -87,10 +87,15 @@ def roots_for(rel: str) -> list[Path]:
     return roots
 
 
+def exists_inside_repo(candidate: Path) -> bool:
+    resolved = candidate.resolve()
+    return resolved.is_relative_to(ROOT.resolve()) and resolved.exists()
+
+
 def resolves(token: str, file_dir: Path, extra_roots: list[Path]) -> bool:
     token = token.rstrip(".,;:")
     candidates = [file_dir / token, *[root / token for root in extra_roots]]
-    return any(c.exists() for c in candidates)
+    return any(exists_inside_repo(c) for c in candidates)
 
 
 def check_file(rel: str) -> list[str]:
@@ -104,10 +109,10 @@ def check_file(rel: str) -> list[str]:
     findings: list[str] = []
 
     for match in MD_LINK_RE.finditer(text):
-        target = match.group(1).split("#", 1)[0].split("?", 1)[0]
+        target = (match.group(1) or match.group(2)).split("#", 1)[0].split("?", 1)[0]
         if not target or target in IGNORE_TARGETS or target.startswith(IGNORE_PREFIXES) or "%" in target:
             continue
-        if not (file_dir / target).exists() and (rel, target) not in ALLOWLIST:
+        if not resolves(target, file_dir, []) and (rel, target) not in ALLOWLIST:
             findings.append(f"{rel}: dangling markdown link -> {target}")
 
     for span in CODE_SPAN_RE.finditer(text):

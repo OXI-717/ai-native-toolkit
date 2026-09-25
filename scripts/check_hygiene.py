@@ -71,7 +71,7 @@ def main() -> int:
                     continue
                 if (rel, rule) in ALLOWLIST:
                     continue
-                findings.append(f"{rel}: [{rule}] {value[:60]}")
+                findings.append(f"{rel}: [{rule}]")
                 break
     if findings:
         for finding in findings:
