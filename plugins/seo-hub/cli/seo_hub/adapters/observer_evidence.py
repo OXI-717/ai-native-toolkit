@@ -201,7 +201,7 @@ def _database_entries(path: Path, project: str, now: datetime) -> list[dict[str,
     from seo_observer.snapshots import build_snapshot
 
     storage = readonly_storage(path)
-    periods = storage.fetchall("SELECT DISTINCT reporting_period_id FROM search_performance WHERE project_id = ? AND is_current = 1", (project,))
+    periods = storage.fetchall("SELECT DISTINCT reporting_period_id FROM search_performance WHERE project_id = ? AND is_current = 1 AND segment_id NOT IN ('total', 'brand')", (project,))
     entries = []
     for period in periods:
         snapshot = build_snapshot(storage, project_id=project, reporting_period_id=period["reporting_period_id"], generated_at=now.isoformat())
@@ -223,7 +223,8 @@ def _database_entries(path: Path, project: str, now: datetime) -> list[dict[str,
             })
     traffic = storage.fetchall("""SELECT source, MIN(effective_start) AS effective_start,
         MAX(effective_end) AS effective_end, MAX(observed_at) AS observed_at, COUNT(*) AS row_count
-        FROM traffic_metrics WHERE project_id = ? AND is_current = 1 GROUP BY source""", (project,))
+        FROM traffic_metrics WHERE project_id = ? AND is_current = 1
+        AND attribution_model != 'ga4_session_all_channels' GROUP BY source""", (project,))
     entries.extend({"kind": "sqlite", "database_path": str(path), "private_rows_omitted": True, **row} for row in traffic)
     return entries
 

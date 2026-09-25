@@ -124,6 +124,7 @@ def _fetch_rows(storage: SEOStorage, project_id: str, start: str, end: str) -> l
             LEFT JOIN raw_artifacts ra ON ra.artifact_id = sp.artifact_id
             WHERE sp.project_id = ?
               AND sp.is_current = 1
+              AND sp.segment_id NOT IN ('total', 'brand')
               AND sp.effective_start <= ?
               AND sp.effective_end >= ?
             ORDER BY sp.effective_start, sp.query_text, sp.page_url

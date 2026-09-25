@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import dataclasses
+import json
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+
+from seo_observer.channels import channel_group, channel_slug
 
 
 FORBIDDEN_QUERY_FIELDS = frozenset(
@@ -16,6 +22,22 @@ FORBIDDEN_QUERY_FIELDS = frozenset(
     }
 )
 ARTIFACT_EXPORT_CHANNELS = frozenset({"git", "markdown", "telegram"})
+KNOWN_AGGREGATE_ADAPTERS = frozenset(
+    {"fixture_aggregate", "postgres_aggregate", "http_aggregate"}
+)
+IDENTIFIER_FIELDS = frozenset(
+    {
+        "user_id",
+        "email",
+        "phone",
+        "login",
+        "username",
+        "ip",
+        "payment_id",
+        "account_id",
+        "distinct_id",
+    }
+)
 
 
 class AggregateOutcomeError(ValueError):
@@ -65,6 +87,10 @@ class AggregateViewDescriptor:
     period_start_field: str
     period_end_field: str
     grain_start_field: str | None
+    source_field: str | None
+    medium_field: str | None
+    value_minor_field: str | None
+    currency_field: str | None
 
     def __init__(
         self,
@@ -90,6 +116,10 @@ class AggregateViewDescriptor:
         period_start_field: str = "period_start",
         period_end_field: str = "period_end",
         grain_start_field: str | None = "grain_start",
+        source_field: str | None = None,
+        medium_field: str | None = None,
+        value_minor_field: str | None = None,
+        currency_field: str | None = None,
         **extra: Any,
     ) -> None:
         forbidden = FORBIDDEN_QUERY_FIELDS.intersection(extra)
@@ -131,6 +161,10 @@ class AggregateViewDescriptor:
             raise AggregateOutcomeError("parameter_names must contain exactly period_start and period_end.")
         object.__setattr__(self, "parameter_names", parameter_names)
         object.__setattr__(self, "grain_start_field", grain_start_field)
+        object.__setattr__(self, "source_field", source_field)
+        object.__setattr__(self, "medium_field", medium_field)
+        object.__setattr__(self, "value_minor_field", value_minor_field)
+        object.__setattr__(self, "currency_field", currency_field)
         for name, value in values.items():
             object.__setattr__(self, name, value)
 
@@ -144,8 +178,10 @@ class AggregateOutcomeSource:
     def __post_init__(self) -> None:
         if not self.source_id:
             raise AggregateOutcomeError("source_id is required.")
-        if self.adapter not in {"fixture_aggregate", "postgres_aggregate"}:
-            raise AggregateOutcomeError("Aggregate outcome adapter must be fixture_aggregate or postgres_aggregate.")
+        if self.adapter not in KNOWN_AGGREGATE_ADAPTERS:
+            raise AggregateOutcomeError(
+                f"Aggregate outcome adapter must be one of {', '.join(sorted(KNOWN_AGGREGATE_ADAPTERS))}."
+            )
         if not self.approved_views:
             raise AggregateOutcomeError("Aggregate outcome source requires approved views.")
 
@@ -177,6 +213,8 @@ class OutcomeFact:
     dataset_coverage: str = "unknown"
     freshness: str = "provisional"
     sampled: bool = False
+    value_minor: int | None = None
+    currency: str | None = None
     lineage: dict[str, Any] = field(default_factory=dict)
 
 
@@ -218,21 +256,47 @@ class AggregateOutcomeAdapter:
         rows = response.get("rows", [])
         if not isinstance(rows, list):
             raise AggregateOutcomeError("Aggregate outcome response rows must be a list.")
-        observations = [
-            self._fact_from_row(
-                descriptor,
-                row,
-                source_label=str(response.get("source", self.source.adapter)),
-                quality=_outcome_quality(response),
-            )
-            for row in rows
-            if isinstance(row, dict)
-        ]
+        quality = _outcome_quality(response)
+        observations: list[OutcomeFact] = []
+        invalid_rows = 0
+        out_of_window_rows = 0
+        for row in rows:
+            if not isinstance(row, dict):
+                invalid_rows += 1
+                continue
+            try:
+                fact = self._fact_from_row(
+                    descriptor,
+                    row,
+                    source_label=str(response.get("source", self.source.adapter)),
+                    quality=quality,
+                )
+            except AggregateOutcomeError:
+                invalid_rows += 1
+                continue
+            grain_start = fact.lineage.get("grain_start")
+            if (
+                fact.period_start < period.start
+                or fact.period_end > period.end
+                or (
+                    grain_start is not None
+                    and not period.start <= str(grain_start) <= period.end
+                )
+            ):
+                out_of_window_rows += 1
+                continue
+            observations.append(fact)
+        dataset_coverage = quality["dataset_coverage"]
+        if (invalid_rows or out_of_window_rows) and dataset_coverage == "complete":
+            dataset_coverage = "partial"
         return {
             "collection": "outcome_metrics",
             "metadata": {
-                **_outcome_quality(response),
+                **quality,
+                "dataset_coverage": dataset_coverage,
                 "rows_received": len(observations),
+                "rows_invalid": invalid_rows,
+                "rows_out_of_window": out_of_window_rows,
                 "approved_view_id": descriptor.view_id,
                 "source": self.source.source_id,
             },
@@ -253,6 +317,23 @@ class AggregateOutcomeAdapter:
         source_label: str,
         quality: dict[str, Any],
     ) -> OutcomeFact:
+        leaked = IDENTIFIER_FIELDS.intersection(row)
+        if leaked:
+            raise AggregateOutcomeError(
+                f"Aggregate outcome rows must not carry identifier fields: {sorted(leaked)}"
+            )
+        traffic_channel = descriptor.traffic_channel
+        if descriptor.source_field or descriptor.medium_field:
+            traffic_channel = channel_slug(channel_group(
+                row.get(descriptor.source_field) if descriptor.source_field else None,
+                row.get(descriptor.medium_field) if descriptor.medium_field else None,
+            ))
+        value_minor = None
+        if descriptor.value_minor_field and row.get(descriptor.value_minor_field) is not None:
+            value_minor = _non_negative_count(row, descriptor.value_minor_field)
+        currency = None
+        if descriptor.currency_field and row.get(descriptor.currency_field):
+            currency = str(row[descriptor.currency_field]).upper()
         count = _non_negative_count(row, descriptor.count_field)
         period_start = _required_row_value(row, descriptor.period_start_field)
         period_end = _required_row_value(row, descriptor.period_end_field)
@@ -287,11 +368,13 @@ class AggregateOutcomeAdapter:
             timestamp_field=descriptor.timestamp_field,
             timezone=descriptor.timezone,
             aggregation_grain=descriptor.aggregation_grain,
-            traffic_channel=descriptor.traffic_channel,
+            traffic_channel=traffic_channel,
             attribution_scope=descriptor.attribution_scope,
             dataset_coverage=quality["dataset_coverage"],
             freshness=quality["freshness"],
             sampled=quality["sampled"],
+            value_minor=value_minor,
+            currency=currency,
             lineage={
                 "approved_view_id": descriptor.view_id,
                 "provider_source": source_label,
@@ -300,6 +383,137 @@ class AggregateOutcomeAdapter:
                 **quality,
             },
         )
+
+
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Bearer-token requests must never be re-sent to a redirect target."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
+        raise AggregateOutcomeError(
+            "http_aggregate endpoint must not redirect; refusing to follow the redirect target."
+        )
+
+
+class HttpAggregateTransport:
+    """Reads approved aggregate views from a tenant HTTP endpoint (GET, bearer token)."""
+
+    def __init__(self, base_url: str, token: str, timeout: float = 30.0) -> None:
+        parsed = urllib.parse.urlsplit(base_url)
+        if parsed.query or parsed.fragment:
+            raise AggregateOutcomeError(
+                "http_aggregate endpoint URL must not contain a query string or fragment; "
+                "the request query is built from the approved view and period parameters only."
+            )
+        if parsed.username is not None or parsed.password is not None:
+            raise AggregateOutcomeError("http_aggregate endpoint URL must not contain userinfo.")
+        scheme = (parsed.scheme or "").lower()
+        host = (parsed.hostname or "").lower()
+        if scheme == "https" and host:
+            pass
+        elif scheme == "http" and host in _LOOPBACK_HOSTS:
+            pass
+        else:
+            raise AggregateOutcomeError(
+                "http_aggregate endpoint must use https; http is allowed only for exact loopback hosts."
+            )
+        self.base_url = base_url
+        self.token = token
+        self.timeout = timeout
+        self._opener = urllib.request.build_opener(_NoRedirectHandler())
+
+    def fetch_aggregate_view(
+        self,
+        descriptor: AggregateViewDescriptor,
+        *,
+        params: dict[str, str],
+    ) -> dict[str, Any]:
+        query = urllib.parse.urlencode({"view_id": descriptor.view_id, **params})
+        request = urllib.request.Request(
+            f"{self.base_url}?{query}",
+            headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"},
+            method="GET",
+        )
+        with self._opener.open(request, timeout=self.timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise AggregateOutcomeError("http_aggregate endpoint must return a JSON object.")
+        return payload
+
+
+def descriptor_from_source_fields(
+    source_name: str,
+    fields: dict[str, Any],
+    *,
+    timezone: str,
+) -> AggregateViewDescriptor:
+    views = fields.get("approved_views") or []
+    if len(views) != 1:
+        raise AggregateOutcomeError("http_aggregate sources declare exactly one approved view.")
+    is_payment = fields.get("outcome_id") == "paid_purchase"
+    return AggregateViewDescriptor(
+        view_id=str(views[0]),
+        outcome_id=str(fields["outcome_id"]),
+        population_id=str(fields.get("population_id") or f"{source_name}_population"),
+        population_name=str(fields.get("population_name") or source_name),
+        attribution_model=str(fields.get("attribution_model") or "registration_source"),
+        attribution_window=str(fields.get("attribution_window") or "P0D"),
+        attribution_source=str(fields.get("attribution_source") or "tenant_api"),
+        counting_unit=str(fields["counting_unit"]),
+        dedupe_key=str(fields["dedupe_key"]),
+        dedupe_source=str(fields.get("dedupe_source") or "tenant_db"),
+        timestamp_field=str(fields["timestamp_field"]),
+        timezone=str(fields.get("timezone") or timezone),
+        aggregation_grain="day",
+        source_field="source",
+        medium_field="medium",
+        value_minor_field="value_minor" if is_payment else None,
+        currency_field="currency" if is_payment else None,
+    )
+
+
+def reduce_outcome_facts(facts: list[OutcomeFact]) -> list[OutcomeFact]:
+    """Sum facts that land in the same stored grain before ingestion.
+
+    Persistence identifies a fact by (outcome_id, effective window,
+    traffic_channel, attribution_model, attribution_scope, property_id); rows
+    that differ only by registration source/medium collapse into one channel
+    and would otherwise overwrite each other in the same collection.
+    """
+    first: dict[tuple[Any, ...], OutcomeFact] = {}
+    totals: dict[tuple[Any, ...], list[Any]] = {}
+    for fact in facts:
+        key = (
+            fact.outcome_id,
+            fact.period_start,
+            fact.period_end,
+            fact.property_id,
+            fact.traffic_channel,
+            fact.attribution_model,
+            fact.attribution_scope,
+        )
+        if key not in first:
+            first[key] = fact
+            totals[key] = [fact.count, fact.value_minor, fact.currency]
+            continue
+        count_total, value_total, currency = totals[key]
+        if fact.currency and currency and fact.currency != currency:
+            raise AggregateOutcomeError(
+                "Aggregate outcome facts in one stored grain must not mix currencies."
+            )
+        if value_total is None:
+            merged_value = fact.value_minor
+        elif fact.value_minor is None:
+            merged_value = value_total
+        else:
+            merged_value = value_total + fact.value_minor
+        totals[key] = [count_total + fact.count, merged_value, currency or fact.currency]
+    return [
+        dataclasses.replace(first[key], count=count, value_minor=value, currency=currency)
+        for key, (count, value, currency) in totals.items()
+    ]
 
 
 def build_demo_outcome_sources() -> dict[str, AggregateOutcomeSource]:
@@ -463,8 +677,10 @@ def doctor_outcome_source(
             errors.append(f"{key} is forbidden; use approved view IDs")
             config_shape = False
     adapter = source_fields.get("adapter")
-    if adapter is not None and adapter not in {"fixture_aggregate", "postgres_aggregate"}:
-        errors.append("adapter must be fixture_aggregate or postgres_aggregate")
+    if adapter is not None and adapter not in KNOWN_AGGREGATE_ADAPTERS:
+        errors.append(
+            f"adapter must be one of {', '.join(sorted(KNOWN_AGGREGATE_ADAPTERS))}"
+        )
         config_shape = False
     approved_views = source_fields.get("approved_views")
     if (

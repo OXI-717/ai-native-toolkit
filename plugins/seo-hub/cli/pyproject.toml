@@ -1,6 +1,6 @@
 [project]
 name = "seo-hub"
-version = "0.1.22"
+version = "0.1.24"
 description = "Read-only SEO intelligence hub CLI"
 requires-python = ">=3.11"
 dependencies = ["PyJWT[crypto]>=2.10.1,<3"]

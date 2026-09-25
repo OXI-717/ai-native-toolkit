@@ -1,6 +1,6 @@
 {
   "name": "seo-hub",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and seo-hub CLI. Imports existing evidence only; no live paid provider calls.",
   "author": {
     "name": "OXI-717"

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from seo_observer.channels import channel_slug
+
 
 GA4_RUN_REPORT_ENDPOINT = "/v1beta/{property_resource}:runReport"
 GA4_MAX_LIMIT = 250000
@@ -53,6 +55,7 @@ class GA4Source:
     timezone: str
     limit: int = DEFAULT_LIMIT
     finalize_after: str | None = None
+    channel_timezone: str = GA4_TIMEZONE
 
 
 @dataclass(frozen=True)
@@ -129,6 +132,24 @@ class GA4Adapter:
         observations = []
         for report in reports:
             observations.extend(_traffic_observations(self.source, period, report))
+        metadata = _combined_metadata([report["metadata"] for report in reports], self.source.finalize_after)
+        return {"collection": "traffic_metrics", "metadata": metadata, "observations": observations}
+
+    def fetch_channel_traffic_bundle(self, period: GA4Period | None) -> dict[str, Any]:
+        """Sessions by default channel group, source/medium and landing page, all channels."""
+        period = _require_period(period)
+        specs = (
+            GA4ReportSpec(
+                "channel_landing_source_medium",
+                ("sessionDefaultChannelGroup", "sessionSource", "sessionMedium",
+                 "landingPagePlusQueryString"),
+                GA4_TRAFFIC_METRICS,
+            ),
+        )
+        reports = [self.run_report(period, spec) for spec in specs]
+        observations: list[dict[str, Any]] = []
+        for report in reports:
+            observations.extend(_channel_traffic_observations(self.source, period, report))
         metadata = _combined_metadata([report["metadata"] for report in reports], self.source.finalize_after)
         return {"collection": "traffic_metrics", "metadata": metadata, "observations": observations}
 
@@ -293,6 +314,48 @@ def _traffic_observations(source: GA4Source, period: GA4Period, report: dict[str
                 "sampled": False,
                 "sample_share": None,
                 "normalizer_version": "ga4-v1",
+            }
+        )
+    return observations
+
+
+def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = report.get("metadata") if isinstance(report.get("metadata"), dict) else {}
+    rows = report.get("rows") if isinstance(report.get("rows"), list) else []
+    observations = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        group = _clean_text(row.get("sessionDefaultChannelGroup")) or "Unassigned"
+        session_source = _clean_text(row.get("sessionSource"))
+        session_medium = _clean_text(row.get("sessionMedium"))
+        source_medium = f"{session_source} / {session_medium}" if session_source or session_medium else "__all__"
+        landing_page = _clean_text(row.get("landingPagePlusQueryString")) or "__all__"
+        observations.append(
+            {
+                "project_id": "__pending__",
+                "property_id": source.property_id,
+                "source": "ga4",
+                "effective_start": period.start_date,
+                "effective_end": period.end_date,
+                "source_timezone": source.channel_timezone,
+                "channel": channel_slug(group),
+                "search_engine": source_medium,
+                "landing_page_id": _page_id(landing_page),
+                "device": "__all__",
+                "region": "__all__",
+                "attribution_model": "ga4_session_all_channels",
+                "visits": _int_or_none(row.get("sessions")),
+                "users": _int_or_none(row.get("activeUsers")),
+                "pageviews": _int_or_none(row.get("screenPageViews")),
+                "bounce_rate": _number_or_none(row.get("bounceRate")),
+                "avg_visit_duration_seconds": _number_or_none(row.get("averageSessionDuration")),
+                "dataset_coverage": metadata.get("dataset_coverage") or "unknown",
+                "freshness": metadata.get("freshness") or "provisional",
+                "comparability": metadata.get("comparability") or "comparable",
+                "sampled": False,
+                "sample_share": None,
+                "normalizer_version": "ga4-channels-v1",
             }
         )
     return observations

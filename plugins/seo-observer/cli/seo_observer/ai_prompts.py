@@ -458,6 +458,7 @@ def load_keywords_from_gsc(
                 WHERE project_id = ?
                   AND source = 'google_search_console'
                   AND is_current = 1
+                  AND segment_id NOT IN ('total', 'brand')
                   AND query_text != ''
                 ORDER BY query_text
                 """,
