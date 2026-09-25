@@ -797,6 +797,7 @@ def walk_import_tree(root: Path, *, return_truncated: bool = False):
     seen = set()
     order = []
     stack = [(root.resolve(), 0, None)]
+    truncated = False
     while stack and len(order) < MAX_IMPORT_TREE_FILES:
         path, depth, parent = stack.pop()
         if path in seen or not path.is_file():
@@ -827,10 +828,15 @@ def walk_import_tree(root: Path, *, return_truncated: bool = False):
             except (OSError, RuntimeError, ValueError):
                 # Symlink loop or unresolvable path: skip, never crash the hook.
                 continue
+        unseen_children = [child for child in children if child not in seen]
         if depth < MAX_IMPORT_DEPTH:
             for child in reversed(children):
                 stack.append((child, depth + 1, str(path)))
-    return (order, bool(stack)) if return_truncated else order
+        elif unseen_children:
+            truncated = True
+    if stack:
+        truncated = True
+    return (order, truncated) if return_truncated else order
 
 
 def _is_volatile(path: str) -> bool:
@@ -944,8 +950,8 @@ def check_context_budget(agents: Path, repo_path: Path, fm: dict):
             "type": "context_budget_incomplete",
             "severity": "warn",
             "description": (
-                f"startup import tree exceeds {MAX_IMPORT_TREE_FILES} files; "
-                "budget is a lower bound"
+                "startup import tree was truncated at the file-count or depth "
+                "limit; budget is a lower bound"
             ),
             "confidence": "none",
         })

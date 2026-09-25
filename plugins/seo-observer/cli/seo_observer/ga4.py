@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -142,15 +143,20 @@ class GA4Adapter:
             GA4ReportSpec(
                 "channel_landing_source_medium",
                 ("sessionDefaultChannelGroup", "sessionSource", "sessionMedium",
-                 "landingPagePlusQueryString"),
+                 "landingPagePlusQueryString", "date"),
                 GA4_TRAFFIC_METRICS,
             ),
         )
         reports = [self.run_report(period, spec) for spec in specs]
         observations: list[dict[str, Any]] = []
+        dropped_dates = 0
         for report in reports:
-            observations.extend(_channel_traffic_observations(self.source, period, report))
+            kept, dropped = _channel_traffic_observations(self.source, period, report)
+            observations.extend(kept)
+            dropped_dates += dropped
         metadata = _combined_metadata([report["metadata"] for report in reports], self.source.finalize_after)
+        if dropped_dates:
+            metadata = {**metadata, "dataset_coverage": "partial", "comparability": "partial"}
         return {"collection": "traffic_metrics", "metadata": metadata, "observations": observations}
 
     def _report_body(self, period: GA4Period, spec: GA4ReportSpec, *, offset: int) -> dict[str, Any]:
@@ -319,10 +325,11 @@ def _traffic_observations(source: GA4Source, period: GA4Period, report: dict[str
     return observations
 
 
-def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: dict[str, Any]) -> list[dict[str, Any]]:
+def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: dict[str, Any]) -> tuple[list[dict[str, Any]], int]:
     metadata = report.get("metadata") if isinstance(report.get("metadata"), dict) else {}
     rows = report.get("rows") if isinstance(report.get("rows"), list) else []
     observations = []
+    dropped = 0
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -331,13 +338,17 @@ def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: 
         session_medium = _clean_text(row.get("sessionMedium"))
         source_medium = f"{session_source} / {session_medium}" if session_source or session_medium else "__all__"
         landing_page = _clean_text(row.get("landingPagePlusQueryString")) or "__all__"
+        day = _ga4_date(row.get("date"))
+        if day is None or day < period.start_date or day > period.end_date:
+            dropped += 1
+            continue
         observations.append(
             {
                 "project_id": "__pending__",
                 "property_id": source.property_id,
                 "source": "ga4",
-                "effective_start": period.start_date,
-                "effective_end": period.end_date,
+                "effective_start": day,
+                "effective_end": day,
                 "source_timezone": source.channel_timezone,
                 "channel": channel_slug(group),
                 "search_engine": source_medium,
@@ -358,7 +369,7 @@ def _channel_traffic_observations(source: GA4Source, period: GA4Period, report: 
                 "normalizer_version": "ga4-channels-v1",
             }
         )
-    return observations
+    return observations, dropped
 
 
 def _metadata(pages: list[dict[str, Any]], finalize_after: str | None) -> dict[str, Any]:
@@ -435,6 +446,21 @@ def _cell_value(cells: Any, index: int) -> str | None:
 
 def _page_id(page_url: str) -> str:
     return "__all__" if page_url == "__all__" else f"page:{page_url or '/'}"
+
+
+def _ga4_date(value: Any) -> str | None:
+    text = _clean_text(value)
+    if not text:
+        return None
+    if len(text) == 8 and text.isdigit():
+        try:
+            return dt.datetime.strptime(text, "%Y%m%d").date().isoformat()
+        except ValueError:
+            return None
+    try:
+        return dt.date.fromisoformat(text).isoformat()
+    except ValueError:
+        return None
 
 
 def _region(country: str | None, city: str | None) -> str:

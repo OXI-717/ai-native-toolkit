@@ -12,7 +12,7 @@
       "name": "ctx",
       "description": "Project context: AGENTS.md, rules, init, lint",
       "source": "./plugins/ctx/",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "OXI-717"
       }
@@ -165,7 +165,7 @@
       "name": "seo-observer",
       "description": "Evidence-first SEO observer CLI: snapshots, period comparisons, outcome measurement, opportunity reports, competitor intelligence, AI-search readiness. Local SQLite storage; provider credentials via env vars only.",
       "source": "./plugins/seo-observer/",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "author": {
         "name": "OXI-717"
       }

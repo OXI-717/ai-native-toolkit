@@ -533,6 +533,7 @@ class SEOStorage:
                 _insert_artifact(con, artifact)
             for obs in observations:
                 _insert_traffic_metric(con, obs)
+            _retire_overlapping_period_grain_ga4_channel_facts(con, observations)
             if request.transport_status == "success" and authoritative:
                 _retire_absent_ga4_channel_facts(con, request, observations)
 
@@ -1387,6 +1388,43 @@ def _request_windows(
     if start and end:
         return {(str(start), str(end))}
     return windows
+
+
+def _retire_overlapping_period_grain_ga4_channel_facts(
+    con: sqlite3.Connection,
+    observations: list[TrafficMetricObservation],
+) -> None:
+    """Retire legacy multi-day GA4 channel facts that overlap a new day-grain row.
+
+    Pre-upgrade all-channel rows used the day-grain logical key with the whole
+    requested window as effective bounds. Exact-window supersession cannot
+    replace them, so current totals would double-count after the first daily
+    collection.
+    """
+    seen: set[tuple[str, str]] = set()
+    for obs in observations:
+        if obs.attribution_model != GA4_ALL_CHANNELS_MODEL:
+            continue
+        start, end = str(obs.effective_start), str(obs.effective_end)
+        if start != end:
+            continue
+        key = (obs.logical_observation_key, start)
+        if key in seen:
+            continue
+        seen.add(key)
+        con.execute(
+            """
+            UPDATE traffic_metrics
+            SET is_current = 0
+            WHERE is_current = 1
+              AND logical_observation_key = ?
+              AND attribution_model = ?
+              AND effective_start != effective_end
+              AND effective_start <= ?
+              AND effective_end >= ?
+            """,
+            (obs.logical_observation_key, GA4_ALL_CHANNELS_MODEL, start, start),
+        )
 
 
 def _retire_absent_ga4_channel_facts(

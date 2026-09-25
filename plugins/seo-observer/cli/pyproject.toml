@@ -1,6 +1,6 @@
 [project]
 name = "seo-observer"
-version = "0.1.73"
+version = "0.1.74"
 description = "Evidence-first SEO observer CLI"
 requires-python = ">=3.11"
 dependencies = [

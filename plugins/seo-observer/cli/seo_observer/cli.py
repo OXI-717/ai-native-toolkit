@@ -2217,11 +2217,13 @@ def _metric_delta(
     }
 
 
-def _today() -> dt.date:
+def _today(timezone: str | None = None) -> dt.date:
+    if timezone:
+        return dt.datetime.now(ZoneInfo(timezone)).date()
     return dt.date.today()
 
 
-def _daily_dates(args: argparse.Namespace) -> list[dt.date]:
+def _daily_dates(args: argparse.Namespace, *, timezone: str | None = None) -> list[dt.date]:
     if getattr(args, "start", None) or getattr(args, "end", None):
         start_s, end_s = _collect_period(args, "1d")
         start, end = dt.date.fromisoformat(start_s), dt.date.fromisoformat(end_s)
@@ -2230,9 +2232,18 @@ def _daily_dates(args: argparse.Namespace) -> list[dt.date]:
         days = int(days_raw if days_raw is not None else 3)
         if days < 1:
             raise ConfigError("COLLECT_PERIOD_INVALID", "`--days` must be >= 1.", {"days": days})
-        end = _today() - dt.timedelta(days=1)
+        end = _today(timezone) - dt.timedelta(days=1)
         start = end - dt.timedelta(days=days - 1)
     return [start + dt.timedelta(days=offset) for offset in range((end - start).days + 1)]
+
+
+def _collect_daily_timezone(args: argparse.Namespace) -> str | None:
+    if getattr(args, "start", None) or getattr(args, "end", None):
+        return None
+    config_path = _selected_config_path(args)
+    if config_path is None:
+        return None
+    return load_project_config(config_path).project.timezone
 
 
 def _collect_daily_payload(args: argparse.Namespace) -> dict[str, Any]:
@@ -2245,7 +2256,7 @@ def _collect_daily_payload(args: argparse.Namespace) -> dict[str, Any]:
         )
     day_payloads: list[dict[str, Any]] = []
     failed: list[str] = []
-    dates = _daily_dates(args)
+    dates = _daily_dates(args, timezone=_collect_daily_timezone(args))
     for index, day in enumerate(dates):
         day_args = argparse.Namespace(**{**vars(args), "start": day.isoformat(), "end": day.isoformat(),
                                          "period_id": "1d", "daily": False})
@@ -2956,12 +2967,14 @@ def _collect_one_provider(
             "Collect source is not supported.",
             {"source": source_name},
         )
+    coverage = str((result.get("metadata") or {}).get("dataset_coverage") or "")
+    status = "partial" if coverage in {"partial", "truncated"} else "ok"
     return {
         "source": source_name,
         "property_id": property_id,
         "remote_id": remote_id,
         "required": item["required"],
-        "status": "ok",
+        "status": status,
         "collection": result["collection"],
         "metadata": result.get("metadata") or {},
         "observations": result.get("observations") or [],
