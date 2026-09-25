@@ -85,6 +85,7 @@ and will not work — see [Runtime support](#runtime-support).
 | agent-time | Local physical work, AI engagement, and autonomous agent time |
 | seo-observer | Evidence-first SEO snapshots, comparisons, outcomes, and competitor intelligence |
 | seo-hub | Read-only SEO hub CLI over existing OpenSEO/Elmo/Observer evidence |
+| opencode-doctor | Diagnose and repair broken OpenCode sessions with SQLite backups |
 <!-- PLUGINS:END -->
 
 For SEO setup, start with [seo-observer](plugins/seo-observer/README.md), then

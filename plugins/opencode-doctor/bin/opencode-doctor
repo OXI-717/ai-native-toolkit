@@ -1,0 +1,355 @@
+#!/usr/bin/env python3
+"""opencode-doctor — диагностика и починка «отравленных» сессий opencode.
+
+Отрава (инцидент 2026-08-17):
+  1. read по PDF встраивает data:application/pdf;base64 аттачмент в историю;
+     Anthropic-совместимые эндпоинты (kimi-for-coding) его не принимают → 400.
+  2. Каждый упавший запрос оставляет assistant-сообщение с error и 0 parts;
+     пустой контент запрещён API → любой следующий запрос снова 400.
+
+Usage:
+  opencode-doctor check <ses_id|--all> [--json] [--db PATH]
+  opencode-doctor fix <ses_id> [--quiet] [--db PATH] [--backup-dir DIR]
+  opencode-doctor hook            # stdin: {"session_id": ...}; для UserPromptSubmit
+
+Exit codes: 0 = clean / ok, 1 = poisoned (check), 2 = usage/runtime error.
+Hook-режим никогда не падает: любая ошибка → тихий exit 0.
+"""
+
+import json
+import os
+import sqlite3
+import sys
+import time
+import uuid
+
+DEFAULT_DB = os.path.expanduser("~/.local/share/opencode/opencode.db")
+DEFAULT_BACKUP_ROOT = os.path.expanduser("~/.local/share/opencode/backups")
+MODELS_JSON = os.path.expanduser("~/.cache/opencode/models.json")
+
+STUB_TEXT = "[opencode-doctor] заглушка: пустое сообщение после APIError (ремонт истории)"
+
+
+def connect(db_path):
+    con = sqlite3.connect(db_path, timeout=10)
+    con.execute("PRAGMA busy_timeout=10000")
+    return con
+
+
+def session_exists(con, sid):
+    row = con.execute("SELECT title FROM session WHERE id=?", (sid,)).fetchone()
+    return row[0] if row else None
+
+
+def find_empty_error_assistants(con, sid):
+    """assistant-сообщения с error и нулём parts — отрава в любом месте истории."""
+    return con.execute(
+        """
+        SELECT m.id, m.time_created FROM message m
+        WHERE m.session_id = ?
+          AND json_extract(m.data, '$.role') = 'assistant'
+          AND json_extract(m.data, '$.error') IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM part p WHERE p.message_id = m.id)
+        ORDER BY m.time_created
+        """,
+        (sid,),
+    ).fetchall()
+
+
+def find_empty_users(con, sid):
+    """user-сообщения без parts — тоже бьют API, но редки; только предупреждаем."""
+    return con.execute(
+        """
+        SELECT m.id, m.time_created FROM message m
+        WHERE m.session_id = ?
+          AND json_extract(m.data, '$.role') = 'user'
+          AND NOT EXISTS (SELECT 1 FROM part p WHERE p.message_id = m.id)
+        ORDER BY m.time_created
+        """,
+        (sid,),
+    ).fetchall()
+
+
+def find_data_attachments(con, sid):
+    """parts со встроенными data:application/* аттачментами (pdf и др.).
+
+    Паттерн намеренно структурный ('"url":' рядом с 'data:application/'), чтобы
+    не ловить части, где строка встречается просто в тексте (SQL, код, логи).
+    Пробел после двоеточия допустим (json-форматтеры отличаются).
+    """
+    return con.execute(
+        """
+        SELECT id, message_id, time_created, length(data) FROM part
+        WHERE session_id = ?
+          AND data LIKE '%"url":%"data:application/%'
+        ORDER BY time_created
+        """,
+        (sid,),
+    ).fetchall()
+
+
+def token_warning(con, sid):
+    """warning, если последний замер токенов близок к лимиту модели."""
+    row = con.execute(
+        """
+        SELECT json_extract(data, '$.providerID'), json_extract(data, '$.modelID'),
+               json_extract(data, '$.tokens.input'), json_extract(data, '$.tokens.cache.read')
+        FROM message
+        WHERE session_id = ? AND json_extract(data, '$.role') = 'assistant'
+          AND json_extract(data, '$.tokens.input') IS NOT NULL
+        ORDER BY time_created DESC LIMIT 1
+        """,
+        (sid,),
+    ).fetchone()
+    if not row or not row[0] or not row[1]:
+        return None
+    provider, model, inp, cache_read = row
+    try:
+        with open(MODELS_JSON, encoding="utf-8") as f:
+            models = json.load(f)
+        limit = models.get(provider, {}).get("models", {}).get(model, {}).get("limit", {}).get("context")
+    except Exception:
+        return None
+    if not limit:
+        return None
+    used = (inp or 0) + (cache_read or 0)
+    if used >= 0.9 * limit:
+        return f"контекст {used}/{limit} токенов ({provider}/{model}) — сессия у лимита, начни новую"
+    return None
+
+
+def check_session(con, sid):
+    return {
+        "session": sid,
+        "empty_error_assistants": [m[0] for m in find_empty_error_assistants(con, sid)],
+        "empty_user_messages": [m[0] for m in find_empty_users(con, sid)],
+        "data_attachments": [p[0] for p in find_data_attachments(con, sid)],
+        "token_warning": token_warning(con, sid),
+    }
+
+
+def is_poisoned(report):
+    return bool(report["empty_error_assistants"] or report["data_attachments"])
+
+
+def backup_db(db_path, backup_root):
+    # дедупликация: если свежий бэкап (<1 ч) уже есть, не плодим копии
+    # (БД может быть сотни МБ; hook может срабатывать на каждый промпт)
+    if os.path.isdir(backup_root):
+        for name in sorted(os.listdir(backup_root), reverse=True):
+            candidate = os.path.join(backup_root, name, "opencode.db")
+            if os.path.exists(candidate) and time.time() - os.path.getmtime(candidate) < 3600:
+                return candidate
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    dest_dir = os.path.join(backup_root, ts)
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, "opencode.db")
+    src = connect(db_path)
+    dst = sqlite3.connect(dest)
+    src.backup(dst)
+    dst.close()
+    src.close()
+    return dest
+
+
+def fix_session(db_path, sid, backup_root):
+    backup = backup_db(db_path, backup_root)
+    con = connect(db_path)
+    fixed_msgs = 0
+    stripped = 0
+    try:
+        con.execute("BEGIN")
+        # 1. Зачистить data-аттачменты (источник первого 400):
+        #    tool-part → state.attachments; file-part → сам url.
+        for part_id, _mid, _ts, _ln in find_data_attachments(con, sid):
+            now_ms = int(time.time() * 1000)
+            con.execute(
+                "UPDATE part SET data = json_remove(data, '$.state.attachments'), "
+                "time_updated = ? WHERE id = ?",
+                (now_ms, part_id),
+            )
+            con.execute(
+                """UPDATE part SET
+                     data = json_set(data, '$.url', 'removed-by-opencode-doctor'),
+                     time_updated = ?
+                   WHERE id = ? AND json_extract(data, '$.type') = 'file'
+                     AND json_extract(data, '$.url') LIKE 'data:application/%'""",
+                (now_ms, part_id),
+            )
+            stripped += 1
+        # 2. Пустые error-assistant'ы → обычные сообщения с текстовой заглушкой.
+        #    Сохраняет чередование ролей, не удаляет user-сообщения.
+        for mid, mts in find_empty_error_assistants(con, sid):
+            con.execute(
+                "UPDATE message SET data = json_set(json_remove(data, '$.error'), "
+                "'$.time.completed', COALESCE(json_extract(data, '$.time.completed'), "
+                "json_extract(data, '$.time.created'), ?)), time_updated = ? WHERE id = ?",
+                (mts, int(time.time() * 1000), mid),
+            )
+            part_id = "prt_" + uuid.uuid4().hex[:20]
+            part_data = json.dumps(
+                {"type": "text", "text": STUB_TEXT, "time": {"start": mts, "end": mts}},
+                ensure_ascii=False,
+            )
+            con.execute(
+                "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (part_id, mid, sid, mts, int(time.time() * 1000), part_data),
+            )
+            fixed_msgs += 1
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        con.close()
+        raise
+    # верификация: отравы не осталось
+    leftover = find_empty_error_assistants(con, sid) + find_data_attachments(con, sid)
+    con.close()
+    return {
+        "backup": backup,
+        "stubbed_messages": fixed_msgs,
+        "stripped_attachments": stripped,
+        "verified_clean": not leftover,
+    }
+
+
+def print_report(rep):
+    title = ""
+    print(f"session {rep['session']}{title}")
+    poison = is_poisoned(rep)
+    for key, label in [
+        ("empty_error_assistants", "пустые error-assistant сообщения"),
+        ("empty_user_messages", "пустые user-сообщения (warn)"),
+        ("data_attachments", "data-аттачменты (pdf и др.)"),
+    ]:
+        items = rep[key]
+        if items:
+            print(f"  ✗ {label}: {len(items)}")
+    if rep.get("token_warning"):
+        print(f"  ⚠ {rep['token_warning']}")
+    if not poison and not rep["empty_user_messages"] and not rep.get("token_warning"):
+        print("  ✓ clean")
+    return poison
+
+
+def cmd_check(args):
+    con = connect(args.db)
+    if args.all:
+        sids = [r[0] for r in con.execute("SELECT id FROM session")]
+    else:
+        if not args.session:
+            print("error: укажи ses_id или --all", file=sys.stderr)
+            con.close()
+            return 2
+        if not session_exists(con, args.session):
+            print(f"error: сессия {args.session} не найдена", file=sys.stderr)
+            con.close()
+            return 2
+        sids = [args.session]
+    reports = [check_session(con, sid) for sid in sids]
+    con.close()
+    if args.json:
+        print(json.dumps(reports, ensure_ascii=False, indent=2))
+    else:
+        any_poison = False
+        for rep in reports:
+            # в --all печатаем только проблемные + предупреждения
+            if args.all and not is_poisoned(rep) and not rep["empty_user_messages"] and not rep["token_warning"]:
+                continue
+            any_poison = print_report(rep) or any_poison
+        if args.all and not any_poison:
+            print(f"✓ все {len(reports)} сессий чистые")
+    return 1 if any(is_poisoned(r) for r in reports) else 0
+
+
+def cmd_fix(args):
+    con = connect(args.db)
+    title = session_exists(con, args.session)
+    if title is None:
+        con.close()
+        print(f"error: сессия {args.session} не найдена", file=sys.stderr)
+        return 2
+    rep = check_session(con, args.session)
+    con.close()
+    if not is_poisoned(rep):
+        if not args.quiet:
+            print(f"✓ {args.session} чистая, чинить нечего")
+        return 0
+    result = fix_session(args.db, args.session, args.backup_dir)
+    if not args.quiet:
+        print(f"✓ {args.session} ({title}) починена:")
+        print(f"  заглушек вместо пустых error-assistant: {result['stubbed_messages']}")
+        print(f"  зачищено data-аттачментов: {result['stripped_attachments']}")
+        print(f"  бэкап БД: {result['backup']}")
+        print(f"  верификация: {'clean' if result['verified_clean'] else 'ОСТАЛАСЬ ОТРАВА — нужен ручной разбор'}")
+    else:
+        status = "clean" if result["verified_clean"] else "LEFTOVER-POISON"
+        print(
+            f"opencode-doctor: {args.session} fixed "
+            f"(stubs={result['stubbed_messages']}, attachments={result['stripped_attachments']}, "
+            f"backup={result['backup']}, verify={status})"
+        )
+    return 0 if result["verified_clean"] else 1
+
+
+def cmd_hook(args):
+    """UserPromptSubmit-режим: stdin {"session_id": ...}; никогда не падает."""
+    try:
+        raw = sys.stdin.read()
+        sid = (json.loads(raw) if raw.strip() else {}).get("session_id") or ""
+        if not sid or not os.path.exists(args.db):
+            return 0
+        con = connect(args.db)
+        if not session_exists(con, sid):
+            con.close()
+            return 0
+        rep = check_session(con, sid)
+        con.close()
+        if not is_poisoned(rep):
+            return 0
+        result = fix_session(args.db, sid, args.backup_dir)
+        note = (
+            "[opencode-doctor] обнаружена отрава истории этой сессии "
+            f"(пустые error-сообщения: {result['stubbed_messages']}, "
+            f"data-аттачменты: {result['stripped_attachments']}). "
+            f"Выполнен ремонт, бэкап БД: {result['backup']}. "
+            "Если запрос всё равно падает с 400 — перезапусти TUI (opencode мог "
+            "закэшировать историю в памяти) или сообщи пользователю."
+        )
+        print(json.dumps({"systemMessage": note}, ensure_ascii=False))
+    except Exception:
+        pass
+    return 0
+
+
+def main(argv):
+    import argparse
+
+    p = argparse.ArgumentParser(prog="opencode-doctor", description=__doc__.splitlines()[0])
+    p.add_argument("--db", default=DEFAULT_DB, help="путь к opencode.db")
+    p.add_argument("--backup-dir", default=DEFAULT_BACKUP_ROOT, help="куда класть бэкапы БД")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    pc = sub.add_parser("check", help="диагностика")
+    pc.add_argument("session", nargs="?", help="ses_id (или --all)")
+    pc.add_argument("--all", action="store_true")
+    pc.add_argument("--json", action="store_true")
+
+    pf = sub.add_parser("fix", help="починка с бэкапом")
+    pf.add_argument("session", help="ses_id")
+    pf.add_argument("--quiet", action="store_true", help="однострочный вывод (для lfg)")
+
+    sub.add_parser("hook", help="режим UserPromptSubmit-хука (stdin JSON)")
+
+    args = p.parse_args(argv)
+    if args.cmd == "check":
+        return cmd_check(args)
+    if args.cmd == "fix":
+        return cmd_fix(args)
+    if args.cmd == "hook":
+        return cmd_hook(args)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

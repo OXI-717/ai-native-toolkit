@@ -1,0 +1,5 @@
+{
+  "name": "opencode-doctor",
+  "description": "Diagnose and repair OpenCode sessions that repeatedly fail with invalid-request errors; back up the database before changes",
+  "version": "0.1.0"
+}

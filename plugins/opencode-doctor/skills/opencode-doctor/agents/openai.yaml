@@ -1,0 +1,5 @@
+# Generated from plugins/opencode-doctor/skills/opencode-doctor/SKILL.md
+interface:
+  display_name: "Opencode Doctor:Opencode Doctor"
+  short_description: "Use when every opencode command returns HTTP 400 Invalid request. Triggers — \"сессия opencode сломалась\", \"opencode 4..."
+  default_prompt: "Use `opencode-doctor`."

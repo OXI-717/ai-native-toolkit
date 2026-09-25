@@ -165,7 +165,7 @@
       "name": "seo-observer",
       "description": "Evidence-first SEO observer CLI: snapshots, period comparisons, outcome measurement, opportunity reports, competitor intelligence, AI-search readiness. Local SQLite storage; provider credentials via env vars only.",
       "source": "./plugins/seo-observer/",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "author": {
         "name": "OXI-717"
       }
@@ -174,7 +174,16 @@
       "name": "seo-hub",
       "description": "Read-only SEO intelligence hub with a project registry, secret env-file loading, and seo-hub CLI. Imports existing evidence only; no live paid provider calls.",
       "source": "./plugins/seo-hub/",
-      "version": "0.1.4",
+      "version": "0.1.5",
+      "author": {
+        "name": "OXI-717"
+      }
+    },
+    {
+      "name": "opencode-doctor",
+      "description": "Diagnose and repair OpenCode sessions that repeatedly fail with invalid-request errors; back up the database before changes",
+      "source": "./plugins/opencode-doctor/",
+      "version": "0.1.0",
       "author": {
         "name": "OXI-717"
       }
