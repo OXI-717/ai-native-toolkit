@@ -34,33 +34,35 @@ rules/
 **Скажи:**
 > «У меня здесь предварительно прогнанный отчёт того же мульти-агентного ревью. На этом демо-проекте Next.js плюс Supabase автоматический пайплайн нашёл 25 уникальных уязвимостей: восемнадцать критичных и семь важных. Среди критичных — захардкоженный service-role ключ в исходниках, IDOR на каждом API-роуте, mass assignment с захватом роли admin, stored XSS, wildcard CORS.»
 
-**Покажи pre-baked отчёт:** `demo/vulnerable-saas/artifacts/review-report.md` (6.8KB, готов к показу)
+**Покажи pre-baked отчёт:** `demo/vulnerable-saas/artifacts/review-report-skill.md` (полный прогон мульти-агентного пайплайна)
 
 **Ключевые числа для запоминания:**
-- ~32 raw findings → 25 unique после дедуп → 18 Critical + 7 Important
-- 5 параллельных Sonnet-агентов: security-scanner, bug-hunter, code-reviewer, error-auditor, architecture-reviewer
+- 31 raw findings → 25 unique после дедуп → 18 Critical + 7 Important
+- Параллельные Sonnet-агенты: 3 chunk-ревьюера + architecture-reviewer + security-scanner
 - Время прогона: ~2 минуты
-- Обнаружил CVE в зависимостях (Next 14.2.5 → нужно ≥14.2.32)
+- Обнаружил CVE в зависимостях (Next 14.2.5 → нужно ≥14.2.35)
+- Известный ложноположительный пункт в отчёте: находка «import после кода» в `app/api/auth/reset/route.ts:35` — синтаксически это валидный ECMAScript, просто стилистическое замечание; не защищай её как баг.
 
 ---
 
 ## Если упал Demo 3 (codex)
 
 **Скажи:**
-> «Третий демо — другой агент полностью, в данном случае Codex. Подаём ему голый репо без какой-либо настройки. За тридцать секунд он перечисляет все шесть плагинов с корректными описаниями. Тот же AGENTS.md, другой инструмент, идентичное понимание — это и есть суть переносимости контекста.»
+> «Третий демо — другой агент полностью, в данном случае Codex. Подаём ему голый репо без какой-либо настройки. За тридцать секунд он перечисляет все девятнадцать плагинов с корректными описаниями. Тот же AGENTS.md, другой инструмент, идентичное понимание — это и есть суть переносимости контекста.»
 
 **Покажи скриншот:** `backup-screenshots/slide-17-demo-codex.png`
 
 **Ожидаемый output Codex:**
 ```
-This repo is AI Native Toolkit — open-source plugins for Claude Code/Codex.
+This repo is AI Native Toolkit — open-source plugins for Claude Code/Codex (19 plugins).
 
 - ctx: Bootstraps project context via AGENTS.md, rules, and templates
-- review: Multi-agent code review with confidence filtering
+- team-review: Multi-agent code review with confidence filtering
 - pentest: Black-box web app security audits (L0-L3)
 - context-handoff: Preserves session context across /compact and /clear
 - statusline: Status bar with usage limits and context %
 - gh-issues: GitHub Issues as persistent AI session memory
+- … (перечисляет остальные: infocompressor, deep-interview, screencast, agent-teams, …)
 ```
 
 ---
@@ -96,4 +98,4 @@ python3 -m http.server 8765
 - [ ] iTerm: открыть в `/tmp/ainative-tests/demo-runs/...` для каждой demo-папки (3 вкладки)
 - [ ] Проверить что Claude Max лимиты не съедены (`/usage` в Claude)
 - [ ] Проверить интернет: пинг github.com
-- [ ] Скриншоты и review-report.md открыть в отдельной вкладке как backup
+- [ ] Скриншоты и review-report-skill.md открыть в отдельной вкладке как backup

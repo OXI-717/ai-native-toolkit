@@ -1,5 +1,5 @@
 # Generated from plugins/seo-hub/skills/seo-hub/SKILL.md
 interface:
   display_name: "Seo Hub:Seo Hub"
-  short_description: "Use for the read-only SEO Hub CLI, project registry validation, secret env-file checks, and existing SEO evidence rou..."
+  short_description: "Read-only SEO Hub CLI: registry and env-file checks, evidence routing."
   default_prompt: "Use `seo-hub`."

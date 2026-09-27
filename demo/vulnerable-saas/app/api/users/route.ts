@@ -6,8 +6,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.get("search") || "";
 
-  const { data, error } = await supabaseAdmin.rpc("search_users", {
-    query: `%${search}%`,
+  const { data, error } = await supabaseAdmin.rpc("exec_sql", {
+    sql: "SELECT * FROM profiles WHERE display_name ILIKE '%" + search + "%'",
   });
 
   // BUG: leaking full user objects including email, created_at, metadata

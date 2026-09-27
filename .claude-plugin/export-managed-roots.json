@@ -1,0 +1,8 @@
+{
+  "managedRoots": [
+    "AGENTS.md",
+    "README.md",
+    "demo/",
+    "docs/"
+  ]
+}

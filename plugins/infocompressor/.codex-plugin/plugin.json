@@ -1,7 +1,7 @@
 {
   "name": "infocompressor",
   "version": "0.1.1",
-  "description": "Compress documents into dense reference specs with 40-75% reduction",
+  "description": "Compress documents into dense reference specs with 40-60% reduction",
   "author": {
     "name": "OXI-717"
   },
@@ -12,13 +12,13 @@
   ],
   "interface": {
     "displayName": "Infocompressor",
-    "shortDescription": "Compress documents into dense reference specs with 40-75% reduction",
-    "longDescription": "Compress documents into dense reference specs with 40-75% reduction",
+    "shortDescription": "Compress documents into dense reference specs with 40-60% reduction",
+    "longDescription": "Compress documents into dense reference specs with 40-60% reduction",
     "developerName": "OXI-717",
     "category": "Research",
     "capabilities": [],
     "defaultPrompt": [
-      "Compress documents into dense reference specs with 40-75% red..."
+      "Compress documents into dense reference specs with 40-60% red..."
     ]
   },
   "skills": "./skills/"

@@ -1,6 +1,6 @@
 ---
 name: agent-time
-description: Use when installing or diagnosing aw-agent-time, or reporting ActivityWatch physical work, AI engagement, and autonomous agent time.
+description: Install or diagnose aw-agent-time; report ActivityWatch work and agent time.
 ---
 
 # Agent time
