@@ -534,7 +534,7 @@ class SEOStorage:
             for obs in observations:
                 _insert_traffic_metric(con, obs)
             _retire_overlapping_period_grain_ga4_channel_facts(con, observations)
-            if request.transport_status == "success" and authoritative:
+            if authoritative and request.transport_status in {"success", "partial"}:
                 _retire_absent_ga4_channel_facts(con, request, observations)
 
     def ingest_outcome_metrics(

@@ -2925,11 +2925,14 @@ def _collect_one_provider(
         )
         organic = adapter.fetch_organic_traffic_bundle(GA4Period(period_start, period_end))
         channels = adapter.fetch_channel_traffic_bundle(GA4Period(period_start, period_end))
+        organic_meta = organic.get("metadata") or {}
+        channels_meta = channels.get("metadata") or {}
+        metadata = _merge_source_metadata(organic_meta, channels_meta)
+        metadata["organic_dataset_coverage"] = str(organic_meta.get("dataset_coverage") or "")
+        metadata["all_channels_dataset_coverage"] = str(channels_meta.get("dataset_coverage") or "")
         result = {
             **organic,
-            "metadata": _merge_source_metadata(
-                organic.get("metadata") or {}, channels.get("metadata") or {}
-            ),
+            "metadata": metadata,
             "observations": organic["observations"] + channels["observations"],
         }
     elif source_name.startswith("outcome_"):
@@ -3208,6 +3211,7 @@ def _write_collect_results(
                         result=result,
                         period_start=period_start,
                         period_end=period_end,
+                        coverage_key=_traffic_refresh_coverage_key(result),
                     ),
                 )
             except Exception:
@@ -3384,19 +3388,36 @@ def _collect_request_artifact(
     return request, artifact, artifact_text
 
 
+def _traffic_refresh_coverage_key(result: dict[str, Any]) -> str:
+    """GA4 all-channel retirement follows the channel bundle, not worst-of merge."""
+    metadata = result.get("metadata") or {}
+    if "all_channels_dataset_coverage" in metadata:
+        return "all_channels_dataset_coverage"
+    return "dataset_coverage"
+
+
 def _collect_authoritative_refresh(
     *,
     result: dict[str, Any],
     period_start: str,
     period_end: str,
+    coverage_key: str = "dataset_coverage",
 ) -> bool:
-    """True only when a successful complete single-day result may retire absent facts."""
+    """True only when a complete single-day refresh may retire absent facts.
+
+    Conservative: unknown/partial/truncated/empty coverage is never
+    authoritative. Merged source status is ignored when a bundle-specific
+    coverage key is used, so an incomplete organic GA4 report cannot block
+    retiring vanished ga4_session_all_channels facts from a complete
+    all-channel report.
+    """
     metadata = result.get("metadata") or {}
-    return (
-        str(result.get("status") or "ok") == "ok"
-        and str(metadata.get("dataset_coverage") or "") == "complete"
-        and period_start == period_end
-    )
+    coverage = str(metadata.get(coverage_key) or "")
+    if coverage != "complete" or period_start != period_end:
+        return False
+    if coverage_key == "dataset_coverage" and str(result.get("status") or "ok") != "ok":
+        return False
+    return True
 
 
 def _collect_aggregate_status(current: str, new: str) -> str:

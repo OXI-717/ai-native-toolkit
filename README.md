@@ -58,8 +58,11 @@ git clone https://github.com/OXI-717/ai-native-toolkit.git ~/ai-native-toolkit
 }
 ```
 
-Restart opencode afterwards. Plugins not listed above depend on Claude Code hooks
-and will not work — see [Runtime support](#runtime-support).
+Restart opencode afterwards. The six paths above are the verified set; other
+plugins are unverified in opencode — some rely on `${CLAUDE_PLUGIN_ROOT}`
+references or Claude-only surfaces that have no equivalent there. The table
+below marks what is actually verified — see
+[Runtime support](#runtime-support).
 
 ## Plugins
 

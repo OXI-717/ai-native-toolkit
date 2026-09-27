@@ -1,5 +1,5 @@
 {
   "name": "statusline",
-  "description": "Claude Code status bar with usage limits and context %",
+  "description": "Claude Code status bar with usage limits and context meter",
   "version": "0.1.0"
 }

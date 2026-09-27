@@ -6,7 +6,7 @@ A deliberately vulnerable Next.js + Supabase application for demonstrating AI-na
 
 ## What's inside
 
-A simple notes app with user authentication — the kind of project you'd see in a typical SaaS starter kit. It has several security issues that `review` and `pentest` plugins are designed to catch.
+A simple notes app with user authentication — the kind of project you'd see in a typical SaaS starter kit. It has several security issues that `team-review` and `pentest` plugins are designed to catch.
 
 ## Usage
 
@@ -15,7 +15,7 @@ A simple notes app with user authentication — the kind of project you'd see in
 /ctx-init
 
 # 2. Run code review
-/review
+/team-review
 
 # 3. Run security audit
 /pentest --level L1

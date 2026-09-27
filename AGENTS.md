@@ -6,7 +6,7 @@ runtime-agnostic and load in opencode through `skills.paths`.
 
 ## Structure
 
-- `plugins/` — 8 standalone plugins, each installable independently
+- `plugins/` — 19 standalone plugins, each installable independently
 - `docs/` — guides on AI-native development levels
 - `.claude-plugin/marketplace.json` — plugin registry for Claude Code marketplace install
 

@@ -86,9 +86,9 @@ AI writes code, and AI checks code. Two separate agents: one generates, one revi
 - Code review bottlenecks when the team is small
 - Inconsistent review depth depending on who's available
 
-**Plugins**: `review` + `pentest`
+**Plugins**: `team-review` + `pentest`
 
-`review` runs a multi-agent code review pass on your changes. It reads the diff, checks it against your project rules, and surfaces issues with specific line references.
+`team-review` runs a multi-agent code review pass on your changes. It reads the diff, checks it against your project rules, and surfaces issues with specific line references. Then it runs the fix loop — Review → Fix → Build/Test → Re-Review — until findings are fixed and re-reviewed, or stops after the review pass with `--no-fix`.
 
 `pentest` runs a security-focused audit: injection vectors, auth bypasses, exposed secrets, insecure defaults. It's designed to find what a distracted human reviewer misses.
 
@@ -104,7 +104,7 @@ git push origin feature/payment-flow
 After:
 ```bash
 git push origin feature/payment-flow
-# review: "Line 47 — parameterized query missing, input passed directly to DB"
+# team-review: "Line 47 — parameterized query missing, input passed directly to DB"
 # pentest: "Line 83 — API key logged in error handler"
 # Both fixed before the PR is even opened
 ```
@@ -126,7 +126,7 @@ Agents launch agents. A task comes in, an orchestrator breaks it into subtasks, 
 
 **Plugin**: none yet
 
-This level describes patterns not yet packaged in this toolkit. The plugins above (ctx, review, pentest) provide the foundation.
+This level describes patterns not yet packaged in this toolkit. The plugins above (ctx, team-review, pentest) provide the foundation.
 
 **Before / After**
 

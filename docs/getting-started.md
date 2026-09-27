@@ -45,16 +45,16 @@ Commit all three files. Every teammate and every AI session from this point on s
 ## 4. Add code review
 
 ```
-/plugin install review@ai-native-toolkit
+/plugin install team-review@ai-native-toolkit
 ```
 
 Once installed, run it before opening a PR:
 
 ```
-/review
+/team-review
 ```
 
-The `/review` command auto-detects scope (staged diff, branch diff, or full repo), runs multiple specialized review agents in parallel, and auto-fixes issues by default. It checks your diff against project rules and posts findings with line references — catching bugs, anti-patterns, and rule violations before a human ever looks at the code.
+The `/team-review` command auto-detects scope (staged diff, branch diff, or full repo), runs multiple specialized review agents in parallel, and auto-fixes issues by default. It checks your diff against project rules and posts findings with line references — catching bugs, anti-patterns, and rule violations before a human ever looks at the code.
 
 ---
 
@@ -83,7 +83,7 @@ Edit the files in `rules/` to match your project. Add naming conventions, archit
 | Plugin | What it does |
 |--------|-------------|
 | `ctx` | Project memory, rules scaffolding, context management |
-| `review` | Multi-agent code review before merge |
+| `team-review` | Multi-agent code review before merge |
 | `pentest` | Security audit for vulnerabilities |
 | `context-handoff` | Pass context between sessions and agents |
 | `statusline` | Project status and health at a glance |

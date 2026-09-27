@@ -651,20 +651,77 @@ def parse_frontmatter(agents_path: Path) -> dict:
 # Import resolution
 # ---------------------------------------------------------------------------
 
+# Absolute stub that cannot exist and is never CWD-relative. Used when an
+# import path must fail closed (unknown ~user, NUL) instead of being rewritten
+# by os.path.abspath / Path.resolve into an unrelated on-disk file.
+_UNRESOLVABLE = Path("/__ctx_unresolvable__")
+
+
+def _unresolvable(kind: str) -> Path:
+    return _UNRESOLVABLE / kind
+
+
+def _safe_resolve(path: Path) -> Path:
+    """``Path.resolve()`` that degrades to an absolute path instead of raising.
+
+    A symlink loop makes pathlib raise ``RuntimeError`` (ELOOP via
+    ``check_eloop``) and an unreadable parent raises ``OSError``. Neither may
+    crash the check over a weird tree: the fallback path stays absolute but
+    unresolved, so an unreachable target then reports ``exists() == False``
+    (broken_import) instead of check_crashed with no budget block at all.
+
+    A NUL in the path must not fall through to ``os.path.abspath``: POSIX
+    ``normpath`` can drop the invalid segment (e.g. ``gone.md\\0/../keep.md``
+    → ``keep.md``) and then an unrelated file looks like a successful import.
+    """
+    raw = os.fspath(path)
+    if "\0" in raw:
+        return _unresolvable("nul")
+    try:
+        return path.resolve()
+    except (OSError, RuntimeError, ValueError):
+        if "\0" in os.fspath(path):
+            return _unresolvable("nul")
+        return Path(os.path.abspath(path))
+
+
+def _safe_expanduser(raw: str) -> Path:
+    """``Path.expanduser()`` that degrades to an unresolvable absolute stub.
+
+    ``~`` with no resolvable home (scrubbed env in hooks) and ``~unknown-user``
+    both fail expansion. Returning the literal relative path would let
+    ``_safe_resolve`` anchor it to the linter process CWD.
+    """
+    try:
+        expanded = Path(raw).expanduser()
+    except (OSError, RuntimeError, ValueError):
+        return _unresolvable("home")
+    if os.fspath(expanded).startswith("~"):
+        return _unresolvable("home")
+    return expanded
+
+
 def resolve_import(raw: str, repo_path: Path) -> Path:
-    """Resolve an @-import path string into an absolute Path."""
+    """Resolve an @-import path string into an absolute Path.
+
+    Symlink resolution is best-effort (``_safe_resolve``): a symlink-loop import
+    yields an absolute path that does not exist, never an exception — so every
+    caller can treat "unresolvable" as "broken", not as a crash.
+    """
     s = raw.strip()
+    if "\0" in s:
+        return _unresolvable("nul")
     if s.startswith("${CLAUDE_PLUGIN_ROOT}"):
         rest = s[len("${CLAUDE_PLUGIN_ROOT}"):].lstrip("/")
-        return (PLUGIN_ROOT / rest).resolve() if rest else PLUGIN_ROOT.resolve()
+        return _safe_resolve(PLUGIN_ROOT / rest) if rest else _safe_resolve(PLUGIN_ROOT)
     if s.startswith("~"):
-        return Path(s).expanduser().resolve()
+        return _safe_resolve(_safe_expanduser(s))
     if s.startswith("/"):
-        return Path(s).resolve()
+        return _safe_resolve(Path(s))
     if s.startswith("./"):
-        return (repo_path / s[2:]).resolve()
+        return _safe_resolve(repo_path / s[2:])
     # Bare relative path (e.g. "AGENTS.md" or a file under the rules directory)
-    return (repo_path / s).resolve()
+    return _safe_resolve(repo_path / s)
 
 
 def find_suggestion(target: Path):
@@ -796,8 +853,10 @@ def walk_import_tree(root: Path, *, return_truncated: bool = False):
     """
     seen = set()
     order = []
-    stack = [(root.resolve(), 0, None)]
-    truncated = False
+    stack = [(_safe_resolve(root), 0, None)]
+    # A CLAUDE.md symlink loop (or dangling symlink) is not a file: the walker
+    # would otherwise return an empty complete tree and a false "ok".
+    truncated = bool(root.is_symlink() and not root.is_file())
     while stack and len(order) < MAX_IMPORT_TREE_FILES:
         path, depth, parent = stack.pop()
         if path in seen or not path.is_file():
@@ -843,7 +902,7 @@ def _is_volatile(path: str) -> bool:
     people = vault_people_dir()
     if people is not None:
         try:
-            Path(path).relative_to(people.parent.resolve())
+            Path(path).relative_to(_safe_resolve(people.parent))
             return True
         except ValueError:
             pass
@@ -926,7 +985,7 @@ def _claude_loads_agents(claude: Path, agents: Path) -> bool:
         text = strip_html_comments(claude.read_text(encoding="utf-8", errors="replace"))
     except OSError:
         return False
-    expected = agents.resolve()
+    expected = _safe_resolve(agents)
     for raw in _import_targets(text):
         try:
             if resolve_import(raw, claude.parent) == expected:
@@ -945,6 +1004,18 @@ def check_context_budget(agents: Path, repo_path: Path, fm: dict):
 
     claude = repo_path / "CLAUDE.md"
     files, truncated = walk_import_tree(claude, return_truncated=True)
+    if claude.is_symlink() and not claude.is_file():
+        truncated = True
+        issues.append({
+            "type": "broken_root",
+            "severity": "error",
+            "path": str(claude),
+            "description": (
+                "CLAUDE.md is a symlink that cannot be read "
+                "(loop or dangling target); startup import tree is incomplete"
+            ),
+            "confidence": "none",
+        })
     if truncated:
         issues.append({
             "type": "context_budget_incomplete",
@@ -970,7 +1041,7 @@ def check_context_budget(agents: Path, repo_path: Path, fm: dict):
                 "confidence": "none",
             })
         # AGENTS.md imports are already reported as env_var_in_import.
-        for raw in f["env_var_imports"] if Path(f["path"]) != agents.resolve() else ():
+        for raw in f["env_var_imports"] if Path(f["path"]) != _safe_resolve(agents) else ():
             issues.append({
                 "type": "nested_env_var_import",
                 "severity": "warn",
@@ -1125,7 +1196,7 @@ def _check_symlink_consumer(repo_path: Path, report: dict) -> bool:
             return False
         target = Path(raw_target)
         if not target.is_absolute():
-            target = (link.parent / target).resolve(strict=False)
+            target = _safe_resolve(link.parent / target)
         if not target.exists():
             report["issues"].append({
                 "type": "broken_ecosystem_link",
@@ -1170,13 +1241,13 @@ def _consumer_has_orchestrator_import(imports, repo_path: Path) -> bool:
     Independent of the exact literal path (./_ecosystem/..., _ecosystem/...,
     absolute path, or anything else that resolves to the same file).
     """
-    expected = (repo_path / "_ecosystem" / "AGENTS.md").resolve(strict=False)
+    expected = _safe_resolve(repo_path / "_ecosystem" / "AGENTS.md")
     for _lineno, rest, _full in imports:
         if "${" in rest:
             continue  # env-var imports are silently ignored anyway
         try:
             target = resolve_import(rest, repo_path)
-        except (OSError, ValueError):
+        except (OSError, RuntimeError, ValueError):
             continue
         if target == expected:
             return True

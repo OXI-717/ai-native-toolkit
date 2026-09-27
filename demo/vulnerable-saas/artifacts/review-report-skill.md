@@ -1,4 +1,4 @@
-# Full Project Review Report (via review plugin pipeline)
+# Full Project Review Report (via team-review plugin pipeline)
 
 **Project**: `demo/vulnerable-saas/`
 **Scope**: full project (12 source files)
@@ -39,7 +39,7 @@ TeamCreate("demo-review")
 | 12 | No rate limiting on password reset (email bombing) | 95 | `app/api/auth/reset/route.ts` | chunk1, security |
 | 13 | Wildcard CORS on all API routes | 92 | `next.config.js:9` | chunk3, arch, security |
 | 14 | Internal DB error details leaked to client | 94 | `app/api/users/route.ts:16-19` | chunk1, arch, security |
-| 15 | SQL injection risk — raw search to RPC | 92 | `app/api/users/route.ts:9-11` | security |
+| 15 | SQL injection — string-concatenated SQL executed via `exec_sql` RPC | 92 | `app/api/users/route.ts:9-11`, `supabase/migrations/20250927000000_exec_sql.sql` | security |
 | 16 | Import statement after code (invalid module structure) | 92 | `app/api/auth/reset/route.ts:35` | chunk1, arch |
 | 17 | URL query parameter not encoded | 90 | `components/UserSearch.tsx:10` | chunk2, security |
 | 18 | Hardcoded userId — no session management | 90 | `app/page.tsx:6` | chunk2, arch |

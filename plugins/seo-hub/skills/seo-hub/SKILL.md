@@ -1,6 +1,6 @@
 ---
 name: seo-hub
-description: Use for the read-only SEO Hub CLI, project registry validation, secret env-file checks, and existing SEO evidence routing.
+description: Read-only SEO Hub CLI: registry and env-file checks, evidence routing.
 ---
 
 # seo-hub
