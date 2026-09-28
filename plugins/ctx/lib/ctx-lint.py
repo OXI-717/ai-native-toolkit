@@ -1843,6 +1843,21 @@ def format_human(reports, scope=None):
 
 def main():
     argv = sys.argv[1:]
+    # Locate the subcommand without mistaking option values for paths/commands.
+    value_options = {"--projects-json", "--report-dir", "--notify-script", "--host-id"}
+    skip_value = False
+    for index, arg in enumerate(argv):
+        if skip_value:
+            skip_value = False
+            continue
+        if arg in value_options:
+            skip_value = True
+            continue
+        if arg == "fleet":
+            from ctx_fleet import main as fleet_main
+            return fleet_main(argv[:index] + argv[index + 1:])
+        if not arg.startswith("-"):
+            break
     json_mode = "--json" in argv
     fix_mode = "--fix" in argv
     list_mode = "--list-projects" in argv

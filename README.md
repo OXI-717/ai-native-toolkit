@@ -1,7 +1,7 @@
 # AI Native Toolkit
 
 > Open-source plugins that turn vibe-coding into production-grade AI-native engineering.
-> Built for Claude Code; most plugins are runtime-agnostic and work in opencode too.
+> Claude Code and Codex marketplaces, with selected skills checked in seven agent CLIs.
 
 ![team-review finding 14 issues in a vulnerable Next.js app](docs/demo-review.gif)
 
@@ -33,7 +33,19 @@ These plugins add the parts a coding agent does not do on its own:
 /plugin install ctx@ai-native-toolkit
 ```
 
-### opencode
+### Codex
+
+With Codex CLI 0.157.0 or a compatible version:
+
+```bash
+codex plugin marketplace add OXI-717/ai-native-toolkit
+codex plugin add ctx@ai-native-toolkit
+```
+
+The Codex marketplace contains 13 plugins. Installation does not imply support
+for Claude-specific hooks, commands or status-bar features.
+
+### OpenCode
 
 There is no marketplace install for opencode. Clone the repo and point `skills.paths`
 at the plugins you want — skills are picked up recursively:
@@ -47,7 +59,6 @@ git clone https://github.com/OXI-717/ai-native-toolkit.git ~/ai-native-toolkit
 {
   "skills": {
     "paths": [
-      "~/ai-native-toolkit/plugins/team-review",
       "~/ai-native-toolkit/plugins/pentest",
       "~/ai-native-toolkit/plugins/gh-issues",
       "~/ai-native-toolkit/plugins/infocompressor",
@@ -58,11 +69,10 @@ git clone https://github.com/OXI-717/ai-native-toolkit.git ~/ai-native-toolkit
 }
 ```
 
-Restart opencode afterwards. The six paths above are the verified set; other
-plugins are unverified in opencode — some rely on `${CLAUDE_PLUGIN_ROOT}`
-references or Claude-only surfaces that have no equivalent there. The table
-below marks what is actually verified — see
-[Runtime support](#runtime-support).
+Restart OpenCode afterwards. Native skill discovery and content checks passed for
+the five packages listed above. This does not verify their external tools or
+complete workflows. `team-review` is excluded from this route because its skill
+uses plugin-root expansion that the adapter does not provide.
 
 ## Plugins
 
@@ -100,24 +110,29 @@ versions are versioned independently; check `seo-hub --version` /
 
 ## Runtime support
 
-Claude Code is the reference runtime: everything works there. opencode loads skills
-from `skills.paths` but does **not** execute plugin hooks, so anything whose value
-comes from lifecycle hooks degrades or stops working.
+Compatibility is measured per package and surface. Marketplace installation,
+reading a skill, and completing its workflow are different checks.
 
-| Plugin | Claude Code | opencode | Note |
-|--------|-------------|----------|------|
-| team-review | full | full | Skill plus `gh` CLI, no runtime-specific APIs |
-| pentest | full | full | Recon needs a Playwright MCP server, configured separately |
-| gh-issues | full | full | `gh` CLI and plain files only |
-| infocompressor | full | full | Pure skill |
-| deep-interview | full | full | Pure skill |
-| ctx | full | partial | `ctx-init` and `ctx-lint` work; auto-loading AGENTS.md and rules needs a SessionStart hook |
-| context-handoff | full | manual | Save/load via the skill still works; auto-restore across sessions needs hooks |
-| statusline | full | no | Reads Claude Code status-bar config and usage data; no equivalent source in opencode |
+| Client | Checked surface | Evidence and limits |
+|--------|-----------------|---------------------|
+| Claude Code | Native marketplace; skill invocation/read | 19 marketplace packages installed; `infocompressor` registered, invoked and read in CLI 2.1.282 |
+| Codex | Native marketplace; skill read | 13 packages installed with matching source bytes; native update checked for `ctx` and `seo-observer`; `infocompressor` read in CLI 0.157.0 |
+| OpenCode | Native skill discovery | `infocompressor`, `pentest`, `gh-issues`, `deep-interview`, `ctx`: exact skill paths and content checked in 1.18.31 |
+| Cursor CLI | Skill read | `infocompressor` fully read from project skills in 2026.09.26-dd393fe; IDE not checked |
+| Gemini CLI | Native workspace skill install/list/uninstall | `infocompressor` checked in 0.61.0; older 0.8.1 lacks this interface |
+| GitHub Copilot CLI | Native project skill install/list | `infocompressor` native skill bytes and removal checked in 1.0.88; IDE not checked |
+| Pi | Native skill discovery through RPC | `infocompressor` path and removal checked in 0.73.1; renamed npm package installation not checked |
+
+These checks cover installation and loading of skills. They do not certify all
+plugins in every client, complete workflows, hooks, MCP or external services.
+`statusline` uses Claude Code-specific configuration. Other clients need their
+own integration for hook-driven behavior. Direct API use requires a chosen
+host application: an API endpoint has no universal plugin installation command.
 
 `ctx` in this repo is the public edition: `ctx-init` and `ctx-lint` only. The vault,
 meetings, people and research skills depend on private infrastructure and are not
-exported.
+exported. The additional `ctx-lint fleet` subcommand is unsupported in this
+public edition: it depends on a private rule-audit module and BB inventory.
 
 ## 4 Levels of AI-Native Development
 
