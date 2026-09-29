@@ -91,13 +91,51 @@ date, even when the import arrives after the source window has closed.
 - `complete`: required endpoints exist, executed prompts cover expected prompts, data is
   fresh, and the requested window is comparable.
 
-### Native snapshot integration limit
+### Native storage and snapshots
 
-These drafts and metrics are importer export payloads. The current native
-`build_snapshot()` output and `snapshot_v1` schema do not include
-`ai_visibility.platform_metrics`. Evaluating these drafts against ordinary
-native snapshots therefore returns missing evidence / `not_ready`; this release
-does not provide an end-to-end action evaluation workflow for platform presence.
-The snapshot/storage integration must be implemented and verified before these
-drafts can produce native outcome verdicts. Do not interpret an exported draft
-or a unit test with an enriched snapshot dictionary as proof of that integration.
+The artifact-only `ai-visibility` CLI persists normalized import receipts in the
+project SQLite database. Raw provider payloads and prompt text are not embedded
+in portable snapshots; receipts retain the input hash, prompt-set hash, brand,
+property, model, surface, locale, window, quality and per-platform metrics.
+
+```sh
+seo-observer --config project.toml ai-visibility import --json \
+  --input baseline-envelope.json --property-id main --period-id ai-baseline \
+  --observed-at 2026-09-01T00:00:00Z
+seo-observer --config project.toml ai-visibility snapshot --json \
+  --period-id ai-baseline --generated-at 2026-09-01T00:00:00Z --output-dir ./reports
+```
+
+Import the observation envelope under a separate period ID and write its
+snapshot in the same way. Then evaluate one saved JSON draft (or the existing
+TOML action format) using its explicit measurement window and one primary platform
+signal. Drafts with multiple signals are rejected:
+
+```sh
+seo-observer --config project.toml ai-visibility evaluate --json \
+  --action platform-action.json --window-id '<window_id from the action>' \
+  --baseline baseline-snapshot.json --observation observation-snapshot.json \
+  --as-of 2026-10-03
+```
+
+Import writes evidence only. Snapshot writes the native snapshot and manifest.
+Evaluate returns a verdict without activating the draft or writing the action
+journal. None of these commands calls a provider, posts content or runs a model.
+A positive verdict means the configured signal improved under matched evidence;
+it does not establish that the action caused the change.
+
+The evaluator requires complete, fresh, comparable receipts with matching
+project, property, brand, model, surface, locale, prompt set and executed prompt
+population. Both source windows must exactly match the action window and timezone.
+Source envelopes must use schema version 1 and include the provider analytics
+`updated_at`; missing source freshness is an import error. Future source
+updates/open measurement windows cannot be treated as comparable. The evaluator
+verifies the full native snapshot hash before using receipt metrics.
+Unobserved platforms and absent brand exposure remain `not_ready` for sentiment
+repair. Ordinary snapshots without AI evidence still return `not_ready`.
+
+Imports are immutable and idempotent. A later partial observation supersedes an
+older complete one for the period. Conflicting observations at the same timestamp
+or multiple properties in one period are rejected as ambiguous; choose distinct
+period IDs for separate properties. Snapshot rebuild restores the receipt and
+its evidence hash. Existing snapshots without the additive AI section remain valid.

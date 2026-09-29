@@ -104,6 +104,8 @@ def build_snapshot(
         "lineage": lineage,
         "evidence": evidence,
     }
+    from seo_observer.ai_visibility_storage import attach_ai_visibility
+    attach_ai_visibility(snapshot, storage)
     snapshot["privacy"]["redactions"] = _apply_export_policy(snapshot, policy)
     snapshot["manifest"]["period_start"] = snapshot["period"]["start"]
     snapshot["manifest"]["period_end"] = snapshot["period"]["end"]
@@ -207,6 +209,12 @@ def rebuild_storage_from_snapshot(snapshot: dict[str, Any], storage: SEOStorage)
                 project["config_schema_version"],
             ),
         )
+        if "ai_visibility" in snapshot:
+            from seo_observer.ai_visibility_storage import store_receipt
+            receipt = snapshot["ai_visibility"]
+            if receipt.get("project_id") != project["project_id"]:
+                raise ValueError("AI receipt project mismatch")
+            store_receipt(storage, receipt, connection=con)
         for run in snapshot["lineage"]["collection_runs"]:
             con.execute(
                 """

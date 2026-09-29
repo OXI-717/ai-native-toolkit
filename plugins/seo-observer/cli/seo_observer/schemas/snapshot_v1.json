@@ -46,6 +46,9 @@
     },
     "evidence": {
       "$ref": "#/$defs/evidence"
+    },
+    "ai_visibility": {
+      "$ref": "#/$defs/ai_visibility_receipt"
     }
   },
   "$defs": {
@@ -288,7 +291,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^ev:(search_performance|outcome_metrics):[0-9a-f]{16}$"
+            "pattern": "^(ev:(search_performance|outcome_metrics):[0-9a-f]{16}|ai-visibility:[0-9a-f]{64})$"
           }
         },
         "local_attempt_receipt": {
@@ -376,6 +379,19 @@
         },
         "outcome_metrics": {
           "$ref": "#/$defs/coverage_block"
+        },
+        "ai_visibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "row_count"
+          ],
+          "properties": {
+            "row_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },
@@ -722,6 +738,41 @@
           "items": {
             "$ref": "#/$defs/outcome_metric_row"
           }
+        },
+        "ai_visibility": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "evidence_id",
+              "source",
+              "dataset_coverage",
+              "freshness",
+              "comparability",
+              "sampled"
+            ],
+            "properties": {
+              "evidence_id": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "dataset_coverage": {
+                "type": "string"
+              },
+              "freshness": {
+                "type": "string"
+              },
+              "comparability": {
+                "type": "string"
+              },
+              "sampled": {
+                "type": "boolean"
+              }
+            }
+          }
         }
       }
     },
@@ -1014,6 +1065,233 @@
         },
         "normalizer_version": {
           "type": "string"
+        }
+      }
+    },
+    "ai_visibility_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "project_id",
+        "property_id",
+        "observed_at",
+        "quality",
+        "prompt_set_hash",
+        "locale",
+        "surface",
+        "model",
+        "reporting_period_id",
+        "source_sha256",
+        "brand_id",
+        "evidence_id",
+        "schema_version",
+        "window",
+        "cohorts",
+        "coverage",
+        "freshness",
+        "comparability",
+        "discovery_metrics",
+        "platform_metrics"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "property_id": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string"
+        },
+        "quality": {
+          "type": "string"
+        },
+        "prompt_set_hash": {
+          "type": "string"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "surface": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "reporting_period_id": {
+          "type": "string"
+        },
+        "source_sha256": {
+          "type": "string"
+        },
+        "brand_id": {
+          "type": "string"
+        },
+        "evidence_id": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end",
+            "timezone"
+          ],
+          "properties": {
+            "start": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "timezone": {
+              "type": "string"
+            }
+          }
+        },
+        "cohorts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "expected_prompts",
+            "executed_prompts",
+            "missing_endpoints"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "expected_prompts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "executed_prompts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing_endpoints": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "freshness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "updated_at",
+            "max_age_days"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            },
+            "max_age_days": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "comparability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "reasons"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "discovery_metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "expected_prompts",
+            "executed_prompts",
+            "mention_prompts",
+            "citation_prompts"
+          ],
+          "properties": {
+            "expected_prompts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "executed_prompts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mention_prompts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "citation_prompts": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "platform_metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "domain",
+              "prompts",
+              "mention_prompts",
+              "negative_mention_prompts"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string"
+              },
+              "prompts": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "mention_prompts": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "negative_mention_prompts": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     }

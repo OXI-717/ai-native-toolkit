@@ -3701,6 +3701,59 @@
           "where": "is_current = 1"
         }
       ]
+    },
+    "ai_visibility_imports": {
+      "columns": [
+        {
+          "name": "evidence_id",
+          "type": "TEXT",
+          "not_null": false,
+          "primary_key_position": 1
+        },
+        {
+          "name": "project_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "property_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "reporting_period_id",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "observed_at",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        },
+        {
+          "name": "receipt_json",
+          "type": "TEXT",
+          "not_null": true,
+          "primary_key_position": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "project_id"
+          ],
+          "referenced_table": "projects",
+          "referenced_columns": [
+            "project_id"
+          ],
+          "on_delete": "NO ACTION"
+        }
+      ],
+      "unique_indexes": []
     }
   }
 }

@@ -184,6 +184,8 @@ def _row_count(snapshot: dict[str, Any], evidence_group: str | None = None) -> i
 def _evidence_group(metric_path: str | None) -> str | None:
     if not metric_path:
         return None
+    if metric_path.startswith("ai_visibility.platform_metrics."):
+        return "ai_visibility"
     if metric_path.startswith("formula_inputs.search_performance_totals."):
         return "search_performance"
     if metric_path.startswith("formula_inputs.outcome_metric_inputs"):

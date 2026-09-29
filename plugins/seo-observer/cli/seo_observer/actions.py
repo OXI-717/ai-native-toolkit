@@ -121,8 +121,10 @@ def action_evidence_from_snapshots(
     selected_metric_path = metric_path or _default_metric_path(action)
     baseline_raw = _path_value(baseline_snapshot, selected_metric_path)
     observation_raw = _path_value(observation_snapshot, selected_metric_path)
+    from seo_observer.ai_visibility_storage import action_state
     state = (
-        _bad_data_state(
+        action_state(action, window, baseline_snapshot, observation_snapshot, selected_metric_path)
+        or _bad_data_state(
             observation_snapshot,
             baseline_snapshot,
             observation_raw,
