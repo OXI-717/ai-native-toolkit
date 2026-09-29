@@ -624,6 +624,8 @@ def _current_schema_version(con: sqlite3.Connection) -> int:
 
 
 def _ensure_compatible_v1_schema(con: sqlite3.Connection) -> None:
+    from seo_observer.ai_visibility_storage import TABLE_SQL as AI_VISIBILITY_TABLE_SQL
+    con.executescript(AI_VISIBILITY_TABLE_SQL)
     con.executescript(COMPETITOR_TABLES_SQL)
     con.executescript(CRAWL_PAGES_TABLE_SQL)
     _ensure_actions_v1_schema(con)

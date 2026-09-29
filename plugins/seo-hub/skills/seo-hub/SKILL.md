@@ -1,6 +1,6 @@
 ---
 name: seo-hub
-description: Read-only SEO Hub CLI: registry and env-file checks, evidence routing.
+description: "Read-only SEO Hub CLI: registry and env-file checks, evidence routing."
 ---
 
 # seo-hub

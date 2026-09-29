@@ -635,6 +635,9 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--output-dir", default=None)
     report.set_defaults(handler=_handle_report)
 
+    from seo_observer.ai_visibility_cli import register_commands
+    register_commands(subparsers, common, selectors)
+
     ai_readiness = subparsers.add_parser("ai-readiness", parents=[common, selectors])
     ai_readiness.add_argument("--output-dir", default=None)
     ai_readiness.set_defaults(handler=_handle_ai_readiness)
