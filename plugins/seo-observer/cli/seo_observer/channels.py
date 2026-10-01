@@ -36,10 +36,21 @@ DIRECT_VALUES = frozenset({"(direct)", "direct", "(none)", "none"})
 _REGEX_METACHARACTERS = frozenset("\\.+*?()|[]{}^$")
 
 
+SEARCH_HOST_SUFFIXES = (
+    "google.com", "google.ru", "yandex.ru", "yandex.com", "ya.ru", "bing.com",
+    "duckduckgo.com", "search.yahoo.com", "ecosia.org", "search.brave.com",
+)
+AI_ASSISTANT_HOSTS = (
+    "chatgpt.com", "chat.openai.com", "perplexity.ai", "gemini.google.com",
+    "copilot.microsoft.com", "claude.ai", "chat.deepseek.com",
+)
+
+
 @dataclass(frozen=True)
 class ChannelsConfig:
     brand_terms: tuple[str, ...] = ()
     noise_referrers: tuple[str, ...] = ()
+    self_domains: tuple[str, ...] = ()
 
 
 def channel_group(source: str | None, medium: str | None) -> str:
@@ -66,6 +77,45 @@ def channel_group(source: str | None, medium: str | None) -> str:
 
 def channel_slug(group: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", group.strip().lower()).strip("_") or "unassigned"
+
+
+def _host_matches(host: str, patterns: tuple[str, ...]) -> bool:
+    for pattern in patterns:
+        pattern = pattern.lower().lstrip(".")
+        if pattern.startswith("*."):
+            base = pattern[2:]
+            if host == base or host.endswith("." + base):
+                return True
+        elif host == pattern or host.endswith("." + pattern):
+            return True
+    return False
+
+
+def referrer_channel(host: str | None, *, self_domains: tuple[str, ...] = ()) -> str:
+    value = (host or "").strip().lower()
+    if not value:
+        return "direct"
+    if self_domains and _host_matches(value, self_domains):
+        return "internal"
+    if _host_matches(value, AI_ASSISTANT_HOSTS):
+        return "ai_assistant"
+    if _host_matches(value, SEARCH_HOST_SUFFIXES):
+        return "organic_search"
+    if value in SOCIAL_SOURCES or _host_matches(value, tuple(SOCIAL_SOURCES)):
+        return "organic_social"
+    return "referral"
+
+
+def event_channel(
+    utm_source: str | None,
+    utm_medium: str | None,
+    referrer_host: str | None,
+    *,
+    self_domains: tuple[str, ...] = (),
+) -> str:
+    if (utm_source or "").strip() or (utm_medium or "").strip():
+        return channel_slug(channel_group(utm_source, utm_medium))
+    return referrer_channel(referrer_host, self_domains=self_domains)
 
 
 def _escape_regex_literal(term: str) -> str:

@@ -183,6 +183,16 @@ adapter = "fixture_aggregate"
 approved_views = ["demo_pay.paid_purchase_outcomes_daily_v1"]
 parameter_names = ["period_start", "period_end"]
 
+[sources.mixpanel]
+enabled = true
+required = false
+region = "eu"
+project_id_env = "MIXPANEL_PROJECT_ID"
+username_env = "MIXPANEL_SERVICE_ACCOUNT_USERNAME"
+secret_env = "MIXPANEL_SERVICE_ACCOUNT_SECRET"
+timezone = "Europe/Moscow"
+events = { "Signup Completed" = "registration" }
+
 [channels]
 brand_terms = ["demobrand", "demo brand"]
 noise_referrers = ["pay.demo.example"]
@@ -342,6 +352,17 @@ Required local validation covers:
   (`user_id`, `email`, `phone`, `login`, `username`, `ip`, `payment_id`,
   `account_id`, `distinct_id`) — rows containing identifier fields are
   rejected outright.
+- `[sources.mixpanel]` reads raw events from the Mixpanel `/api/2.0/export`
+  endpoint and aggregates them into daily `outcome_metrics` rows per traffic
+  channel. `region` selects the export residency (`"eu"` or `"us"`, default
+  `"eu"`); `project_id_env`, `username_env`, and `secret_env` name the
+  environment variables holding the project id and service-account
+  credentials (the config never stores credential values). `timezone` is the
+  Mixpanel project timezone used to bucket events into days; `events` maps
+  Mixpanel event names to local `outcome_id`s. Bindings use an arbitrary
+  non-empty `remote_id` such as `"mixpanel:project"`. Unique users are stored
+  only as a `unique_actors` count — `distinct_id` values never leave the
+  adapter.
 
 Invalid config returns `CONFIG_INVALID` with a stable `validation_code`.
 

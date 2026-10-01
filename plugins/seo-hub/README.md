@@ -61,6 +61,18 @@ The installed Elmo 0.3.0 session contract uses its pinned native read functions.
 The opportunities endpoint is excluded because it can generate provider work.
 Empty native projects do not provide AI visibility or ranking evidence.
 
+OpenSEO MCP 0.0.12 native responses identify the server in `initialize.serverInfo`
+and the requested project in each tool's `structuredContent.meta.projectId`.
+The adapter validates both, plus the tool's native response shape and tracker
+identity. These responses do not assert an upstream git commit: the report keeps
+that field null. Older commit-stamped contract fixtures retain their strict pin
+validation. A successful import of stale, undated or empty ranking data still
+reports missing usable measurements; import time never becomes observation time.
+Fresh completed native results are normalized to Observer `rank_rows`, retaining
+each ranked device, URL, language/location and the original aware observation time.
+Raw native results remain available as provenance. Undated/stale rows are not
+exported as usable ranks; zero/unranked positions are not invented as positive ranks.
+
 Observer snapshot/report imports read existing verified audit artifacts and
 read-only SQLite summaries through the installed Observer API. The Observer is
 a prerequisite, not a dependency: `baseline` and `full` runs and every

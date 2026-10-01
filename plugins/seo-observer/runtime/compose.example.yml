@@ -1,0 +1,27 @@
+services:
+  runtime:
+    build:
+      context: ..
+      dockerfile: runtime/Dockerfile
+    restart: unless-stopped
+    env_file: runtime.env     # tenant secrets; never committed
+    environment:
+      TZ: Europe/Moscow
+      SEO_OBSERVER_CONFIG: /config/project.toml
+    volumes:
+      - data:/data
+      - ./config:/config:ro
+    networks: [internal]
+    # no `ports:` — the only way in is the tunnel below
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    env_file: tunnel.env      # only TUNNEL_TOKEN; never committed
+    networks: [internal]
+    depends_on: [runtime]
+
+volumes:
+  data:
+networks:
+  internal: {}
