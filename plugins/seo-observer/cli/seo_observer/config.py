@@ -36,6 +36,7 @@ KNOWN_SOURCE_NAMES = frozenset(
         "competitor_research",
         "outcome_auth",
         "outcome_pay",
+        "mixpanel",
     }
 )
 KNOWN_SERP_PROVIDERS = frozenset(
@@ -81,6 +82,7 @@ FORBIDDEN_OUTCOME_QUERY_FIELDS = frozenset(
 KNOWN_OUTCOME_AGGREGATE_ADAPTERS = frozenset(
     {"fixture_aggregate", "postgres_aggregate", "http_aggregate"}
 )
+KNOWN_MIXPANEL_REGIONS = frozenset({"eu", "us"})
 
 
 class ConfigError(Exception):
@@ -955,13 +957,14 @@ def _parse_channels(raw: dict[str, Any], path: Path) -> ChannelsConfig:
         return ChannelsConfig()
     if not isinstance(section, dict):
         _invalid("CHANNELS_INVALID", path)
-    unknown = sorted(set(section) - {"brand_terms", "noise_referrers"})
+    unknown = sorted(set(section) - {"brand_terms", "noise_referrers", "self_domains"})
     if unknown:
         _invalid("CHANNELS_UNKNOWN_FIELD", path, unknown[0])
     values: dict[str, tuple[str, ...]] = {}
     for key, code in (
         ("brand_terms", "CHANNELS_BRAND_TERMS_INVALID"),
         ("noise_referrers", "CHANNELS_NOISE_REFERRERS_INVALID"),
+        ("self_domains", "CHANNELS_SELF_DOMAINS_INVALID"),
     ):
         items = section.get(key, [])
         if not isinstance(items, list) or not all(
@@ -1082,6 +1085,32 @@ def _validate_source_specific(name: str, source: dict[str, Any], path: Path) -> 
         timezone = source.get("timezone")
         if timezone is not None and (not isinstance(timezone, str) or not timezone):
             _invalid("SOURCE_GA4_TIMEZONE_INVALID", path, name)
+    if name == "mixpanel":
+        region = source.get("region", "eu")
+        if not isinstance(region, str) or region not in KNOWN_MIXPANEL_REGIONS:
+            _invalid("SOURCE_MIXPANEL_REGION_INVALID", path, region)
+        for key in ("project_id_env", "username_env", "secret_env"):
+            if not _valid_credential_env_name(source.get(key)):
+                _invalid("SOURCE_MIXPANEL_FIELD_MISSING", path, key)
+        timezone = source.get("timezone")
+        if timezone is not None:
+            try:
+                if not isinstance(timezone, str) or not timezone:
+                    raise ValueError(timezone)
+                ZoneInfo(timezone)
+            except (ZoneInfoNotFoundError, ValueError):
+                _invalid("SOURCE_MIXPANEL_TIMEZONE_INVALID", path, name)
+        events = source.get("events", {"Signup Completed": "registration"})
+        if (
+            not isinstance(events, dict)
+            or not events
+            or not all(
+                isinstance(event_name, str) and event_name
+                and isinstance(outcome_id, str) and outcome_id
+                for event_name, outcome_id in events.items()
+            )
+        ):
+            _invalid("SOURCE_MIXPANEL_EVENTS_INVALID", path, name)
     if name.startswith("outcome_"):
         adapter = source.get("adapter")
         if adapter is not None and (not isinstance(adapter, str) or not adapter):

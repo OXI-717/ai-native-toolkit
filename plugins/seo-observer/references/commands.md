@@ -67,6 +67,7 @@ These are the public CLI routes agents should choose for user intent:
 ```bash
 seo-observer collect --project demo --json
 seo-observer collect --project demo --daily --days 3 --json
+seo-observer collect --project demo --daily --days 3 --state-file /srv/growth/demo-state/collect.json --json
 seo-observer provider-audit --project demo --start 2026-06-28 --end 2026-07-27 --output-dir /tmp/demo-provider-audit --json
 seo-observer weekly --project demo --json
 seo-observer snapshot --project demo --json
@@ -84,7 +85,40 @@ seo-observer outcomes --project demo --action-id action:abc123 --start 2026-07-0
 seo-observer opportunities --project demo --start 2026-07-01 --end 2026-07-07 --json
 seo-observer ai-readiness --project demo --output-dir /tmp/demo-ai-readiness --json
 seo-observer prompts --project demo --keyword-set core --output-dir /tmp/demo-ai-prompts --json
+seo-observer export --project demo --kind current --out /srv/growth/demo --json
+seo-observer export --project demo --kind weekly --out /srv/growth/demo --no-pdf --json
+seo-observer serve --exports /srv/growth/demo --state-file /srv/growth/demo-state/collect.json --host 0.0.0.0 --port 8080
+seo-observer backup --db ~/.seo-observer/projects/demo/observer.db --dir /srv/growth/demo-backups --recipient-env BACKUP_AGE_RECIPIENT --remote-env BACKUP_REMOTE --json
 ```
+
+`export` publishes versioned `growth_v1` bundles (growth.json, panel HTML,
+and for `weekly` also report.pdf plus brief.md) under `--out` with atomic
+symlink switches (`current`, `weekly/<start>_<end>`, `latest-weekly`). It is
+read-only over the local SQLite evidence and calls no live providers. The
+`weekly` week defaults to the latest finalized Monday–Sunday week
+(Sunday + 3 days <= today); `--week-start` must be a Monday. A PDF failure
+leaves the previous publication in place and writes a diagnostic receipt under
+`failed/`; `--no-pdf` publishes without PDF on hosts without Chromium. Layout,
+`receipt.json`/`growth_hash` semantics, and retention are documented in
+`plugins/seo-observer/references/growth-export.md`.
+
+`serve` is the tenant runtime entrypoint: it blocks in `serve_forever` and
+serves the `--exports` directory read-only (GET/HEAD only, no listings,
+paths resolved inside the exports root) plus `GET /health` evaluating the
+collect state journal given by `--state-file`. It has no authentication;
+in deployment it must sit behind Cloudflare Access with no published ports.
+SIGTERM stops it cleanly with exit code 0.
+
+`backup` writes an encrypted online snapshot of `observer.db`:
+`sqlite3` backup API → `age` (recipient from `--recipient-env`) → optional
+`rclone` upload (target from `--remote-env`). It keeps the 3 newest
+`observer-*.db.age` files locally and never leaves a plaintext copy behind.
+The container deployment (image, schedule, tunnel, recovery) is documented in
+`plugins/seo-observer/references/runtime.md`.
+
+`collect --daily --state-file PATH` appends the outcome of each run to a JSON
+state journal (last 5 entries). `serve` reads it for `/health`; `--state-file`
+requires `--daily`.
 
 `collect` is the live-provider entrypoint. It requires enabled supported
 sources, valid credentials from the project config, and an explicit selector.

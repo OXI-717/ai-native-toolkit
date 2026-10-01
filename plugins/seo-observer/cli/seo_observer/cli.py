@@ -74,6 +74,7 @@ from seo_observer.gsc import (
     doctor_gsc_source,
 )
 from seo_observer.metrica import MetricaAdapter, MetricaSource, Period as MetricaPeriod, doctor_metrica_source
+from seo_observer.mixpanel import MixpanelAdapter, MixpanelExportTransport, MixpanelSource
 from seo_observer.outcomes import (
     AggregateOutcomeAdapter,
     AggregateOutcomeSource,
@@ -86,6 +87,7 @@ from seo_observer.outcomes import (
 from seo_observer.opportunities import OpportunityOptions, build_opportunity_report
 from seo_observer.provider_audit import build_provider_audit_payload, collect_provider_audit_sources
 from seo_observer.report_rendering import write_polished_report_artifacts
+from seo_observer.runtime_health import record_collect
 from seo_observer.serp import doctor_serp_source
 from seo_observer.webmaster import WebmasterAdapter, WebmasterPeriod, WebmasterSource, doctor_webmaster_source
 from seo_observer.wordstat import doctor_wordstat_source
@@ -521,6 +523,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="With --daily and no --start/--end: re-collect the last N finished days.")
     collect.add_argument("--pause-seconds", type=float, default=0.0,
                          help="With --daily: pause between days (provider quotas during backfill).")
+    collect.add_argument("--state-file", default=None,
+                         help="With --daily: append this run's outcome for the runtime /health endpoint.")
     collect.set_defaults(handler=_handle_collect)
 
     crawl = subparsers.add_parser("crawl", parents=[common, selectors])
@@ -635,6 +639,37 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--output-dir", default=None)
     report.set_defaults(handler=_handle_report)
 
+    export_cmd = subparsers.add_parser("export", parents=[common, selectors])
+    export_cmd.add_argument("--kind", choices=("current", "weekly"), required=True)
+    export_cmd.add_argument("--date", default=None,
+                            help="current: window end date (YYYY-MM-DD); default is yesterday")
+    export_cmd.add_argument("--week-start", default=None,
+                            help="weekly: Monday of the week to export (YYYY-MM-DD)")
+    export_cmd.add_argument("--out", required=True, help="export output directory")
+    export_cmd.add_argument("--panel-url", default=None,
+                            help="public panel URL embedded into the weekly brief")
+    export_cmd.add_argument("--no-pdf", action="store_true", default=False,
+                            help="weekly: publish without report.pdf (no Chromium required)")
+    export_cmd.set_defaults(handler=_handle_export)
+
+    serve = subparsers.add_parser("serve", parents=[common])
+    serve.add_argument("--exports", required=True,
+                       help="exports directory to serve read-only (export --out target)")
+    serve.add_argument("--state-file", required=True,
+                       help="collect state journal used by /health")
+    serve.add_argument("--host", default="0.0.0.0")
+    serve.add_argument("--port", type=int, default=8080)
+    serve.set_defaults(handler=_handle_serve)
+
+    backup = subparsers.add_parser("backup", parents=[common])
+    backup.add_argument("--db", required=True, help="path to observer.db")
+    backup.add_argument("--dir", required=True, help="local backup directory")
+    backup.add_argument("--recipient-env", required=True,
+                        help="name of the env var holding the age recipient (age1...)")
+    backup.add_argument("--remote-env", default=None,
+                        help="name of the env var holding the rclone remote (e.g. spaces:bucket/prefix)")
+    backup.set_defaults(handler=_handle_backup)
+
     from seo_observer.ai_visibility_cli import register_commands
     register_commands(subparsers, common, selectors)
 
@@ -742,11 +777,79 @@ def _handle_not_implemented(args: argparse.Namespace) -> int:
 
 
 def _handle_collect(args: argparse.Namespace) -> int:
+    state_file = getattr(args, "state_file", None)
+    if state_file and not getattr(args, "daily", False):
+        return _emit_error(
+            args,
+            ConfigError(
+                "COLLECT_STATE_FILE_REQUIRES_DAILY",
+                "`--state-file` requires `--daily`.",
+                {"state_file": str(state_file)},
+            ),
+        )
     try:
         payload = _collect_daily_payload(args) if getattr(args, "daily", False) else _collect_payload(args)
     except ConfigError as exc:
+        if state_file:
+            _append_collect_state(args, _error_payload(exc), Path(str(state_file)))
         return _emit_error(args, exc)
+    except (StorageError, sqlite3.Error, OSError) as exc:
+        if state_file:
+            _append_collect_state(
+                args,
+                _structured_error_payload(
+                    "COLLECT_FAILED",
+                    "Collect failed before a result could be produced.",
+                    {"error_type": exc.__class__.__name__},
+                ),
+                Path(str(state_file)),
+            )
+        raise
+    if state_file:
+        _append_collect_state(args, payload, Path(str(state_file)))
     return _emit_payload(args, payload)
+
+
+def _previous_required_sources(state_file: Path) -> dict[str, bool]:
+    """Required-source map from the last journal record, or ``{}``.
+
+    Used when the config can no longer be loaded, so a failed run still
+    marks the tenant's known required sources as down.
+    """
+    try:
+        data = json.loads(state_file.read_text(encoding="utf-8"))
+        collects = data.get("collects") if isinstance(data, dict) else None
+        last = collects[-1] if isinstance(collects, list) and collects else None
+        sources = last.get("sources") if isinstance(last, dict) else None
+        if isinstance(sources, dict):
+            return {
+                str(name): bool(block.get("required"))
+                for name, block in sources.items()
+                if isinstance(block, dict)
+            }
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def _append_collect_state(args: argparse.Namespace, payload: dict[str, Any], state_file: Path) -> None:
+    required: dict[str, bool] = {}
+    try:
+        config_path = _selected_config_path(args)
+        if config_path is not None:
+            for item in _collect_source_plan(load_project_config(config_path)):
+                required[item["source"]] = required.get(item["source"], False) or bool(item["required"])
+    except ConfigError:
+        required = _previous_required_sources(state_file)
+    try:
+        record_collect(
+            state_file,
+            payload,
+            required=required,
+            finished_at=dt.datetime.now(dt.timezone.utc),
+        )
+    except OSError as exc:
+        payload["state_file_error"] = {"error_type": exc.__class__.__name__, "error": str(exc)}
 
 
 def _handle_crawl(args: argparse.Namespace) -> int:
@@ -968,6 +1071,154 @@ def _handle_weekly(args: argparse.Namespace) -> int:
     except ConfigError as exc:
         return _emit_error(args, exc)
     return _emit_payload(args, payload)
+
+
+def _handle_export(args: argparse.Namespace) -> int:
+    try:
+        payload = _export_payload(args)
+    except ConfigError as exc:
+        return _emit_error(args, exc)
+    except ValueError as exc:
+        payload = _structured_error_payload(
+            "EXPORT_WINDOW_INVALID",
+            "Export window argument is invalid.",
+            {"error": str(exc)},
+        )
+    except (StorageError, sqlite3.Error, OSError) as exc:
+        payload = _structured_error_payload(
+            "EXPORT_FAILED",
+            "Export failed before a result could be produced.",
+            {"error_type": exc.__class__.__name__, "error": str(exc)},
+        )
+    return _emit_payload(args, payload)
+
+
+def _handle_serve(args: argparse.Namespace) -> int:
+    import signal
+    import threading
+
+    from seo_observer.runtime_server import make_server
+
+    server = make_server(
+        host=str(args.host),
+        port=int(args.port),
+        exports_dir=Path(str(args.exports)),
+        state_file=Path(str(args.state_file)),
+    )
+    # serve_forever runs in the main thread, so SIGTERM must trigger shutdown
+    # from another thread — calling shutdown() on the serving thread deadlocks.
+    signal.signal(
+        signal.SIGTERM,
+        lambda *_: threading.Thread(target=server.shutdown, daemon=True).start(),
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
+
+
+def _handle_backup(args: argparse.Namespace) -> int:
+    from seo_observer.runtime_backup import BackupError, run_backup
+
+    recipient_env = str(args.recipient_env)
+    remote_env = getattr(args, "remote_env", None)
+    recipient = os.environ.get(recipient_env) or ""
+    remote = os.environ.get(str(remote_env)) if remote_env else None
+    missing = [name for name, value in ((recipient_env, recipient),)
+               + (((str(remote_env), remote),) if remote_env else ())
+               if not value]
+    if missing or not recipient.startswith("age1"):
+        details = {"env": missing} if missing else {"env": [recipient_env]}
+        payload = _structured_error_payload(
+            "BACKUP_CONFIG_INVALID",
+            "Backup configuration is missing or invalid.",
+            details,
+        )
+        return _emit_backup_payload(args, payload)
+    try:
+        result = run_backup(
+            db_path=Path(str(args.db)),
+            backup_dir=Path(str(args.dir)),
+            recipient=recipient,
+            remote=remote,
+            now=dt.datetime.now(dt.timezone.utc),
+        )
+    except BackupError as exc:
+        payload = _structured_error_payload(exc.code, exc.message, {})
+        return _emit_backup_payload(args, payload)
+    except OSError as exc:
+        payload = _structured_error_payload(
+            "BACKUP_FAILED",
+            f"Backup failed: {exc.strerror or 'I/O error'}.",
+            {},
+        )
+        return _emit_backup_payload(args, payload)
+    return _emit_backup_payload(args, {"ok": True, "backup": result})
+
+
+def _emit_backup_payload(args: argparse.Namespace, payload: dict[str, Any]) -> int:
+    if _json_requested(args):
+        _json_dump(payload)
+    elif payload["ok"]:
+        print(payload["backup"]["file"])
+    else:
+        error = payload.get("error") or {}
+        print(f"{error.get('code')}: {error.get('message')}", file=sys.stderr)
+    return 0 if payload["ok"] else 1
+
+
+def _export_payload(args: argparse.Namespace) -> dict[str, Any]:
+    from seo_observer import growth_export as growth_export_mod
+
+    kind = str(args.kind)
+    if kind == "weekly" and getattr(args, "date", None):
+        raise ConfigError(
+            "EXPORT_FLAG_KIND_MISMATCH",
+            "--date applies only to --kind current; use --week-start for --kind weekly.",
+            {"flag": "--date", "kind": kind},
+        )
+    if kind == "current" and getattr(args, "week_start", None):
+        raise ConfigError(
+            "EXPORT_FLAG_KIND_MISMATCH",
+            "--week-start applies only to --kind weekly; use --date for --kind current.",
+            {"flag": "--week-start", "kind": kind},
+        )
+    config, storage = _selected_config_and_storage(args)
+    storage.bootstrap()
+    try:
+        end_date = (
+            dt.date.fromisoformat(str(getattr(args, "date")))
+            if getattr(args, "date", None)
+            else None
+        )
+        week_start = (
+            dt.date.fromisoformat(str(getattr(args, "week_start")))
+            if getattr(args, "week_start", None)
+            else None
+        )
+    except ValueError as exc:
+        raise ConfigError(
+            "EXPORT_DATE_INVALID",
+            "Export date arguments must be formatted as YYYY-MM-DD.",
+            {"error": str(exc)},
+        ) from exc
+    result = growth_export_mod.export_growth(
+        storage,
+        project_id=config.project.namespace,
+        kind=kind,
+        out_dir=Path(str(args.out)).expanduser(),
+        channels=config.channels,
+        end_date=end_date,
+        week_start=week_start,
+        panel_url=getattr(args, "panel_url", None),
+        no_pdf=bool(getattr(args, "no_pdf", False)),
+        today=_today(config.project.timezone),
+    )
+    result["command"] = "export"
+    return result
 
 
 def _handle_ai_readiness(args: argparse.Namespace) -> int:
@@ -2710,6 +2961,18 @@ def _collect_missing_required_inputs(plan: list[dict[str, Any]], env: dict[str, 
             continue
         source_name = str(item["source"])
         fields = item["fields"]
+        if source_name == "mixpanel":
+            for key in ("project_id_env", "username_env", "secret_env"):
+                env_var = fields.get(key)
+                if not env_var:
+                    continue
+                dedupe_key = (source_name, str(env_var))
+                if not env.get(str(env_var), "") and dedupe_key not in checked:
+                    checked.add(dedupe_key)
+                    missing.append(
+                        {"source": source_name, "env": str(env_var), "reason": "missing environment variable"}
+                    )
+            continue
         credential_file_env = fields.get("credential_file_env")
         token_file_env = fields.get("token_file_env")
         credential_env = fields.get("credential_env")
@@ -2767,7 +3030,7 @@ def _collect_missing_required_inputs(plan: list[dict[str, Any]], env: dict[str, 
     return missing
 
 
-_COLLECT_SUPPORTED = {"google_search_console", "yandex_metrica", "yandex_webmaster", "ga4"}
+_COLLECT_SUPPORTED = {"google_search_console", "yandex_metrica", "yandex_webmaster", "ga4", "mixpanel"}
 
 
 def _collect_supports(source_name: str, source: Any) -> bool:
@@ -2856,7 +3119,7 @@ def _collect_provider_results(
 
 
 def _collect_collection_for_source(source_name: str) -> str:
-    if source_name.startswith("outcome_"):
+    if source_name == "mixpanel" or source_name.startswith("outcome_"):
         return "outcome_metrics"
     if source_name in {"yandex_metrica", "ga4"}:
         return "traffic_metrics"
@@ -2938,6 +3201,25 @@ def _collect_one_provider(
             "metadata": metadata,
             "observations": organic["observations"] + channels["observations"],
         }
+    elif source_name == "mixpanel":
+        region = str(fields.get("region") or "eu")
+        adapter = MixpanelAdapter(
+            MixpanelSource(
+                project_id=os.environ[str(fields["project_id_env"])],
+                username=os.environ[str(fields["username_env"])],
+                secret=os.environ[str(fields["secret_env"])],
+                region=region,
+                events=dict(fields.get("events") or {"Signup Completed": "registration"}),
+                timezone=str(fields.get("timezone") or config.project.timezone),
+                self_domains=config.channels.self_domains,
+            ),
+            MixpanelExportTransport.for_region(
+                region,
+                os.environ[str(fields["username_env"])],
+                os.environ[str(fields["secret_env"])],
+            ),
+        )
+        result = adapter.fetch_daily_event_counts(period_start, period_end)
     elif source_name.startswith("outcome_"):
         descriptor = descriptor_from_source_fields(source_name, fields, timezone=config.project.timezone)
         adapter = AggregateOutcomeAdapter(
@@ -3567,6 +3849,7 @@ def _collect_outcome_observation(
         attribution_level="channel_aggregate" if row.get("traffic_channel") not in (None, "__all__") else "server_aggregate",
         traffic_channel=str(row.get("traffic_channel") or "__all__"),
         count=_optional_int(row.get("count")),
+        unique_actors=_optional_int(row.get("unique_actors")),
         value_minor=_optional_int(row.get("value_minor")),
         currency=row.get("currency"),
         dataset_coverage=_storage_dataset_coverage(str(row.get("dataset_coverage") or "unknown")),

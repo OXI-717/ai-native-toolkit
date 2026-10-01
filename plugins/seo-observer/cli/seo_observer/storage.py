@@ -1150,6 +1150,17 @@ def _insert_artifact(con: sqlite3.Connection, artifact: RawArtifact) -> None:
     )
 
 
+def _incomplete_row_must_not_supersede(
+    current: sqlite3.Row | None, new_coverage: str
+) -> bool:
+    """A non-complete refresh never replaces a complete current fact."""
+    return (
+        current is not None
+        and str(current["dataset_coverage"]) == "complete"
+        and new_coverage != "complete"
+    )
+
+
 def _insert_search_observation(
     con: sqlite3.Connection,
     obs: SearchPerformanceObservation,
@@ -1157,7 +1168,7 @@ def _insert_search_observation(
     row = _search_row(obs)
     current = con.execute(
         """
-        SELECT fact_id FROM search_performance
+        SELECT fact_id, dataset_coverage FROM search_performance
         WHERE is_current = 1
           AND logical_observation_key = ?
           AND effective_start = ?
@@ -1183,6 +1194,8 @@ def _insert_search_observation(
             row["segment_id"],
         ),
     ).fetchone()
+    if _incomplete_row_must_not_supersede(current, row["dataset_coverage"]):
+        return
     supersedes_fact_id = int(current["fact_id"]) if current else None
     content_hash = _canonical_hash(row)
     cursor = con.execute(
@@ -1233,7 +1246,7 @@ def _insert_traffic_metric(con: sqlite3.Connection, obs: TrafficMetricObservatio
     row = _traffic_row(obs)
     current = con.execute(
         """
-        SELECT fact_id FROM traffic_metrics
+        SELECT fact_id, dataset_coverage FROM traffic_metrics
         WHERE is_current = 1
           AND logical_observation_key = ?
           AND effective_start = ?
@@ -1257,6 +1270,8 @@ def _insert_traffic_metric(con: sqlite3.Connection, obs: TrafficMetricObservatio
             row["attribution_model"],
         ),
     ).fetchone()
+    if _incomplete_row_must_not_supersede(current, row["dataset_coverage"]):
+        return
     supersedes_fact_id = int(current["fact_id"]) if current else None
     cursor = con.execute(
         """
@@ -1305,7 +1320,7 @@ def _insert_outcome_metric(con: sqlite3.Connection, obs: OutcomeMetricObservatio
     row = _outcome_row(obs)
     current = con.execute(
         """
-        SELECT fact_id FROM outcome_metrics
+        SELECT fact_id, dataset_coverage FROM outcome_metrics
         WHERE is_current = 1
           AND logical_observation_key = ?
           AND effective_start = ?
@@ -1329,6 +1344,8 @@ def _insert_outcome_metric(con: sqlite3.Connection, obs: OutcomeMetricObservatio
             row["attribution_model"],
         ),
     ).fetchone()
+    if _incomplete_row_must_not_supersede(current, row["dataset_coverage"]):
+        return
     supersedes_fact_id = int(current["fact_id"]) if current else None
     cursor = con.execute(
         """

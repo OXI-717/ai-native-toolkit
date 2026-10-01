@@ -1,0 +1,6 @@
+CRON_TZ=${TZ}
+# daily collect of the last 3 finished days (revisions supersede)
+0 5 * * * seo-observer collect --daily --days 3 --config ${SEO_OBSERVER_CONFIG} --state-file /data/state/collect.json --json
+30 5 * * * seo-observer export --kind current --config ${SEO_OBSERVER_CONFIG} --out /data/exports --json
+0 6 * * 5 seo-observer export --kind weekly --config ${SEO_OBSERVER_CONFIG} --out /data/exports ${SEO_PANEL_URL_FLAG} --json
+30 4 * * * seo-observer backup --db /data/projects/${SEO_OBSERVER_NAMESPACE}/observer.db --dir /data/backups --recipient-env BACKUP_AGE_RECIPIENT --remote-env BACKUP_REMOTE --json

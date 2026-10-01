@@ -158,9 +158,11 @@ def _rank_evidence(rank_tracker: dict[str, Any]) -> tuple[list[dict[str, Any]], 
                 "keyword": keyword,
                 "position": int(position),
                 "url": str(row.get("url") or ""),
-                "engine": engine,
-                "locale": locale,
-                "device": device,
+                "engine": str(row.get("engine") or engine),
+                "locale": str(row.get("locale") or locale),
+                "device": str(row.get("device") or device),
+                **({"source_at": row["source_at"]} if "source_at" in row else {}),
+                **({"location_code": row["location_code"]} if "location_code" in row else {}),
             }
         )
     return observations, errors

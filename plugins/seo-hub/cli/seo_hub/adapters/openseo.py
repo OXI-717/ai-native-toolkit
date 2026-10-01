@@ -95,7 +95,11 @@ class OpenSEOAdapter:
             raise OpenSEOAdapterError(f"OpenSEO MCP tool returned an error result: {name}")
         result = _normalize_tool_result(payload)
         if result["structured"]:
-            _verify_pinned_contract(name, result["structuredContent"])
+            body = result["structuredContent"]
+            if "commit" in body or "server_version" in body:
+                _verify_pinned_contract(name, body)
+            if "meta" in body or not ("commit" in body or "server_version" in body):
+                _verify_native_contract(name, body, normalized, getattr(self.client, "server_info", {}))
         return result
 
     async def collect_project_evidence(
@@ -115,6 +119,10 @@ class OpenSEOAdapter:
         except SeoHubError:
             tracker = {"structured": False, "text": "Rank tracker evidence unavailable"}
         saved_keywords = await self.read_tool("list_saved_keywords", project_id=project_id)
+        contracts = {("stamped" if "commit" in _structured(item) else "native")
+                     for item in (context, tracker, saved_keywords) if item["structured"]}
+        if len(contracts) > 1:
+            raise OpenSEOPinContractError("OpenSEO response contract changed during collection")
 
         # A scoped request must come back with the identity it asked for: a missing
         # `id` is "cannot confirm this is the right project", and for a fail-closed
@@ -123,6 +131,8 @@ class OpenSEOAdapter:
         project = None
         if context["structured"]:
             project = _structured(context).get("project")
+            if project is None and _structured(context).get("meta", {}).get("projectId") == project_id:
+                project = {"id": project_id}
             if not isinstance(project, dict) or project.get("id") != project_id:
                 got = project.get("id") if isinstance(project, dict) else project
                 raise OpenSEOAdapterError(
@@ -152,6 +162,11 @@ class OpenSEOAdapter:
             quality = "partial"
         rank_data = _structured(tracker)
         rank_availability = _rank_availability(rank_data, self.max_rank_age_seconds)
+        if "meta" in rank_data:
+            tracker_payload = _native_tracker_payload(rank_data, rank_availability)
+            rank_availability["observation_count"] = len(tracker_payload["rank_rows"])
+            if rank_availability["state"] == "available" and not tracker_payload["rank_rows"]:
+                rank_availability["state"] = "no_measurements"
         if rank_availability["state"] != "available" or not keywords_payload:
             quality = "partial"
         observation_count = rank_availability["observation_count"] + len(keywords_payload)
@@ -221,7 +236,7 @@ def _rank_availability(payload: dict[str, Any], max_age: float) -> dict[str, Any
     results = payload.get("results")
     results = results if isinstance(results, dict) else {}
     rank_rows = payload.get("rank_rows")
-    if not results and isinstance(rank_rows, list):
+    if not results and isinstance(rank_rows, list) and "meta" not in payload:
         # Pinned get_rank_tracker (0.0.12) returns cached rows directly under
         # structuredContent, with no run/timestamp wrapper: freshness cannot be
         # judged, but the rows themselves are real cached ranking evidence.
@@ -263,6 +278,38 @@ def _rank_availability(payload: dict[str, Any], max_age: float) -> dict[str, Any
             "cached_row_count": len(rows)}
 
 
+def _native_tracker_payload(payload: dict[str, Any], availability: dict[str, Any]) -> dict[str, Any]:
+    """Expose only dated usable native measurements to the Observer row contract.
+
+    Keep upstream results intact for provenance; never infer timezone or turn
+    unranked (zero) positions into ranked observations.
+    """
+    normalized = dict(payload)
+    config = payload.get("config", {})
+    normalized["id"] = config.get("id")
+    normalized["rank_rows"] = []
+    if availability["state"] != "available":
+        return normalized
+    for row in payload.get("results", {}).get("rows", []):
+        if not isinstance(row, dict) or not isinstance(row.get("keyword"), str) or not row["keyword"].strip():
+            continue
+        for device in ("desktop", "mobile"):
+            measurement = row.get(device)
+            if not isinstance(measurement, dict):
+                continue
+            position = measurement.get("position")
+            if not isinstance(position, int) or isinstance(position, bool) or position <= 0:
+                continue
+            normalized["rank_rows"].append({
+                "keyword": row["keyword"], "position": position,
+                "url": measurement.get("rankingUrl") or "", "device": device,
+                "locale": config.get("languageCode") or "",
+                "location_code": config.get("locationCode"),
+                "source_at": availability["last_checked_at"],
+            })
+    return normalized
+
+
 def _structured(payload: dict[str, Any]) -> dict[str, Any]:
     value = payload.get("structuredContent") if payload.get("structured") is True else {}
     return dict(value) if isinstance(value, dict) else {}
@@ -289,6 +336,80 @@ def _verify_pinned_contract(name: str, structured_content: dict[str, Any]) -> No
             f"OpenSEO MCP response for {name} does not match the pinned contract: "
             f"commit={commit!r} server_version={server_version!r}"
         )
+
+
+def _verify_native_contract(name, body, arguments, server_info):
+    """Native 0.0.12 reports version in initialize, identity in result.meta.
+
+    Do not invent an upstream commit: native responses never asserted one.
+    Legacy stamped fixtures still pass their original strict pin check above.
+    """
+    if not isinstance(server_info, dict) or server_info.get("name") != "OpenSEO MCP" or server_info.get("version") != OPENSEO_MCP_VERSION:
+        raise OpenSEOPinContractError("OpenSEO native server identity/version unconfirmed")
+    project_id = arguments.get("projectId")
+    if name != "list_projects":
+        meta = body.get("meta")
+        if not project_id or not isinstance(meta, dict) or meta.get("projectId") != project_id:
+            raise OpenSEOPinContractError("OpenSEO native project identity unconfirmed")
+    required = {"list_projects": ("projects", list), "get_project_context": ("sections", list),
+                "list_saved_keywords": ("rows", list)}
+    if name in required:
+        field, kind = required[name]
+        if not isinstance(body.get(field), kind):
+            raise OpenSEOPinContractError("OpenSEO native response shape unconfirmed")
+    if name == "list_saved_keywords":
+        if any(not isinstance(row, dict) or not isinstance(row.get("keyword"), str)
+               or not row["keyword"].strip() for row in body["rows"]):
+            raise OpenSEOPinContractError("OpenSEO native keyword row shape unconfirmed")
+        total = body.get("totalCount")
+        if total is not None and (type(total) is not int or total < len(body["rows"])):
+            raise OpenSEOPinContractError("OpenSEO native keyword count unconfirmed")
+    if name == "get_rank_tracker":
+        if arguments.get("trackerId"):
+            if "configs" in body:
+                raise OpenSEOPinContractError("OpenSEO native tracker list/detail conflict")
+            config = body.get("config")
+            if not isinstance(config, dict) or config.get("id") != arguments["trackerId"] or config.get("projectId") != project_id:
+                raise OpenSEOPinContractError("OpenSEO native tracker identity unconfirmed")
+            configs = [config]
+        else:
+            if any(key in body for key in ("config", "results", "rank_rows", "id")):
+                raise OpenSEOPinContractError("OpenSEO native tracker list/detail conflict")
+            configs = body.get("configs")
+            if not isinstance(configs, list) or any(not isinstance(c, dict) or c.get("projectId") != project_id for c in configs):
+                raise OpenSEOPinContractError("OpenSEO native tracker list unconfirmed")
+        for config in configs:
+            if not isinstance(config.get("id"), str) or not config["id"].strip():
+                raise OpenSEOPinContractError("OpenSEO native tracker id unconfirmed")
+            for key in ("languageCode", "domain"):
+                if key in config and (not isinstance(config[key], str) or not config[key].strip()):
+                    raise OpenSEOPinContractError("OpenSEO native tracker dimension unconfirmed")
+            if "locationCode" in config and (type(config["locationCode"]) is not int or config["locationCode"] <= 0):
+                raise OpenSEOPinContractError("OpenSEO native tracker location unconfirmed")
+        if "results" in body:
+            results = body["results"]
+            if not isinstance(results, dict) or not isinstance(results.get("rows"), list):
+                raise OpenSEOPinContractError("OpenSEO native rank results shape unconfirmed")
+            run = results.get("run")
+            if run is not None and (not isinstance(run, dict)
+                    or not isinstance(run.get("status"), str)
+                    or (run.get("lastCheckedAt") is not None and not isinstance(run["lastCheckedAt"], str))):
+                raise OpenSEOPinContractError("OpenSEO native rank run shape unconfirmed")
+            for row in results["rows"]:
+                if (not isinstance(row, dict) or not isinstance(row.get("keyword"), str)
+                        or not row["keyword"].strip() or not any(d in row for d in ("desktop", "mobile"))):
+                    raise OpenSEOPinContractError("OpenSEO native rank row shape unconfirmed")
+                for device in ("desktop", "mobile"):
+                    measurement = row.get(device)
+                    if measurement is None:
+                        continue
+                    if not isinstance(measurement, dict) or "position" not in measurement:
+                        raise OpenSEOPinContractError("OpenSEO native device rank shape unconfirmed")
+                    position = measurement["position"]
+                    if position is not None and (type(position) is not int or position < 0):
+                        raise OpenSEOPinContractError("OpenSEO native rank position unconfirmed")
+                    if measurement.get("rankingUrl") is not None and not isinstance(measurement["rankingUrl"], str):
+                        raise OpenSEOPinContractError("OpenSEO native rank URL unconfirmed")
 
 
 def _collection_window() -> dict[str, str]:
