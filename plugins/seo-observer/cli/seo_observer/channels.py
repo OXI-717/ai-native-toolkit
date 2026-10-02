@@ -51,6 +51,7 @@ class ChannelsConfig:
     brand_terms: tuple[str, ...] = ()
     noise_referrers: tuple[str, ...] = ()
     self_domains: tuple[str, ...] = ()
+    app_paths: tuple[str, ...] = ()
 
 
 def channel_group(source: str | None, medium: str | None) -> str:
@@ -116,6 +117,26 @@ def event_channel(
     if (utm_source or "").strip() or (utm_medium or "").strip():
         return channel_slug(channel_group(utm_source, utm_medium))
     return referrer_channel(referrer_host, self_domains=self_domains)
+
+
+def app_path_match(path: str, patterns: tuple[str, ...]) -> bool:
+    """True when ``path`` matches a pattern as a path prefix.
+
+    ``*`` matches exactly one path segment, so ``/*/signin`` matches
+    ``/en/signin`` and ``/en/signin/confirm`` but not ``/signin`` or
+    ``/en/other/signin``.
+    """
+    segments = [segment for segment in path.split("/") if segment]
+    for pattern in patterns:
+        wanted = [segment for segment in pattern.split("/") if segment]
+        if not wanted or len(wanted) > len(segments):
+            continue
+        if all(
+            want == "*" or want == segment
+            for want, segment in zip(wanted, segments)
+        ):
+            return True
+    return False
 
 
 def _escape_regex_literal(term: str) -> str:
