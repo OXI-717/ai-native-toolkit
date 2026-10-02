@@ -957,7 +957,10 @@ def _parse_channels(raw: dict[str, Any], path: Path) -> ChannelsConfig:
         return ChannelsConfig()
     if not isinstance(section, dict):
         _invalid("CHANNELS_INVALID", path)
-    unknown = sorted(set(section) - {"brand_terms", "noise_referrers", "self_domains"})
+    unknown = sorted(
+        set(section)
+        - {"brand_terms", "noise_referrers", "self_domains", "app_paths"}
+    )
     if unknown:
         _invalid("CHANNELS_UNKNOWN_FIELD", path, unknown[0])
     values: dict[str, tuple[str, ...]] = {}
@@ -972,6 +975,12 @@ def _parse_channels(raw: dict[str, Any], path: Path) -> ChannelsConfig:
         ):
             _invalid(code, path)
         values[key] = tuple(item.strip() for item in items)
+    app_paths = section.get("app_paths", [])
+    if not isinstance(app_paths, list) or not all(
+        isinstance(item, str) and item.startswith("/") for item in app_paths
+    ):
+        _invalid("CHANNELS_APP_PATHS_INVALID", path)
+    values["app_paths"] = tuple(app_paths)
     return ChannelsConfig(**values)
 
 

@@ -14,13 +14,27 @@ from datetime import date, timedelta
 from typing import Any
 from urllib.parse import unquote, urlsplit, urlunsplit
 
-from seo_observer.channels import ChannelsConfig, _host_matches, brand_regex
-from seo_observer.storage import GA4_ALL_CHANNELS_MODEL, RESERVED_ALL, SEOStorage
+from seo_observer.channels import (
+    ChannelsConfig,
+    _host_matches,
+    app_path_match,
+    brand_regex,
+)
+from seo_observer.storage import (
+    GA4_ALL_CHANNELS_MODEL,
+    RESERVED_ALL,
+    SEOStorage,
+    StorageError,
+    resolve_raw_artifact_path,
+)
 
 
 GROWTH_SCHEMA_VERSION = 1
 AGGREGATE_MARKERS = frozenset({RESERVED_ALL, "__aggregate__"})
 ACTION_LOOKBACK_DAYS = 90
+# ``data_through`` further than this many days before the window end is a
+# real collection gap, not the normal search reporting lag.
+_SEARCH_LAG_GAP_DAYS = 4
 # Fact tables whose day-grain rows count towards days_with_facts. A request
 # that succeeded with zero rows still counts in days_covered via the request
 # record itself, so an outcome-free day is covered, not missing.
@@ -29,7 +43,26 @@ _FACT_DAY_SQL = {
     "traffic_metrics": "effective_start",
     "outcome_metrics": "effective_start",
 }
-
+# Fact-level dataset_coverage values that un-certify a day for that table.
+# For search_performance a "truncated" detail fact is exempt only when it
+# is a real query/page row (not an aggregate marker) from a successful,
+# non-sampled request whose stored original coverage is top-N — the Search
+# Console top-N list shape. Normalization maps top_rows/partial/sampled to
+# the same stored value, so the original coverage is read back from the
+# request's raw artifact; when it cannot be determined there is no
+# exemption (fail closed). Independently of coverage, any current fact
+# written by a partial request un-covers its day.
+_DAY_GAP_COVERAGE = {
+    "search_performance": frozenset(
+        {"truncated", "privacy_thresholded", "unknown", "unavailable"}
+    ),
+    "traffic_metrics": frozenset(
+        {"truncated", "privacy_thresholded", "unknown", "unavailable"}
+    ),
+    "outcome_metrics": frozenset(
+        {"truncated", "privacy_thresholded", "unknown", "unavailable"}
+    ),
+}
 
 def build_growth(
     storage: SEOStorage,
@@ -152,8 +185,19 @@ def _build_search(
         if str(row["page_id"]) not in AGGREGATE_MARKERS:
             _accumulate(page_aggs, (source, _export_url(row["page_url"])), row)
 
+    enabled_search = {
+        str(row["source"])
+        for row in storage.fetchall(
+            "SELECT source FROM sources WHERE project_id = ? AND enabled = 1",
+            (project_id,),
+        )
+    } & _SEARCH_FACT_SOURCES
     search: dict[str, Any] = {}
-    for source in sorted({str(r["source"]) for r in totals} | {str(r["source"]) for r in details}):
+    for source in sorted(
+        enabled_search
+        | {str(r["source"]) for r in totals}
+        | {str(r["source"]) for r in details}
+    ):
         daily = []
         for (src, _day), entry in sorted(daily_rows.items()):
             if src != source:
@@ -186,7 +230,36 @@ def _build_search(
             )
             if key[0] == source
         ]
-        search[source] = {"daily": daily, "queries": queries, "pages": pages}
+        # The last in-window day with a non-zero ``total`` fact. Search APIs
+        # publish days late; trailing days with zero-row totals are
+        # provisionally reported, so KPIs compare only up to this date.
+        data_through = max(
+            (
+                item["date"]
+                for item in daily
+                if item["total"]
+                and (
+                    int(item["total"].get("impressions") or 0)
+                    or int(item["total"].get("clicks") or 0)
+                )
+            ),
+            default=None,
+        )
+        search[source] = {
+            "daily": daily,
+            "queries": queries,
+            "pages": pages,
+            "data_through": data_through,
+            "totals_available": any(item["total"] for item in daily),
+            "search_gap": bool(
+                data_through
+                and (
+                    date.fromisoformat(end_s)
+                    - date.fromisoformat(str(data_through))
+                ).days
+                > _SEARCH_LAG_GAP_DAYS
+            ),
+        }
     return search
 
 
@@ -211,6 +284,17 @@ def _weighted_position(agg: dict[str, Any]) -> float | None:
 
 def _noise_source(search_engine: str) -> str:
     return search_engine.split(" / ", 1)[0].strip().lower()
+
+
+def _landing_path(landing_page_id: str) -> str:
+    """Extract the URL path from a stored ``page:`` landing identifier."""
+    page = landing_page_id
+    if page.startswith("page:"):
+        page = page[len("page:"):]
+    try:
+        return urlsplit(page).path or "/"
+    except ValueError:
+        return re.split(r"[?#]", page, maxsplit=1)[0] or "/"
 
 
 def _build_traffic(
@@ -275,16 +359,57 @@ def _build_traffic(
             sources[(channel, source_medium)] = (
                 sources.get((channel, source_medium), 0) + visits
             )
+        if is_noise:
+            continue
+        # Direct visits landing on product pages are app usage, not
+        # acquisition: move their visits to the ``app`` channel. The
+        # ``__all__`` aggregate cannot be split by landing page, so the
+        # app share is taken from page rows and subtracted from direct.
+        app_visits = 0
+        if channel == "direct" and channels.app_paths:
+            app_visits = sum(
+                int(row["visits"] or 0)
+                for row in group["pages"]
+                if app_path_match(
+                    _landing_path(str(row["landing_page_id"])),
+                    channels.app_paths,
+                )
+            )
+        if app_visits:
+            entry = daily.get((day, channel))
+            if entry is not None:
+                entry["visits"] -= app_visits
+                # Residual direct users cannot be inferred by subtracting
+                # page-level distinct counts — report them as unknown.
+                entry["users_known"] = False
+            app_entry = daily.setdefault(
+                (day, "app"),
+                {"visits": 0, "users": 0, "users_known": False},
+            )
+            app_entry["visits"] += app_visits
+            sources[(channel, source_medium)] = (
+                sources.get((channel, source_medium), 0) - app_visits
+            )
+            sources[("app", source_medium)] = (
+                sources.get(("app", source_medium), 0) + app_visits
+            )
     for row in landing_rows:
         if _host_matches(
             _noise_source(str(row["search_engine"])), channels.noise_referrers
         ):
             continue
         page = str(row["landing_page_id"])
+        channel = str(row["channel"])
+        if (
+            channel == "direct"
+            and channels.app_paths
+            and app_path_match(_landing_path(page), channels.app_paths)
+        ):
+            channel = "app"
         if page.startswith("page:"):
             page = page[len("page:"):]
         page = _export_url(page)
-        key = (str(row["channel"]), page)
+        key = (channel, page)
         landing[key] = landing.get(key, 0) + int(row["visits"] or 0)
     return {
         "daily": [
@@ -428,7 +553,7 @@ def _build_sources(
         """
         SELECT request.source, request.request_id, request.queried_at,
                request.completed_at, request.transport_status, request.freshness,
-               request.request_descriptor_json
+               request.sampled, request.request_descriptor_json
         FROM source_requests AS request
         JOIN collection_runs AS run ON run.run_id = request.run_id
         WHERE run.project_id = ?
@@ -436,16 +561,74 @@ def _build_sources(
         """,
         (project_id,),
     )
+    request_status = {
+        str(request["request_id"]): {
+            "transport_status": request["transport_status"],
+            "sampled": bool(request["sampled"]),
+        }
+        for request in requests
+    }
+    artifact_paths: dict[str, list[str]] = {}
+    for artifact in storage.fetchall(
+        """
+        SELECT artifact.request_id, artifact.relative_path
+        FROM raw_artifacts AS artifact
+        JOIN source_requests AS request
+          ON request.request_id = artifact.request_id
+        JOIN collection_runs AS run ON run.run_id = request.run_id
+        WHERE run.project_id = ?
+        """,
+        (project_id,),
+    ):
+        artifact_paths.setdefault(str(artifact["request_id"]), []).append(
+            str(artifact["relative_path"])
+        )
+    original_coverage_cache: dict[str, set[str]] = {}
+
+    def _original_coverages(request_id: str) -> set[str]:
+        """Pre-normalization coverage stored in the request's raw
+        artifact(s) — the only place ``top_rows``/``partial``/``sampled``
+        survive, since fact rows keep only the normalized value."""
+        if request_id not in original_coverage_cache:
+            coverages: set[str] = set()
+            for relative_path in artifact_paths.get(request_id, []):
+                try:
+                    path = resolve_raw_artifact_path(
+                        observer_home=storage.observer_home,
+                        project_id=project_id,
+                        relative_path=relative_path,
+                    )
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, StorageError, ValueError):
+                    continue
+                # Valid JSON of an unexpected shape is unknown provenance, not
+                # a crash of the whole export (fail closed: no exemption).
+                if not isinstance(payload, dict):
+                    continue
+                metadata = payload.get("metadata")
+                if not isinstance(metadata, dict):
+                    continue
+                coverage_value = metadata.get("dataset_coverage")
+                if coverage_value is not None:
+                    coverages.add(str(coverage_value))
+            original_coverage_cache[request_id] = coverages
+        return original_coverage_cache[request_id]
+
     fact_days: dict[str, dict[str, Any]] = {}
     source_incomplete_days: dict[str, set[str]] = {}
     request_all_days: dict[str, set[str]] = {}
     request_current_days: dict[str, set[str]] = {}
     request_incomplete_days: dict[str, set[str]] = {}
     for table, day_column in _FACT_DAY_SQL.items():
+        detail_columns = (
+            "segment_id, query_id, page_id"
+            if table == "search_performance"
+            else "NULL AS segment_id, NULL AS query_id, NULL AS page_id"
+        )
         for row in storage.fetchall(
             f"""
             SELECT source, {day_column} AS day, request_id, source_timezone,
-                   is_current, dataset_coverage
+                   is_current, dataset_coverage, {detail_columns}
             FROM {table}
             WHERE project_id = ?
               AND effective_start = effective_end
@@ -459,7 +642,26 @@ def _build_sources(
             if not row["is_current"]:
                 continue
             request_current_days.setdefault(request_id, set()).add(day)
-            if str(row["dataset_coverage"]) != "complete":
+            status = request_status.get(request_id) or {}
+            coverage = str(row["dataset_coverage"])
+            gap = coverage in _DAY_GAP_COVERAGE[table]
+            if (
+                gap
+                and coverage == "truncated"
+                and table == "search_performance"
+            ):
+                gap = not (
+                    (
+                        str(row["query_id"] or "") not in AGGREGATE_MARKERS
+                        or str(row["page_id"] or "") not in AGGREGATE_MARKERS
+                    )
+                    and status.get("transport_status") == "success"
+                    and not status.get("sampled")
+                    and _original_coverages(request_id) == {"top_rows"}
+                )
+            if status.get("transport_status") == "partial":
+                gap = True
+            if gap:
                 request_incomplete_days.setdefault(request_id, set()).add(day)
                 source_incomplete_days.setdefault(
                     str(row["source"]), set()
@@ -529,10 +731,16 @@ def _build_sources(
             state = "stale"
         result[source] = {
             "state": state,
+            # Transport of the latest request: lets consumers tell a failed
+            # request (outage) from a successful provisional lag.
+            "last_transport_status": (
+                str(last_request["transport_status"]) if last_request is not None else None
+            ),
             "required": bool(source_row["required"]),
             "collected_at": collected_at,
             "timezone": timezone,
             "days_covered": len(covered),
+            "covered_days": sorted(covered),
             "days_with_facts": days_with_facts,
         }
     return result
@@ -578,6 +786,25 @@ _AVG_WEEKS_MAX = 4
 _WHAT_CHANGED_MAX = 3
 _QUERY_MIN_IMPRESSIONS = 10
 _CHANNEL_MIN_VISITS = 3
+# Count KPIs whose comparisons switch to an absolute change on a tiny
+# base; visit_to_signup is a ratio and revenue_minor is money.
+_COUNT_KPIS = frozenset(
+    {
+        "nonbrand_impressions",
+        "nonbrand_clicks",
+        "organic_visits",
+        "registrations",
+        "payments",
+    }
+)
+_TINY_BASE = 5
+
+
+def _abs_change_base(name: str, base: float) -> bool:
+    """A zero base makes every percentage meaningless; a below-tiny base
+    does so for count KPIs. In both cases the comparison carries an
+    absolute change instead of a percentage."""
+    return base == 0 or (name in _COUNT_KPIS and base < _TINY_BASE)
 
 
 def derive_growth(
@@ -618,10 +845,104 @@ def _kpi_source_sets(growth: dict[str, Any]) -> dict[str, set[str]]:
     }
 
 
-def _raw_metrics(growth: dict[str, Any]) -> dict[str, Any]:
+def _search_day_limits(growth: dict[str, Any]) -> dict[str, int]:
+    """Per search source, how many leading window days carry data.
+
+    ``data_through`` is the last day with a non-zero ``total`` fact; the
+    trailing provisional days (zero rows, still covered by requests) are
+    excluded from KPI sums and from the coverage requirement. A comparison
+    window is clipped to the same number of leading days.
+    """
+    start = (growth.get("window") or {}).get("start")
+    limits: dict[str, int] = {}
+    for source, block in (growth.get("search") or {}).items():
+        through = block.get("data_through")
+        if not start or not through:
+            continue
+        delta = (
+            date.fromisoformat(str(through))
+            - date.fromisoformat(str(start))
+        ).days
+        limits[str(source)] = max(delta + 1, 0)
+    return limits
+
+
+def _search_allowed_dates(
+    growth: dict[str, Any], limits: dict[str, int]
+) -> dict[str, set[str]]:
+    """Clipped interval per source as calendar dates generated from the
+    window start — never a slice of the sparse daily array: a covered
+    zero-row day has no row and must not shift the retained dates."""
+    return {
+        source: _allowed_dates(growth, source, limits)
+        for source in limits
+    }
+
+
+def _search_totals_available(growth: dict[str, Any], source: str) -> bool:
+    """True when the source produced at least one ``total`` fact in this
+    window. Explicit zero totals count; a covered window with no total
+    facts at all is absent data, not a measured zero."""
+    block = (growth.get("search") or {}).get(source)
+    if not block:
+        return False
+    if "totals_available" in block:
+        return bool(block["totals_available"])
+    return any(day.get("total") for day in block.get("daily") or [])
+
+
+def _kpi_participants(
+    growth: dict[str, Any], names: set[str]
+) -> set[str]:
+    """Sources that may drive a KPI in this window: a search source
+    participates only when it supplied total facts here — a source that
+    never reports totals must not drag another source's KPI to partial."""
+    return {
+        name
+        for name in names
+        if name not in _SEARCH_FACT_SOURCES
+        or _search_totals_available(growth, name)
+    }
+
+
+def _search_lag_gap(
+    growth: dict[str, Any], sources: set[str]
+) -> bool:
+    """True when a search source's ``data_through`` sits more than
+    ``_SEARCH_LAG_GAP_DAYS`` before the window end — a real gap, not the
+    normal reporting lag."""
+    end = (growth.get("window") or {}).get("end")
+    end_day = date.fromisoformat(str(end)) if end else None
+    for source, block in (growth.get("search") or {}).items():
+        if str(source) not in sources:
+            continue
+        gap = block.get("search_gap")
+        if gap is None and end_day is not None:
+            through = block.get("data_through")
+            gap = bool(
+                through
+                and (end_day - date.fromisoformat(str(through))).days
+                > _SEARCH_LAG_GAP_DAYS
+            )
+        if gap:
+            return True
+    return False
+
+
+def _raw_metrics(
+    growth: dict[str, Any],
+    *,
+    search_days: dict[str, set[str]] | None = None,
+    search_sources: set[str] | None = None,
+) -> dict[str, Any]:
     impressions = clicks = 0
-    for source in (growth.get("search") or {}).values():
-        for day in source.get("daily") or []:
+    for source, block in (growth.get("search") or {}).items():
+        if search_sources is not None and str(source) not in search_sources:
+            continue
+        allowed = (search_days or {}).get(str(source))
+        for day in block.get("daily") or []:
+            if allowed is not None and str(day.get("date")) not in allowed:
+                continue
             total = day.get("total") or {}
             brand = day.get("brand") or {}
             impressions += int(total.get("impressions") or 0)
@@ -631,8 +952,13 @@ def _raw_metrics(growth: dict[str, Any]) -> dict[str, Any]:
     organic = visits = 0
     for row in (growth.get("traffic") or {}).get("daily") or []:
         count = int(row.get("visits") or 0)
+        channel = str(row.get("channel"))
+        if channel == "app":
+            # Product usage is excluded from the visit_to_signup
+            # denominator; it is not acquisition traffic.
+            continue
         visits += count
-        if row.get("channel") == "organic_search":
+        if channel == "organic_search":
             organic += count
     registrations = payments = 0
     revenue_minor = 0
@@ -681,11 +1007,73 @@ def _days_covered(growth: dict[str, Any], source: str) -> int:
     return int(entry.get("days_covered") or 0)
 
 
-def _fully_covered(growth: dict[str, Any], sources: set[str]) -> bool:
-    days = _window_days(growth)
-    return bool(sources) and all(
-        _days_covered(growth, source) == days for source in sources
-    )
+def _window_dates(growth: dict[str, Any]) -> list[str]:
+    """Every calendar date of the window, from ``window.start``."""
+    start = (growth.get("window") or {}).get("start")
+    if not start:
+        return []
+    first = date.fromisoformat(str(start))
+    return [
+        (first + timedelta(days=i)).isoformat()
+        for i in range(_window_days(growth))
+    ]
+
+
+def _allowed_dates(
+    growth: dict[str, Any], source: str, limits: dict[str, int]
+) -> set[str]:
+    """Dates a source must cover: the leading ``limits[source]`` window days
+    (the retained interval after search clipping), or the whole window."""
+    return set(_window_dates(growth)[: limits.get(source, _window_days(growth))])
+
+
+def _covered_dates(growth: dict[str, Any], source: str) -> set[str] | None:
+    entry = (growth.get("sources") or {}).get(source)
+    if not entry:
+        return None
+    days = entry.get("covered_days")
+    if days is None:
+        return None
+    return {str(day) for day in days}
+
+
+def _source_days_covered(
+    growth: dict[str, Any], source: str, limits: dict[str, int]
+) -> int:
+    """Covered days inside the source's retained interval."""
+    allowed = _allowed_dates(growth, source, limits)
+    covered = _covered_dates(growth, source)
+    if covered is None:
+        return min(_days_covered(growth, source), len(allowed))
+    return len(allowed & covered)
+
+
+def _fully_covered(
+    growth: dict[str, Any],
+    sources: set[str],
+    limits: dict[str, int] | None = None,
+) -> bool:
+    """Every retained calendar day covered: for a search source with
+    ``data_through`` only the leading ``limits[source]`` days must be
+    covered; other sources need the full window. The check is by date
+    membership, never by bare counts — a covered day outside the retained
+    interval cannot compensate for an uncovered day inside it."""
+    limits = limits or {}
+    if not sources:
+        return False
+    for source in sources:
+        if source in _SEARCH_FACT_SOURCES and not _search_totals_available(
+            growth, source
+        ):
+            return False
+        allowed = _allowed_dates(growth, source, limits)
+        covered = _covered_dates(growth, source)
+        if covered is None:
+            if _days_covered(growth, source) < len(allowed):
+                return False
+        elif not allowed <= covered:
+            return False
+    return True
 
 
 def _compute_kpis(
@@ -694,13 +1082,32 @@ def _compute_kpis(
     history: list[dict[str, Any]],
 ) -> dict[str, Any]:
     sources = _kpi_source_sets(current)
-    metrics = _raw_metrics(current)
-    previous_metrics = _raw_metrics(previous) if previous is not None else None
+    limits = _search_day_limits(current)
+    search_sources = _kpi_participants(
+        current, sources["nonbrand_impressions"]
+    )
+    metrics = _raw_metrics(
+        current,
+        search_days=_search_allowed_dates(current, limits),
+        search_sources=search_sources,
+    )
+    previous_metrics = (
+        _raw_metrics(
+            previous,
+            search_days=_search_allowed_dates(previous, limits),
+            search_sources=search_sources,
+        )
+        if previous is not None
+        else None
+    )
     kpis: dict[str, Any] = {}
     for name in _KPI_NAMES:
-        kpi_sources = sources[name]
+        kpi_sources = _kpi_participants(current, sources[name])
         covered = (
-            min(_days_covered(current, s) for s in kpi_sources)
+            min(
+                _source_days_covered(current, s, limits)
+                for s in kpi_sources
+            )
             if kpi_sources
             else 0
         )
@@ -710,7 +1117,9 @@ def _compute_kpis(
         )
         if not kpi_sources or (covered == 0 and not has_facts):
             coverage = "none"
-        elif _fully_covered(current, kpi_sources):
+        elif _fully_covered(current, kpi_sources, limits) and not (
+            _search_lag_gap(current, kpi_sources)
+        ):
             coverage = "complete"
         else:
             coverage = "partial"
@@ -722,11 +1131,21 @@ def _compute_kpis(
         comparable = (
             coverage == "complete"
             and previous is not None
-            and _fully_covered(previous, kpi_sources)
+            # Same source set as now, or a single-engine week would be
+            # compared with a multi-engine total.
+            and _kpi_participants(previous, kpi_sources) == kpi_sources
+            and _fully_covered(previous, kpi_sources, limits)
+            and not _search_lag_gap(
+                previous, _kpi_participants(previous, kpi_sources)
+            )
         )
         delta_pct = None
-        if comparable and value is not None and prev_value:
-            delta_pct = (value - prev_value) / prev_value * 100
+        delta_abs = None
+        if comparable and value is not None and prev_value is not None:
+            if _abs_change_base(name, float(prev_value)):
+                delta_abs = value - prev_value
+            elif prev_value:
+                delta_pct = (value - prev_value) / prev_value * 100
 
         week_values = []
         for week in sorted(
@@ -736,25 +1155,44 @@ def _compute_kpis(
         ):
             if len(week_values) >= _AVG_WEEKS_MAX:
                 break
-            if not _fully_covered(week, kpi_sources):
+            week_sources = _kpi_participants(week, kpi_sources)
+            if (
+                not week_sources
+                or week_sources != kpi_sources
+                or not _fully_covered(week, week_sources, limits)
+                or _search_lag_gap(week, week_sources)
+            ):
                 continue
-            week_value = _kpi_value(name, _raw_metrics(week))
+            week_value = _kpi_value(
+                name,
+                _raw_metrics(
+                    week,
+                    search_days=_search_allowed_dates(week, limits),
+                    search_sources=week_sources & _SEARCH_FACT_SOURCES,
+                ),
+            )
             if week_value is not None:
                 week_values.append(week_value)
         avg4 = (
             sum(week_values) / len(week_values) if week_values else None
         )
         delta_vs_avg4 = None
-        if coverage == "complete" and value is not None and avg4:
-            delta_vs_avg4 = (value - avg4) / avg4 * 100
+        delta_vs_avg4_abs = None
+        if coverage == "complete" and value is not None and avg4 is not None:
+            if _abs_change_base(name, float(avg4)):
+                delta_vs_avg4_abs = value - avg4
+            elif avg4:
+                delta_vs_avg4 = (value - avg4) / avg4 * 100
 
         kpi: dict[str, Any] = {
             "value": value,
             "previous": prev_value,
             "delta_pct": delta_pct,
+            "delta_abs": delta_abs,
             "avg4": avg4,
             "avg_weeks": len(week_values),
             "delta_vs_avg4_pct": delta_vs_avg4,
+            "delta_vs_avg4_abs": delta_vs_avg4_abs,
             "coverage": coverage,
             "days_covered": covered,
         }
@@ -771,12 +1209,14 @@ def _compute_kpis(
 
 
 def _change_subjects(
-    growth: dict[str, Any],
+    growth: dict[str, Any], search_sources: set[str],
 ) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
     queries: dict[str, int] = {}
     pages: dict[str, int] = {}
     channels: dict[str, int] = {}
-    for source in (growth.get("search") or {}).values():
+    for name, source in (growth.get("search") or {}).items():
+        if name not in search_sources:
+            continue
         for query in source.get("queries") or []:
             if query.get("is_brand"):
                 continue
@@ -805,11 +1245,50 @@ def _what_changed(
     sources = _kpi_source_sets(current)
     involved = sources["nonbrand_impressions"] | sources["organic_visits"]
     if not (
-        _fully_covered(current, involved) and _fully_covered(previous, involved)
+        _fully_covered(current, _kpi_participants(current, involved))
+        and _fully_covered(
+            previous, _kpi_participants(previous, involved)
+        )
     ):
         return []
-    cur_queries, cur_pages, cur_channels = _change_subjects(current)
-    prev_queries, prev_pages, prev_channels = _change_subjects(previous)
+    # Query/page changes compare only search feeds that carry detail rows in
+    # BOTH windows and are fully covered in both; a feed present or complete
+    # in one window only would fabricate gains or losses.
+    def _detail_sources(window: dict[str, Any]) -> set[str]:
+        return {
+            str(name)
+            for name, block in (window.get("search") or {}).items()
+            if (block or {}).get("queries") or (block or {}).get("pages")
+        }
+
+    def _days_fully_covered(window: dict[str, Any], name: str) -> bool:
+        # Detail feeds need not carry totals (Yandex.Webmaster), so check day
+        # coverage directly rather than through the totals-aware KPI rule.
+        allowed = _allowed_dates(window, name, {})
+        covered = _covered_dates(window, name)
+        if covered is None:
+            return _days_covered(window, name) >= len(allowed)
+        return allowed <= covered
+
+    def _no_lag(window: dict[str, Any], name: str) -> bool:
+        # Query/page aggregates span the whole window: compare them only when
+        # the feed has data through the window end (no reporting lag, no
+        # gap); otherwise lagging days would read as losses.
+        block = (window.get("search") or {}).get(name) or {}
+        if block.get("search_gap"):
+            return False
+        through = block.get("data_through")
+        end = (window.get("window") or {}).get("end")
+        return through is None or str(through) == str(end)
+
+    common = {
+        name
+        for name in _detail_sources(current) & _detail_sources(previous)
+        if _days_fully_covered(current, name) and _days_fully_covered(previous, name)
+        and _no_lag(current, name) and _no_lag(previous, name)
+    }
+    cur_queries, cur_pages, cur_channels = _change_subjects(current, common)
+    prev_queries, prev_pages, prev_channels = _change_subjects(previous, common)
 
     candidates = []
     for kind, cur_map, prev_map, threshold in (
@@ -854,7 +1333,7 @@ def _trend_12w(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "week_end": (week.get("window") or {}).get("end"),
         }
         for name in _TREND_METRICS:
-            kpi_sources = sources[name]
+            kpi_sources = _kpi_participants(week, sources[name])
             has_data = kpi_sources and any(
                 _days_covered(week, s) > 0 for s in kpi_sources
             )

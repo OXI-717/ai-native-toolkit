@@ -196,6 +196,7 @@ events = { "Signup Completed" = "registration" }
 [channels]
 brand_terms = ["demobrand", "demo brand"]
 noise_referrers = ["pay.demo.example"]
+app_paths = ["/*/app", "/*/signin", "/*/docs"]
 
 [[source_bindings]]
 property = "main"
@@ -271,14 +272,21 @@ Required local validation covers:
   `ga4_session_all_channels`); noise-referrer exclusion and engagedSessions are
   Plan 2 export behavior, not collection filters.
 - `[channels]` is optional and tunes channel classification shared by sources.
-  Both lists default to empty. `brand_terms` lists brand name variants; GSC
+  All lists default to empty. `brand_terms` lists brand name variants; GSC
   uses them to fetch a brand-only aggregate segment so `non-brand = total -
   brand` matches the Search Console UI (anonymized queries never arrive as
   rows). `noise_referrers` lists referrer substrings that are not real traffic
   (payment processors, auth flows). Matching is a case-insensitive substring
   match implemented as a regex alternative: `pay.demo.example` also catches
   `secure.pay.demo.example`. Noise-referrer exclusion is applied at export
-  time in Plan 2, not during collection.
+  time in Plan 2, not during collection. `app_paths` lists landing-path
+  patterns for product pages (the app, sign-in, docs, tariffs): a `*`
+  segment matches exactly one path segment and a pattern matches as a path
+  prefix, for example `["/*/prematch", "/*/signin", "/*/signup",
+  "/*/forgot-password", "/*/docs", "/*/tariffs"]`. At export time, `direct`
+  traffic landing on an app path is reported under the `app` channel and
+  excluded from the visit-to-signup denominator; other channels landing on
+  the same paths are not reclassified.
 - `[sources.yandex_webmaster]` can carry local adapter fields such as `user_id`,
   `credential_env`, `finalize_after`, and `limit`; source bindings must use the
   Yandex remote `host-id` string (for example `https:demo.example:443`) as

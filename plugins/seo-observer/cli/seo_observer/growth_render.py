@@ -91,7 +91,9 @@ _STRINGS = {
         "brief_no_data": "нет данных",
         "revenue_currency": "{amount} {currency}",
         "coverage_partial": "неполные данные",
+        "search_data_through": "данные поиска по {date} ({source})",
         "channel_direct": "Прямые",
+        "channel_app": "Приложение",
         "channel_organic_search": "Органический поиск",
         "channel_organic_social": "Соцсети",
         "channel_paid_search": "Платный поиск",
@@ -178,7 +180,9 @@ _STRINGS = {
         "brief_no_data": "no data",
         "revenue_currency": "{amount} {currency}",
         "coverage_partial": "partial data",
+        "search_data_through": "search data through {date} ({source})",
         "channel_direct": "Direct",
+        "channel_app": "App",
         "channel_organic_search": "Organic search",
         "channel_organic_social": "Organic social",
         "channel_paid_search": "Paid search",
@@ -254,6 +258,44 @@ def _fmt_delta(value: float | None, s: dict[str, str]) -> str:
         return "—"
     sign = "+" if value > 0 else ""
     return f"{sign}{value:.1f}%"
+
+
+def _fmt_abs_change(name: str, diff: float, kpi: dict[str, Any], s: dict[str, str]) -> str:
+    sign = "+" if diff > 0 else ""
+    if name == "revenue_minor":
+        amount = f"{sign}{abs(diff) / 100:,.2f}" if diff >= 0 else f"-{abs(diff) / 100:,.2f}"
+        currency = kpi.get("currency")
+        if currency:
+            return s["revenue_currency"].format(
+                amount=amount, currency=_esc(currency)
+            )
+        return amount
+    if name == "visit_to_signup":
+        return f"{sign}{diff * 100:.1f} pp"
+    return f"{sign}{_fmt_int(diff)}"
+
+
+def _fmt_kpi_delta(
+    name: str,
+    kpi: dict[str, Any],
+    *,
+    pct_field: str,
+    abs_field: str,
+    s: dict[str, str],
+) -> str:
+    """Delta cell: the percentage when the comparison was eligible and the
+    base is healthy, else the absolute change the deriver produced. When
+    neither field is set the comparison was withheld — render a dash and
+    never recompute a difference from value/previous here."""
+    if kpi.get("value") is None:
+        return "—"
+    pct = kpi.get(pct_field)
+    if pct is not None:
+        return _fmt_delta(pct, s)
+    diff = kpi.get(abs_field)
+    if diff is None:
+        return "—"
+    return _fmt_abs_change(name, float(diff), kpi, s)
 
 
 def _fmt_ts(value: Any) -> str:
@@ -395,10 +437,43 @@ def svg_line_chart(
 
 
 def _banner(growth: dict[str, Any], s: dict[str, str]) -> str:
+    # A provisional search reporting lag (successful requests, zero rows on
+    # the trailing days) is not an outage: the red banner is for sources that
+    # failed, went stale or produced no data at all in the window — and for
+    # required search sources with a real gap (``search_gap`` set by the
+    # builder) or no total facts at all, which day coverage alone cannot
+    # distinguish from a measured zero.
+    search = growth.get("search") or {}
     missing = sorted(
         name
         for name, entry in (growth.get("sources") or {}).items()
-        if entry.get("required") and entry.get("state") != "live"
+        if entry.get("required")
+        and (
+            entry.get("state") in {"failed", "stale", "unsupported"}
+            # Only search reporting lag is exempt from "partial": an
+            # incomplete required non-search feed (GA4, outcomes) is an outage.
+            or (name not in _SEARCH_FACT_SOURCES and entry.get("state") == "partial")
+            # A failed latest request is an outage even when older requests
+            # left totals: only a successful provisional lag is exempt.
+            or (
+                entry.get("state") == "partial"
+                and entry.get("last_transport_status") not in (None, "success")
+            )
+            or (
+                int(entry.get("days_covered") or 0) == 0
+                and int(entry.get("days_with_facts") or 0) == 0
+            )
+            or (
+                name in _SEARCH_FACT_SOURCES
+                and (
+                    search.get(name) is None
+                    or not (search.get(name) or {}).get(
+                        "totals_available", True
+                    )
+                    or bool((search.get(name) or {}).get("search_gap"))
+                )
+            )
+        )
     )
     if not missing:
         return ""
@@ -434,12 +509,26 @@ def _kpi_table(growth: dict[str, Any], s: dict[str, str]) -> str:
                     f' <span class="tag">{_esc(s["coverage_partial"])}</span>'
                 )
             cells.append(f'<td class="num">{wide_text}</td>')
-        cells.append(f'<td class="num">{_fmt_delta(kpi.get("delta_pct"), s)}</td>')
         cells.append(
-            f'<td class="num">{_fmt_delta(kpi.get("delta_vs_avg4_pct"), s)}</td>'
+            '<td class="num">'
+            + _fmt_kpi_delta(
+                name, kpi, pct_field="delta_pct", abs_field="delta_abs", s=s
+            )
+            + "</td>"
+        )
+        cells.append(
+            '<td class="num">'
+            + _fmt_kpi_delta(
+                name,
+                kpi,
+                pct_field="delta_vs_avg4_pct",
+                abs_field="delta_vs_avg4_abs",
+                s=s,
+            )
+            + "</td>"
         )
         rows.append(f"<tr>{''.join(cells)}</tr>")
-    return (
+    table = (
         "<table><thead><tr>"
         f"<th>{_esc(s['metric'])}</th>"
         f'<th class="num">{_esc(s["window_7d"])}</th>'
@@ -448,6 +537,25 @@ def _kpi_table(growth: dict[str, Any], s: dict[str, str]) -> str:
         f'<th class="num">{_esc(s["delta_avg4"])}</th>'
         f"</tr></thead><tbody>{''.join(rows)}</tbody></table>"
     )
+    through_notes = []
+    for source in sorted(growth.get("search") or {}):
+        through = ((growth["search"] or {}).get(source) or {}).get(
+            "data_through"
+        )
+        if not through:
+            continue
+        try:
+            formatted = f"{datetime.fromisoformat(str(through)):%d.%m}"
+        except ValueError:
+            formatted = str(through)
+        through_notes.append(
+            s["search_data_through"].format(
+                source=_esc(source), date=_esc(formatted)
+            )
+        )
+    if through_notes:
+        table += f'<p class="caption">{"; ".join(through_notes)}</p>'
+    return table
 
 
 def _what_changed_list(growth: dict[str, Any], s: dict[str, str]) -> str:
@@ -553,12 +661,16 @@ def _channels_section(growth: dict[str, Any], s: dict[str, str]) -> str:
     return table + f'<p class="caption">{_esc(caption)}</p>' + trend_cap + chart
 
 
-def _brand_totals(growth: dict[str, Any]) -> dict[str, dict[str, int]]:
-    totals: dict[str, dict[str, int]] = {}
+def _brand_totals(growth: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    totals: dict[str, dict[str, Any]] = {}
     for source, block in (growth.get("search") or {}).items():
         brand_imp = brand_clk = total_imp = total_clk = 0
+        has_total = False
         for day in block.get("daily") or []:
-            total = day.get("total") or {}
+            total = day.get("total")
+            if total:
+                has_total = True
+            total = total or {}
             brand = day.get("brand") or {}
             total_imp += int(total.get("impressions") or 0)
             total_clk += int(total.get("clicks") or 0)
@@ -569,6 +681,7 @@ def _brand_totals(growth: dict[str, Any]) -> dict[str, dict[str, int]]:
             "total_clicks": total_clk,
             "brand_impressions": brand_imp,
             "brand_clicks": brand_clk,
+            "has_total": has_total,
         }
     return totals
 
@@ -578,14 +691,17 @@ def _search_section(growth: dict[str, Any], s: dict[str, str]) -> str:
     summary_rows = []
     for source in sorted(totals):
         t = totals[source]
+        if t["has_total"]:
+            cells = (
+                f'<td class="num">{_fmt_int(t["total_impressions"] - t["brand_impressions"])}</td>'
+                f'<td class="num">{_fmt_int(t["total_clicks"] - t["brand_clicks"])}</td>'
+                f'<td class="num">{_fmt_int(t["brand_impressions"])}</td>'
+                f'<td class="num">{_fmt_int(t["brand_clicks"])}</td>'
+            )
+        else:
+            cells = f'<td class="num">{_esc(s["no_data"])}</td>' * 4
         summary_rows.append(
-            "<tr>"
-            f"<td>{_esc(source)}</td>"
-            f'<td class="num">{_fmt_int(t["total_impressions"] - t["brand_impressions"])}</td>'
-            f'<td class="num">{_fmt_int(t["total_clicks"] - t["brand_clicks"])}</td>'
-            f'<td class="num">{_fmt_int(t["brand_impressions"])}</td>'
-            f'<td class="num">{_fmt_int(t["brand_clicks"])}</td>'
-            "</tr>"
+            f"<tr><td>{_esc(source)}</td>{cells}</tr>"
         )
     summary_table = (
         "<table><thead><tr>"
@@ -794,15 +910,23 @@ def render_brief(
     derived = growth.get("derived") or {}
     kpis = derived.get("kpis") or {}
     totals = _brand_totals(growth)
-    search_available = bool(totals) or _fact_source_available(
-        growth, _SEARCH_FACT_SOURCES
-    )
+    # Enabled search sources always emit a block; one that never produced
+    # a ``total`` fact is absent data, not a measured zero.
+    # Brand totals exist only when some search block carries totals; covered
+    # days or query-only facts are not a measured zero.
+    search_available = any(t["has_total"] for t in totals.values())
     mixpanel_available = bool(
         (derived.get("signup_channels") or {}).keys() - {"sample_of"}
     ) or _fact_source_available(growth, _EVENT_FACT_SOURCES)
     brand_imp = sum(t["brand_impressions"] for t in totals.values())
     brand_clk = sum(t["brand_clicks"] for t in totals.values())
-    delta = _fmt_delta((kpis.get("nonbrand_impressions") or {}).get("delta_pct"), s)
+    delta = _fmt_kpi_delta(
+        "nonbrand_impressions",
+        kpis.get("nonbrand_impressions") or {},
+        pct_field="delta_pct",
+        abs_field="delta_abs",
+        s=s,
+    )
     signups, sample_of = _signup_channel_split(derived)
     sample = s["mixpanel_sample"].format(
         n=_fmt_int(sum(signups.values())) if mixpanel_available else s["brief_no_data"],

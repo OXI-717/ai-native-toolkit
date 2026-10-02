@@ -60,6 +60,46 @@ build with a new hash12 and the week link switches to it.
 `produced_at`, `growth_hash`, `files`, `pdf` (`{ok, error}`), and `sources`
 (per-source `state`/`required`/`collected_at`/`timezone`).
 
+## `growth.json` data-availability fields
+
+Each enabled search source has a `search.<source>` block, emitted even when
+the source produced no facts in the window:
+
+- `search.<source>.data_through` — `YYYY-MM-DD` or `null`. The last window
+  day with a non-zero `total` fact; trailing zero-row days are provisional
+  and excluded. Search KPIs sum only the leading days through this date and
+  clip comparison windows to the same count of leading days.
+- `search.<source>.totals_available` — boolean. True when at least one
+  `total` fact exists in the window (explicit zeros count); false means
+  absent data, not a measured zero, and search KPIs report coverage `none`.
+- `search.<source>.search_gap` — boolean. True when `data_through` sits more
+  than 4 days before the window end — a real collection gap, not the normal
+  search reporting lag. A gapped source makes its KPIs `partial`, and a
+  previous or history window whose own derivation would set this flag is not
+  an eligible comparison (null delta / skipped avg4 week).
+- `search.<source>.daily` / `queries` / `pages` — lists, empty when there
+  are no facts.
+
+## `growth.json` KPI delta fields (`derived.kpis.<name>` and
+`derived.kpis_by_window.<window>.<name>`)
+
+- `delta_pct`, `delta_vs_avg4_pct` — number or `null`. Percent change versus
+  the previous window / the trailing 4-week average. Null when the
+  comparison is not eligible (current KPI not `complete`, comparison window
+  not fully covered or itself gap-flagged, missing value, zero or tiny
+  base).
+- `delta_abs`, `delta_vs_avg4_abs` — number or `null`. Absolute change in
+  the KPI's own unit (impressions, clicks, visits, registrations, payments),
+  filled **instead of** the percentage only when the comparison is eligible
+  and the base is zero or, for count KPIs, below the tiny-base threshold of
+  5. A null absolute field therefore does **not** prove the comparison was
+  withheld — an eligible comparison on a normal base renders `*_pct` and
+  leaves `*_abs` null.
+- `avg4`, `avg_weeks` — `avg4` is the mean KPI value over up to the 4 most
+  recent eligible history weeks (`avg_weeks` reports how many were used);
+  `null`/`0` when none are eligible. Weeks that are empty or themselves
+  gap-flagged do not count.
+
 ## PDF policy
 
 `weekly` renders `report.pdf` from `index.html` via Playwright Chromium
