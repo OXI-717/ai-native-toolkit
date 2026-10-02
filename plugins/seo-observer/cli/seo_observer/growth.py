@@ -314,10 +314,12 @@ def _build_traffic(
         """,
         (project_id, start_s, end_s, GA4_ALL_CHANNELS_MODEL),
     )
-    # The channel adapter emits concrete ``page:`` rows only; the ``__all__``
-    # landing row, when present, already equals their sum. Per
-    # (day, channel, source/medium) pick the ``__all__`` row if one exists,
-    # otherwise sum the page rows — never both.
+    # The GA4 channel adapter never emits a landing-page total: its
+    # ``__all__`` landing id marks sessions whose landing page is unset
+    # (empty ``landingPagePlusQueryString``). Those rows are one more part
+    # of the partition, so per (day, channel, source/medium) the visits are
+    # the sum of ALL rows. Treating ``__all__`` as a total dropped the page
+    # rows (2026-10-02: direct counted 1 visit instead of 763 on one day).
     grouped: dict[tuple[str, str, str], dict[str, list]] = {}
     landing_rows: list[dict[str, Any]] = []
     for row in rows:
@@ -339,10 +341,11 @@ def _build_traffic(
         )
         if is_noise:
             noise_sources.add(source_medium)
-        # Distinct users are not additive across landing pages: only a real
-        # ``__all__`` aggregate row carries a trustworthy user count.
-        page_only = not group["all"]
-        for row in group["all"] or group["pages"]:
+        # Distinct users are not additive across landing pages: a user count
+        # is trustworthy only when the group has a single row.
+        group_rows = group["all"] + group["pages"]
+        users_known = len(group_rows) == 1
+        for row in group_rows:
             visits = int(row["visits"] or 0)
             if is_noise:
                 noise_visits += visits
@@ -352,19 +355,19 @@ def _build_traffic(
                 {"visits": 0, "users": 0, "users_known": True},
             )
             entry["visits"] += visits
-            if page_only:
-                entry["users_known"] = False
-            else:
+            if users_known:
                 entry["users"] += int(row["users"] or 0)
+            else:
+                entry["users_known"] = False
             sources[(channel, source_medium)] = (
                 sources.get((channel, source_medium), 0) + visits
             )
         if is_noise:
             continue
         # Direct visits landing on product pages are app usage, not
-        # acquisition: move their visits to the ``app`` channel. The
-        # ``__all__`` aggregate cannot be split by landing page, so the
-        # app share is taken from page rows and subtracted from direct.
+        # acquisition: move their visits to the ``app`` channel. App visits
+        # come from page rows of this group, which are part of the group sum,
+        # so the residual direct count can never go negative.
         app_visits = 0
         if channel == "direct" and channels.app_paths:
             app_visits = sum(
