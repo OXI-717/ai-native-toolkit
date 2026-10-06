@@ -1,5 +1,5 @@
 ---
-description: "Configure OpenRouter as an OpenAI-compatible endpoint (OPENROUTER_API_KEY in env, never in code) for moonshotai/kimi-k3, deepseek/deepseek-v4, z-ai/glm-*"
+description: "Configure OpenRouter as OpenAI-compatible endpoint: kimi-k3, deepseek-v4, glm-*"
 argument-hint: "[model-slug] — smoke-test a specific model, e.g. z-ai/glm-4.6"
 allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob"]
 ---

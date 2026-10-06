@@ -1,6 +1,6 @@
 # Growth export (`seo-observer export`)
 
-Publishes `growth_v1` bundles (private panel data — business aggregates only,
+Publishes `growth_schema_version = 3` bundles (private panel data — business aggregates only,
 no person identifiers) as versioned, immutable build directories with atomic
 symlink switching. Read-only over the project SQLite database; no live
 provider calls.
@@ -49,9 +49,75 @@ and no new files were written — links are re-pointed in that case.
 (`EXPORT_FLAG_KIND_MISMATCH`, exit code 2).
 
 `weekly` files: `growth.json`, `index.html`, `report.pdf`, `brief.md`,
-`receipt.json`. `current` files: `growth.json`, `index.html`, `receipt.json`.
+`receipt.json`. Russian `current` exports contain `growth.json`, `receipt.json`
+and six pages at the build root and under `28/`: `index.html`,
+`positions.html`, `demand.html`, `traffic.html`, `money.html`, `status.html`.
+Navigation stays in the selected window; 7/28 links switch the same page.
+English `current` exports keep the original single-page format.
 
-`growth_hash` is the sha256 of the canonical `growth_v1` JSON with build-time
+The Russian dashboard reuses existing aggregates and KPI eligibility checks.
+Its dedicated renderer embeds packaged CSS, JavaScript and Manrope WOFF2. Its `dashboard` block contains `previous`, 12 `history`
+windows and `28d.{current,previous}` raw windows (including derived KPIs).
+In schema v3, `dashboard.keyword_clusters` maps search sources to maps of
+normalized queries and cluster labels, for example
+`{"yandex_webmaster": {"shared query": "Local intent"}, "google_search_console": {"shared query": "Global intent"}}`.
+The CLI retains each `KeywordSet.market` and resolves it through the configured
+market's `search_engine`. Unscoped sets live under `"*"` as a fallback; a scoped
+label takes precedence. An unresolved market never becomes a global fallback.
+If two markets on one engine disagree on a query, its value is `null` and the
+row displays the unclustered label: source-level rows cannot identify its market.
+Cluster labels are cleaned before comparison and storage, so different numeric
+keyword-count/volume annotations on the same label do not create a conflict.
+This replaces the flat query-to-cluster map in schema v2; schema v2 landing
+page fields remain unchanged.
+Trend points include `revenue_minor` and `revenue_currency`; different currencies
+are never connected in a revenue sparkline. All detail/history inputs participate in the immutable data hash;
+`dashboard_version` participates in the render identity. No new database,
+collector, API or SPA is introduced. Existing runtime static-file routing
+serves these paths without changes.
+
+Positions are impression-weighted averages of observed GSC/Webmaster queries,
+not fixed SERP rankings. Bucket counts partition the available queries;
+missing averages are separate from >100. Position tables initially show 25 rows sorted by impressions, with eight history
+weeks. Buckets include current and previously observed queries; absent current
+queries belong to «не показывался». Cluster summaries weight positions by impressions. Changes are
+withheld unless both full windows have covered dates and fresh detail rows.
+Absent rows are never treated as rank losses or zeros. Weekly history is an
+observed slice, not a completeness-certified rank history.
+
+Demand uses only stored impressions/clicks and per-query/page rows. Page→query
+links appear only when both dimensions actually exist. Opportunities use an
+explicit heuristic (≥20 impressions, average position 4–20, CTR <5%). Traffic
+shows separate channel, source and landing slices: no unrecorded join between
+source and landing is inferred. Paths are normalized before aggregation, hashing and JSON/HTML export: hex
+segments of ≥16 characters, UUIDs, opaque alphanumeric segments of ≥20 characters
+and numbers of ≥6 digits become `:id`. JWT-like three-part segments and dotted
+tokens containing identifying components are also masked as a whole. Long
+word-based slugs, `file.html` and `v1.2` remain intact. Detection includes percent-encoded segments;
+safe reserved encoding is preserved. Matching templates become one row in both JSON and HTML. Schema v2 landing
+rows contain `page`, total `visits`, and a `channels` map preserving the original
+channel subtotals; the former scalar `channel` field is replaced. Page-query
+details are indexed in one pass and show at most 100 queries with the most
+impressions per displayed page, with an explicit truncation count. Traffic
+comparisons retain channels that disappeared; absent rows become zero only
+when the corresponding traffic period is fully covered.
+
+Money uses server facts and shows Mixpanel signups separately as a sample.
+Relative KPI deltas use percent. When relative change is unavailable, absolute
+revenue deltas convert minor units to the stated currency; absolute conversion
+deltas convert fractions to percentage points. Counts keep their native units;
+missing comparisons remain unavailable.
+First/repeat purchase attribution, Yandex diagnostics, index
+coverage and links are explicitly unavailable in this export. Multiple
+currencies are not summed; revenue changes and historical averages exclude
+incompatible currencies. Collection timestamps and factual/reporting dates
+are separate; provisional search zeros do not overwrite actual search freshness.
+Every source that participates in the growth KPI categories and Mixpanel
+appears in status and freshness, including Metrica and custom outcome sources;
+competitor provider configuration remains outside this view. Aggregate
+non-brand search KPIs remain on Demand and visit-to-signup on Money.
+
+`growth_hash` is the sha256 of the canonical growth JSON with build-time
 fields (`generated_at`/`produced_at`) removed; `sources.*.collected_at` is
 part of the hash, so a re-collected day inside the same week produces a new
 build with a new hash12 and the week link switches to it.
@@ -79,6 +145,14 @@ the source produced no facts in the window:
   an eligible comparison (null delta / skipped avg4 week).
 - `search.<source>.daily` / `queries` / `pages` — lists, empty when there
   are no facts.
+- `search.<source>.details_through` — last date with a real detail row.
+- `search.<source>.query_pages` — redacted query/page pairs only when both
+  dimensions were observed; empty when the source only emits separate lists.
+- `sources.<source>.data_through` — latest stored fact date at/before the
+  requested end; dashboard reporting freshness also considers successfully
+  covered zero-event days for non-search sources.
+- Revenue KPIs include `previous_currency` when the previous window has one
+  currency, so a previous USD value cannot be labelled with the current RUB.
 
 ## `growth.json` KPI delta fields (`derived.kpis.<name>` and
 `derived.kpis_by_window.<window>.<name>`)
@@ -116,3 +190,40 @@ records `pdf: {ok: false, error: "disabled"}`.
 - `builds/weekly-*`: unlinked builds older than 30 days are removed; builds
   referenced by `weekly/*` or `latest-weekly` are kept indefinitely.
 - `failed/*.receipt.json`: removed after 30 days.
+
+
+## Dashboard interaction and dates
+
+All tables initially show 15 rows (positions: 25) with an explicit total and
+«Показать все (N)». Headers sort text/numeric data, with missing values last.
+Search, engine, cluster and position filters compose before the row limit.
+Without JavaScript the first rows remain visible. Wide matrices scroll
+horizontally and keep the query column sticky. Source/medium labels are human
+readable; raw dimensions appear only in titles. Missing cells show an em dash
+with an explanation; absent observations are never invented zeros.
+
+Dates use Russian month abbreviations; build timestamps use Europe/Moscow.
+ISO dates remain in JSON and datetime/data attributes. Source chips point to
+«Состояние», where source purpose, status and alert participation are explained.
+Only incomplete coverage is called out. Mixpanel remains a separate sample
+card with its server registration denominator.
+
+### Monetary units
+
+All monetary presentation (current KPI values and comparisons, sparkline maxima,
+daily money tables, weekly/English HTML/PDF and Markdown briefs) uses the same
+explicit minor-unit exponents. Raw `value_minor` and `revenue_minor` stay unchanged
+in JSON and calculations. Formatting uses Decimal, preserving native precision
+without routing integer minor values through binary floating point.
+
+| Currency | Exponent | Minor units per unit |
+| --- | ---: | ---: |
+| RUB / USD / EUR | 2 | 100 |
+| XTR / JPY | 0 | 1 |
+| TON | 9 | 1,000,000,000 |
+| KWD | 3 | 1,000 |
+
+Unknown or absent currency codes produce an explicit localized unsupported-currency
+message instead of assuming cents. A money chart with an unknown series currency
+is withheld. Current cards omit decimals for integral amounts; legacy reports
+retain fixed native precision. This is unit scaling, not currency conversion.

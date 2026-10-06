@@ -1,5 +1,5 @@
 # Generated from plugins/openrouter-setup/commands/openrouter-setup.md
 interface:
   display_name: "Openrouter Setup:Openrouter Setup"
-  short_description: "Configure OpenRouter as an OpenAI-compatible endpoint (OPENROUTER_API_KEY in env, never in code) for moonshotai/kimi-..."
+  short_description: "Configure OpenRouter as OpenAI-compatible endpoint: kimi-k3, deepseek-v4, glm-*"
   default_prompt: "Use `openrouter-setup`."

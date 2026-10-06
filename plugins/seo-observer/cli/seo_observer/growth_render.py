@@ -8,8 +8,12 @@ brief is plain Markdown without Telegram HTML tags.
 from __future__ import annotations
 
 import html
+import heapq
 from datetime import datetime
 from typing import Any
+
+from seo_observer.growth import _fully_covered, _kpi_source_sets
+from seo_observer.money import format_minor
 
 
 _KPI_ORDER = (
@@ -89,6 +93,7 @@ _STRINGS = {
         "brief_visit_to_signup": "Визит → регистрация: {value}{estimate}",
         "brief_panel": "Панель: {url}",
         "brief_no_data": "нет данных",
+        "unsupported_currency": "валюта не поддерживается ({currency})",
         "revenue_currency": "{amount} {currency}",
         "coverage_partial": "неполные данные",
         "search_data_through": "данные поиска по {date} ({source})",
@@ -114,6 +119,94 @@ _STRINGS = {
         "sources_all_live": "все живые",
         "brief_coverage": "Покрытие: {covered} из {days} дней",
         "brief_top_channels": "Топ каналов: {channels}",
+        "dashboard_summary": "Сводка",
+        "dashboard_positions": "Позиции",
+        "dashboard_demand": "Спрос и страницы",
+        "dashboard_traffic": "Трафик",
+        "dashboard_money": "Регистрации и деньги",
+        "dashboard_yandex": "Яндекс",
+        "dashboard_metrica": "Яндекс.Метрика",
+        "dashboard_auth": "База: регистрации",
+        "dashboard_pay": "База: оплаты",
+        "dashboard_empty_table": "<p class=\"caption\">Нет данных за выбранный период</p>",
+        "dashboard_no_data": "Нет данных",
+        "dashboard_unknown_currency": "Валюта неизвестна",
+        "dashboard_search_visits": "Визиты из поиска",
+        "dashboard_complete": "Данные полные",
+        "dashboard_partial": "Часть данных",
+        "dashboard_kpi_card": "<a href=\"{0}\"><b class=\"value\">{1}</b></a><p>Было {2} → стало {3}</p><p>{4} · {5}</p><p class=\"caption\">Покрыто дней: {6}</p>",
+        "dashboard_trend_note": "<p class=\"caption\">Последние 12 недель. Пропуски не заменяются нулём; доступные значения могут быть неполными.</p>",
+        "dashboard_empty": "<p>Нет данных</p>",
+        "dashboard_trends": "Как менялись показатели",
+        "dashboard_unmeasured": "Не замерено",
+        "dashboard_beyond_100": "За 100",
+        "dashboard_query_filter": "<div class=\"filters\"><label>Найти запрос <input data-filter type=\"search\"></label>",
+        "dashboard_engine_filter": "<label>Поисковик <select data-engine-filter><option value=\"\">Все</option><option value=\"google_search_console\">Google</option><option value=\"yandex_webmaster\">Яндекс</option></select></label>",
+        "dashboard_position_filter": "<label>Средняя позиция <select data-bucket-filter><option value=\"\">Все</option>",
+        "dashboard_positions_note": "<p class=\"caption\">Средняя позиция взвешена по показам. Это данные кабинетов Google/Яндекса, а не отдельный замер выдачи. Таблицы — доступная выборка; их суммы не равны общим итогам поиска.</p>",
+        "dashboard_buckets_note": "<p class=\"caption\">Группы описывают средние позиции, не долю сайта в ТОПе. Непоказанные запросы не считаются «за 100». Кластеры в этом экспорте не заданы.</p>",
+        "dashboard_unknown_date": "неизвестную дату",
+        "dashboard_search_through": "<p class=\"caption\">Данные таблиц по {0}. Всего запросов: {1}. ",
+        "dashboard_observed_changes": "Изменения относятся к наблюдаемой выборке.</p>",
+        "dashboard_incomparable": "Периоды неполные или свежесть не подтверждена: изменение не вычисляется.</p>",
+        "dashboard_average_position": "Средняя позиция",
+        "dashboard_query_count": "Запросов",
+        "dashboard_before": "Было",
+        "dashboard_after": "Стало",
+        "dashboard_improvement": "Улучшение",
+        "dashboard_impressions_change": "Показы: было → стало",
+        "dashboard_clicks_change": "Клики: было → стало",
+        "dashboard_queries_limit": "<p class=\"caption\">Показаны 500 запросов с наибольшим числом показов; распределение рассчитано по всей выборке.</p>",
+        "dashboard_opportunities": "<h3>Возможности роста</h3><p class=\"caption\">Эвристика: ≥20 показов, средняя позиция 4–20 и CTR &lt;5%. Это список для проверки, не прогноз.</p>",
+        "dashboard_pages_heading": "<h3>Страницы</h3>",
+        "dashboard_query_pages_missing": "<p class=\"caption\">Связь страницы с запросами не собирается в этом источнике.</p>",
+        "dashboard_page_queries_limit": "<p class=\"caption\">Показаны 100 из {0} запросов с наибольшим числом показов.</p>",
+        "dashboard_pages_missing": "<p>Нет данных о страницах</p>",
+        "dashboard_pages_limit": "<p class=\"caption\">Показаны 100 страниц с наибольшим числом показов.</p>",
+        "dashboard_other_channel": "Другой канал",
+        "dashboard_channels": "Каналы",
+        "dashboard_visits_before": "Было визитов",
+        "dashboard_visits_after": "Стало визитов",
+        "dashboard_traffic_note": "<p class=\"caption\">Наблюдаемые визиты. Визиты можно складывать; уникальных пользователей по страницам нельзя складывать. Пустые страницы входа не входят в список страниц, но учитываются в каналах. Ноль без строки показан только при полном покрытии периода.</p>",
+        "dashboard_app_visits": "<p>{0} визитов в продукт. Исключены из привлечения.</p>",
+        "dashboard_app_missing": "<p>Отдельных данных нет. Разделение требует настроенных путей приложения.</p>",
+        "dashboard_sources": "Источники",
+        "dashboard_source_medium": "Источник / тип перехода",
+        "dashboard_landing_pages": "Страницы входа",
+        "dashboard_landing_note": "<p class=\"caption\">До 100 страниц с наибольшим числом визитов; без объединения со срезом источников, такой связи в экспорте нет.</p>",
+        "dashboard_noise": "<p class=\"caption\">Исключено как шум: {0} визитов.</p>",
+        "dashboard_other_outcome": "Другой результат",
+        "dashboard_all_channels": "Все каналы",
+        "dashboard_conversion_note": "<p class=\"caption\">Визит → регистрация — отношение общих регистраций к визитам по существующему контракту показателей, не атрибуция регистраций каналу.</p>",
+        "dashboard_server_daily": "По дням · База",
+        "dashboard_signup_channel": "Канал регистрации",
+        "dashboard_count": "Количество",
+        "dashboard_amount": "Сумма",
+        "dashboard_payment_note": "<p class=\"caption\">Первые и повторные оплаты: разделение не собирается. Суммы разных валют не складываются.</p>",
+        "dashboard_mixpanel_channels": "Каналы регистраций · Mixpanel",
+        "dashboard_mixpanel_note": "<p class=\"caption\">Выборка событий, не полный итог базы. Не прибавляется к регистрациям.</p>",
+        "dashboard_signup_events": "События регистрации",
+        "dashboard_received": "Данные получены",
+        "dashboard_stale": "Устарели",
+        "dashboard_stale_suffix": " · Устарели",
+        "dashboard_age_days": "{0} дней",
+        "dashboard_covered_days": "{0} из {1}",
+        "dashboard_freshness": "Свежесть источников",
+        "dashboard_data_through": "Данные по",
+        "dashboard_lag": "Задержка",
+        "dashboard_collected": "Получено",
+        "dashboard_timezone": "Часовой пояс",
+        "dashboard_site_checks": "Проверки сайта",
+        "dashboard_checks_missing": "<p>Диагностика Яндекса: данные не собираются</p><p class=\"caption\">Индексация, технический аудит и ссылки: нет подтверждённого набора в этом экспорте.</p>",
+        "dashboard_summary_note": "<p class=\"caption\">Поиск — визиты GA4. Регистрации и оплаты — все каналы из базы; это не сквозная воронка.</p>",
+        "dashboard_nav": "<nav aria-label=\"Разделы\">",
+        "dashboard_7d_link": ">7 дней</a>",
+        "dashboard_28d_link": ">28 дней</a>",
+        "dashboard_window_comparison": "{0} — {1} против {2} — {3}",
+        "dashboard_freshness_open": "<p class=\"caption\">Свежесть и полнота: ",
+        "dashboard_source_freshness": "{0}: по {1}, {2}/{3} дней",
+        "dashboard_status_link": ". <a href=\"status.html\">Состояние</a></p>",
+        "dashboard_document": "<!doctype html><html lang=\"ru\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>{0} · {1}</title><style>{2}{3}</style></head><body><main><div class=\"brand\">{4} · Рост</div>{5}<div class=\"periods\">{6}</div><h1>{7}</h1><p class=\"meta\">{8} · Собрано {9}</p>{10}{11}</main>{12}</body></html>",
     },
     "en": {
         "section_summary": "Summary",
@@ -178,6 +271,7 @@ _STRINGS = {
         "brief_visit_to_signup": "Visit → signup: {value}{estimate}",
         "brief_panel": "Panel: {url}",
         "brief_no_data": "no data",
+        "unsupported_currency": "unsupported currency ({currency})",
         "revenue_currency": "{amount} {currency}",
         "coverage_partial": "partial data",
         "search_data_through": "search data through {date} ({source})",
@@ -203,6 +297,94 @@ _STRINGS = {
         "sources_all_live": "all live",
         "brief_coverage": "Coverage: {covered} of {days} days",
         "brief_top_channels": "Top channels: {channels}",
+        "dashboard_summary": "Summary",
+        "dashboard_positions": "Positions",
+        "dashboard_demand": "Demand and pages",
+        "dashboard_traffic": "Traffic",
+        "dashboard_money": "Registrations and revenue",
+        "dashboard_yandex": "Yandex",
+        "dashboard_metrica": "Yandex.Metrica",
+        "dashboard_auth": "Database: registrations",
+        "dashboard_pay": "Database: payments",
+        "dashboard_empty_table": "<p class=\"caption\">No data for the selected period</p>",
+        "dashboard_no_data": "No data",
+        "dashboard_unknown_currency": "Unknown currency",
+        "dashboard_search_visits": "Visits from search",
+        "dashboard_complete": "Complete data",
+        "dashboard_partial": "Partial data",
+        "dashboard_kpi_card": "<a href=\"{0}\"><b class=\"value\">{1}</b></a><p>Previously {2} → now {3}</p><p>{4} · {5}</p><p class=\"caption\">Days covered: {6}</p>",
+        "dashboard_trend_note": "<p class=\"caption\">Last 12 weeks. Missing values are not replaced with zero; available values may be incomplete.</p>",
+        "dashboard_empty": "<p>No data</p>",
+        "dashboard_trends": "How metrics changed",
+        "dashboard_unmeasured": "Not measured",
+        "dashboard_beyond_100": "Beyond 100",
+        "dashboard_query_filter": "<div class=\"filters\"><label>Find a query <input data-filter type=\"search\"></label>",
+        "dashboard_engine_filter": "<label>Search engine <select data-engine-filter><option value=\"\">All</option><option value=\"google_search_console\">Google</option><option value=\"yandex_webmaster\">Yandex</option></select></label>",
+        "dashboard_position_filter": "<label>Average position <select data-bucket-filter><option value=\"\">All</option>",
+        "dashboard_positions_note": "<p class=\"caption\">Average position is weighted by impressions. These are Google/Yandex console data, not separate SERP measurements. Tables show an available sample; their sums do not equal search totals.</p>",
+        "dashboard_buckets_note": "<p class=\"caption\">Groups describe average positions, not the site's share of top results. Unreported queries are not counted as beyond 100. Clusters are not defined in this export.</p>",
+        "dashboard_unknown_date": "an unknown date",
+        "dashboard_search_through": "<p class=\"caption\">Table data through {0}. Total queries: {1}. ",
+        "dashboard_observed_changes": "Changes refer to the observed sample.</p>",
+        "dashboard_incomparable": "Periods are incomplete or freshness is unconfirmed: changes are not calculated.</p>",
+        "dashboard_average_position": "Average position",
+        "dashboard_query_count": "Queries",
+        "dashboard_before": "Previously",
+        "dashboard_after": "Now",
+        "dashboard_improvement": "Improvement",
+        "dashboard_impressions_change": "Impressions: previously → now",
+        "dashboard_clicks_change": "Clicks: previously → now",
+        "dashboard_queries_limit": "<p class=\"caption\">Showing the 500 queries with the most impressions; the distribution uses the full sample.</p>",
+        "dashboard_opportunities": "<h3>Growth opportunities</h3><p class=\"caption\">Heuristic: ≥20 impressions, average position 4–20 and CTR &lt;5%. This is a checklist, not a forecast.</p>",
+        "dashboard_pages_heading": "<h3>Pages</h3>",
+        "dashboard_query_pages_missing": "<p class=\"caption\">Page-to-query relationships are not collected by this source.</p>",
+        "dashboard_page_queries_limit": "<p class=\"caption\">Showing 100 of {0} queries with the most impressions.</p>",
+        "dashboard_pages_missing": "<p>No page data</p>",
+        "dashboard_pages_limit": "<p class=\"caption\">Showing the 100 pages with the most impressions.</p>",
+        "dashboard_other_channel": "Other channel",
+        "dashboard_channels": "Channels",
+        "dashboard_visits_before": "Previous visits",
+        "dashboard_visits_after": "Current visits",
+        "dashboard_traffic_note": "<p class=\"caption\">Observed visits. Visits can be summed; unique users across pages cannot. Empty landing pages are omitted from the page list but included in channels. A missing row is shown as zero only with complete period coverage.</p>",
+        "dashboard_app_visits": "<p>{0} product visits. Excluded from acquisition.</p>",
+        "dashboard_app_missing": "<p>No separate data. This breakdown requires configured application paths.</p>",
+        "dashboard_sources": "Sources",
+        "dashboard_source_medium": "Source / medium",
+        "dashboard_landing_pages": "Landing pages",
+        "dashboard_landing_note": "<p class=\"caption\">Up to 100 pages with the most visits; not joined to the source breakdown, as that relationship is absent from the export.</p>",
+        "dashboard_noise": "<p class=\"caption\">Excluded as noise: {0} visits.</p>",
+        "dashboard_other_outcome": "Other outcome",
+        "dashboard_all_channels": "All channels",
+        "dashboard_conversion_note": "<p class=\"caption\">Visit → registration is total registrations divided by visits under the existing metric contract, not registration attribution to a channel.</p>",
+        "dashboard_server_daily": "By day · Database",
+        "dashboard_signup_channel": "Registration channel",
+        "dashboard_count": "Count",
+        "dashboard_amount": "Amount",
+        "dashboard_payment_note": "<p class=\"caption\">First and repeat payments: the breakdown is not collected. Amounts in different currencies are not summed.</p>",
+        "dashboard_mixpanel_channels": "Registration channels · Mixpanel",
+        "dashboard_mixpanel_note": "<p class=\"caption\">Event sample, not the complete Database total. Not added to registrations.</p>",
+        "dashboard_signup_events": "Registration events",
+        "dashboard_received": "Data received",
+        "dashboard_stale": "Stale",
+        "dashboard_stale_suffix": " · Stale",
+        "dashboard_age_days": "{0} days",
+        "dashboard_covered_days": "{0} of {1}",
+        "dashboard_freshness": "Source freshness",
+        "dashboard_data_through": "Data through",
+        "dashboard_lag": "Lag",
+        "dashboard_collected": "Collected",
+        "dashboard_timezone": "Time zone",
+        "dashboard_site_checks": "Site checks",
+        "dashboard_checks_missing": "<p>Yandex diagnostics: data is not collected</p><p class=\"caption\">Indexing, technical audit and links: no verified dataset in this export.</p>",
+        "dashboard_summary_note": "<p class=\"caption\">Search means GA4 visits. Registrations and payments cover all channels in the Database; this is not an attributed funnel.</p>",
+        "dashboard_nav": "<nav aria-label=\"Sections\">",
+        "dashboard_7d_link": ">7 days</a>",
+        "dashboard_28d_link": ">28 days</a>",
+        "dashboard_window_comparison": "{0} — {1} versus {2} — {3}",
+        "dashboard_freshness_open": "<p class=\"caption\">Freshness and completeness: ",
+        "dashboard_source_freshness": "{0}: through {1}, {2}/{3} days",
+        "dashboard_status_link": ". <a href=\"status.html\">Status</a></p>",
+        "dashboard_document": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>{0} · {1}</title><style>{2}{3}</style></head><body><main><div class=\"brand\">{4} · Growth</div>{5}<div class=\"periods\">{6}</div><h1>{7}</h1><p class=\"meta\">{8} · Collected {9}</p>{10}{11}</main>{12}</body></html>",
     },
 }
 
@@ -260,16 +442,14 @@ def _fmt_delta(value: float | None, s: dict[str, str]) -> str:
     return f"{sign}{value:.1f}%"
 
 
-def _fmt_abs_change(name: str, diff: float, kpi: dict[str, Any], s: dict[str, str]) -> str:
+def _fmt_abs_change(name: str, diff: int | float, kpi: dict[str, Any], s: dict[str, str]) -> str:
     sign = "+" if diff > 0 else ""
     if name == "revenue_minor":
-        amount = f"{sign}{abs(diff) / 100:,.2f}" if diff >= 0 else f"-{abs(diff) / 100:,.2f}"
-        currency = kpi.get("currency")
-        if currency:
-            return s["revenue_currency"].format(
-                amount=amount, currency=_esc(currency)
-            )
-        return amount
+        currency = kpi.get("currency") or kpi.get("previous_currency")
+        amount = format_minor(diff, currency)
+        if amount is None:
+            return _esc(s["unsupported_currency"].format(currency=currency or "—"))
+        return s["revenue_currency"].format(amount=sign + amount, currency=_esc(currency))
     if name == "visit_to_signup":
         return f"{sign}{diff * 100:.1f} pp"
     return f"{sign}{_fmt_int(diff)}"
@@ -295,7 +475,7 @@ def _fmt_kpi_delta(
     diff = kpi.get(abs_field)
     if diff is None:
         return "—"
-    return _fmt_abs_change(name, float(diff), kpi, s)
+    return _fmt_abs_change(name, diff, kpi, s)
 
 
 def _fmt_ts(value: Any) -> str:
@@ -321,13 +501,11 @@ def _fmt_kpi(name: str, kpi: dict[str, Any], s: dict[str, str]) -> str:
     if name == "visit_to_signup":
         return _fmt_pct(float(value))
     if name == "revenue_minor":
-        amount = f"{int(value) / 100:,.2f}".replace(",", " ")
         currency = kpi.get("currency")
-        if currency:
-            return s["revenue_currency"].format(
-                amount=amount, currency=_esc(currency)
-            )
-        return amount
+        amount = format_minor(value, currency)
+        if amount is None:
+            return _esc(s["unsupported_currency"].format(currency=currency or "—"))
+        return s["revenue_currency"].format(amount=amount, currency=_esc(currency))
     if isinstance(value, float):
         return _fmt_int(value)
     return _fmt_int(int(value))
@@ -1015,3 +1193,43 @@ def render_brief(
     if panel_url:
         lines.append(s["brief_panel"].format(url=panel_url))
     return "\n".join(lines) + "\n"
+
+
+def _page_query_details(block: dict[str, Any], pages: list[dict[str, Any]]) -> tuple[dict[str, list[dict[str, Any]]], dict[str, int]]:
+    # One pass, with at most 100 retained query rows per displayed page.
+    heaps: dict[str, list[Any]] = {row['page']: [] for row in pages}
+    counts = dict.fromkeys(heaps, 0)
+    for ordinal, row in enumerate(block.get('query_pages') or []):
+        page = row['page']
+        if page not in heaps:
+            continue
+        counts[page] += 1
+        entry = (row['impressions'], row['clicks'], -ordinal, row)
+        heap = heaps[page]
+        if len(heap) < 100:
+            heapq.heappush(heap, entry)
+        elif entry > heap[0]:
+            heapq.heapreplace(heap, entry)
+    return ({page: [item[3] for item in sorted(heap, reverse=True)] for page, heap in heaps.items()}, counts)
+
+
+# Compatibility facade for callers of the original current-panel renderer.
+# Import lazily: dashboard uses the shared formatting helpers above.
+def render_dashboard_pages(growth, *, title, generated_at, panel=None):
+    from seo_observer.growth_dashboard import render_dashboard_pages as render
+    return render(growth, title=title, generated_at=generated_at, panel=panel)
+
+
+def position_buckets(queries):
+    from seo_observer.growth_dashboard import position_buckets as partition
+    return partition(queries)
+
+
+def _detail_comparable(current, previous, source):
+    from seo_observer.growth_dashboard import _detail_comparable as comparable
+    return comparable(current, previous, source)
+
+
+def _dash_through(growth, source):
+    from seo_observer.growth_dashboard import _dash_through as through
+    return through(growth, source)

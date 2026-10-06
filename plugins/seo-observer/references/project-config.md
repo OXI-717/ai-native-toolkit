@@ -413,3 +413,30 @@ the aggregate outcome and reconciliation foundation is documented in
 `plugins/seo-observer/references/outcomes.md`;
 local SQLite storage is documented separately in
 `plugins/seo-observer/references/storage.md`.
+
+## Growth panel theme
+
+Optional `[panel]` controls the Russian current growth dashboard. Defaults are
+neutral and tenant-independent:
+
+```toml
+[panel]
+title = "Рост"
+accent = "#80e0b0"
+background = "#0b0e14"
+surface = "#121620"
+text = "#f2f4f8"
+```
+
+Colors must be six-digit `#rrggbb` strings (case-insensitive). Invalid colors,
+unknown fields, a non-table panel or an empty/non-string title fail config
+validation (`PANEL_INVALID`). Titles are HTML-escaped. No network font requests:
+Manrope Latin/Cyrillic WOFF2 and SIL OFL are packaged with the CLI; HTML embeds
+the font as a data URI. Weekly/PDF and English documents keep their existing
+layout. Theme values participate in the immutable render identity.
+
+Position clusters use the configured `[[keyword_sets]]` paths, including
+`keywords/ru-core-clustered.txt`. Existing `# cluster:` and `# --- кластер:`
+markup is supported. Matching ignores case and repeated whitespace. The first
+marked cluster in config order wins duplicate labels; unmarked keywords do not
+overwrite a marked cluster. Queries outside marked sets appear as «без кластера».
