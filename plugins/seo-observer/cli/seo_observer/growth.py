@@ -1,9 +1,9 @@
-"""growth_v1 panel builder: raw per-day aggregates over a calendar window.
+"""growth schema v3 panel builder: raw per-day aggregates over a calendar window.
 
 Read-only over SEOStorage. Everything here is a raw window aggregate; derived
 KPIs (non-brand totals, deltas, visit-to-signup) live in ``derive_growth``.
 The output carries business numbers (registrations, revenue) but never person
-identifiers — growth_v1 is the private panel format.
+identifiers — growth JSON is the private panel format.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from seo_observer.storage import (
 )
 
 
-GROWTH_SCHEMA_VERSION = 1
+GROWTH_SCHEMA_VERSION = 3
 AGGREGATE_MARKERS = frozenset({RESERVED_ALL, "__aggregate__"})
 ACTION_LOOKBACK_DAYS = 90
 # ``data_through`` further than this many days before the window end is a
@@ -103,10 +103,38 @@ def _export_path(path: str) -> str:
     Detection runs on the percent-decoded segment, but a safe segment keeps
     its original encoding so ``/a%2Fb`` and ``/a/b`` stay distinct pages.
     """
+    private_segment = re.compile(
+        r"(?:[0-9a-fA-F]{16,}|[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}|"
+        r"[0-9]{6,})"
+    )
+    def identifying(value: str, minimum: int = 20) -> bool:
+        return bool(
+            private_segment.fullmatch(value)
+            or (
+                re.fullmatch(r"[A-Za-z0-9_+=-]{%d,}" % minimum, value)
+                and re.search(r"[A-Za-z]", value)
+                and re.search(r"[0-9]", value)
+                and not re.search(r"[A-Za-z]{2,}-[A-Za-z]{2,}", value)
+            )
+        )
+
     segments = []
     for segment in path.split("/"):
         decoded = unquote(segment)
-        segments.append("[redacted]" if _export_text(decoded) != decoded else segment)
+        parts = decoded.split(".")
+        dotted_token = len(parts) > 1 and all(
+            re.fullmatch(r"[A-Za-z0-9_+=-]+", part) for part in parts
+        ) and (
+            any(identifying(part) for part in parts)
+            or all(identifying(part, minimum=8) for part in parts)
+            or re.fullmatch(r"eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", decoded)
+        )
+        if identifying(decoded) or dotted_token:
+            segments.append(":id")
+        elif _export_text(decoded) != decoded:
+            segments.append("[redacted]")
+        else:
+            segments.append(segment)
     return "/".join(segments)
 
 
@@ -155,7 +183,7 @@ def _build_search(
     )
     details = storage.fetchall(
         f"""
-        SELECT source, query_id, query_text, page_id, page_url,
+        SELECT source, effective_start AS day, query_id, query_text, page_id, page_url,
                impressions, clicks, average_position
         FROM search_performance
         WHERE project_id = ? AND {_daily_fact_clause()}
@@ -178,12 +206,21 @@ def _build_search(
 
     query_aggs: dict[tuple[str, str], dict[str, Any]] = {}
     page_aggs: dict[tuple[str, str], dict[str, Any]] = {}
+    query_page_aggs: dict[tuple[str, str, str], dict[str, Any]] = {}
+    detail_days: dict[str, set[str]] = {}
     for row in details:
         source = str(row["source"])
         if str(row["query_id"]) not in AGGREGATE_MARKERS:
             _accumulate(query_aggs, (source, _export_text(row["query_text"])), row)
         if str(row["page_id"]) not in AGGREGATE_MARKERS:
             _accumulate(page_aggs, (source, _export_url(row["page_url"])), row)
+        if (str(row["query_id"]) not in AGGREGATE_MARKERS
+                or str(row["page_id"]) not in AGGREGATE_MARKERS):
+            detail_days.setdefault(source, set()).add(str(row["day"]))
+        if (str(row["query_id"]) not in AGGREGATE_MARKERS
+                and str(row["page_id"]) not in AGGREGATE_MARKERS):
+            _accumulate(query_page_aggs,
+                        (source, _export_text(row["query_text"]), _export_url(row["page_url"])), row)
 
     enabled_search = {
         str(row["source"])
@@ -249,6 +286,12 @@ def _build_search(
             "daily": daily,
             "queries": queries,
             "pages": pages,
+            "query_pages": [
+                {"query": key[1], "page": key[2],
+                 "impressions": agg["impressions"], "clicks": agg["clicks"]}
+                for key, agg in sorted(query_page_aggs.items()) if key[0] == source
+            ],
+            "details_through": max(detail_days.get(source, set()), default=None),
             "data_through": data_through,
             "totals_available": any(item["total"] for item in daily),
             "search_gap": bool(
@@ -265,7 +308,7 @@ def _build_search(
 
 def _accumulate(
     aggs: dict[tuple[str, str], dict[str, Any]],
-    key: tuple[str, str],
+    key: tuple[str, ...],
     row: dict[str, Any],
 ) -> None:
     agg = aggs.setdefault(key, {"impressions": 0, "clicks": 0, "pos_num": 0.0, "pos_den": 0})
@@ -332,7 +375,7 @@ def _build_traffic(
             landing_rows.append(row)
     daily: dict[tuple[str, str], dict[str, int]] = {}
     sources: dict[tuple[str, str], int] = {}
-    landing: dict[tuple[str, str], int] = {}
+    landing: dict[str, dict[str, int]] = {}
     noise_visits = 0
     noise_sources: set[str] = set()
     for (day, channel, source_medium), group in grouped.items():
@@ -412,8 +455,8 @@ def _build_traffic(
         if page.startswith("page:"):
             page = page[len("page:"):]
         page = _export_url(page)
-        key = (channel, page)
-        landing[key] = landing.get(key, 0) + int(row["visits"] or 0)
+        by_channel = landing.setdefault(page, {})
+        by_channel[channel] = by_channel.get(channel, 0) + int(row["visits"] or 0)
     return {
         "daily": [
             {
@@ -431,9 +474,10 @@ def _build_traffic(
             )
         ],
         "landing_pages": [
-            {"channel": channel, "page": page, "visits": visits}
-            for (channel, page), visits in sorted(
-                landing.items(), key=lambda kv: (-kv[1], kv[0])
+            {"page": page, "visits": sum(counts.values()),
+             "channels": dict(sorted(counts.items()))}
+            for page, counts in sorted(
+                landing.items(), key=lambda kv: (-sum(kv[1].values()), kv[0])
             )
         ],
         "excluded_noise": {"visits": noise_visits, "sources": sorted(noise_sources)},
@@ -673,6 +717,17 @@ def _build_sources(
                 day, []
             ).append(row)
 
+    # Latest factual day in the stored history, independent of selected window.
+    latest_fact_days: dict[str, str] = {}
+    for table in _FACT_DAY_SQL:
+        for row in storage.fetchall(
+            f"SELECT source, MAX(effective_end) AS day FROM {table} "
+            "WHERE project_id = ? AND is_current = 1 AND effective_end <= ? GROUP BY source",
+            (project_id, end_s),
+        ):
+            if row["day"]:
+                name, day = str(row["source"]), str(row["day"])
+                latest_fact_days[name] = max(latest_fact_days.get(name, day), day)
     result: dict[str, Any] = {}
     for source_row in enabled:
         source = str(source_row["source"])
@@ -734,6 +789,7 @@ def _build_sources(
             state = "stale"
         result[source] = {
             "state": state,
+            "data_through": latest_fact_days.get(source),
             # Transport of the latest request: lets consumers tell a failed
             # request (outage) from a successful provisional lag.
             "last_transport_status": (
@@ -784,6 +840,7 @@ _TREND_METRICS = (
     "organic_visits",
     "registrations",
     "payments",
+    "revenue_minor",
 )
 _AVG_WEEKS_MAX = 4
 _WHAT_CHANGED_MAX = 3
@@ -1142,6 +1199,8 @@ def _compute_kpis(
                 previous, _kpi_participants(previous, kpi_sources)
             )
         )
+        if name == "revenue_minor" and previous_metrics is not None:
+            comparable = comparable and metrics["currencies"] == previous_metrics["currencies"]
         delta_pct = None
         delta_abs = None
         if comparable and value is not None and prev_value is not None:
@@ -1166,14 +1225,14 @@ def _compute_kpis(
                 or _search_lag_gap(week, week_sources)
             ):
                 continue
-            week_value = _kpi_value(
-                name,
-                _raw_metrics(
-                    week,
-                    search_days=_search_allowed_dates(week, limits),
-                    search_sources=week_sources & _SEARCH_FACT_SOURCES,
-                ),
+            week_metrics = _raw_metrics(
+                week,
+                search_days=_search_allowed_dates(week, limits),
+                search_sources=week_sources & _SEARCH_FACT_SOURCES,
             )
+            if name == "revenue_minor" and week_metrics["currencies"] != metrics["currencies"]:
+                continue
+            week_value = _kpi_value(name, week_metrics)
             if week_value is not None:
                 week_values.append(week_value)
         avg4 = (
@@ -1200,6 +1259,8 @@ def _compute_kpis(
             "days_covered": covered,
         }
         if name == "revenue_minor":
+            if previous_metrics is not None and len(previous_metrics["currencies"]) == 1:
+                kpi["previous_currency"] = previous_metrics["currencies"][0]
             currencies = sorted(metrics["currencies"])
             if len(currencies) == 1:
                 kpi["currency"] = currencies[0]
@@ -1341,6 +1402,9 @@ def _trend_12w(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 _days_covered(week, s) > 0 for s in kpi_sources
             )
             entry[name] = _kpi_value(name, metrics) if has_data else None
+        entry["revenue_currency"] = (
+            metrics["currencies"][0] if len(metrics["currencies"]) == 1 else None
+        )
         trend.append(entry)
     return trend
 

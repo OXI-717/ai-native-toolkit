@@ -93,3 +93,8 @@ def _match_frequency(comment: str) -> tuple[int | None, int | None]:
             exact = found.group("exact")
             return int(found.group("base")), int(exact) if exact else None
     return None, None
+
+
+def clean_cluster(name: str) -> str:
+    """Remove numeric keyword-set annotations, retaining meaningful parentheses."""
+    return re.sub(r"\s+\(\d+\s+[^(),]+,\s*[^()]*\d+\)\s*$", "", name)

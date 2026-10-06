@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import dataclasses
 from pathlib import Path
 
+from seo_observer.growth_locale import text as panel_text
 from seo_observer.credential_source import CredentialSource
 from typing import Any
 from urllib.parse import urlparse
@@ -196,6 +197,33 @@ class MarketConfig:
 
 
 @dataclass(frozen=True)
+class PanelConfig:
+    title: str = panel_text("panel_title")
+    accent: str = "#80e0b0"
+    background: str = "#0b0e14"
+    surface: str = "#121620"
+    text: str = "#f2f4f8"
+
+    def __post_init__(self):
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("panel.title must be a nonempty string")
+        for name in ("accent", "background", "surface", "text"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+                raise ValueError(f"panel.{name} must be #rrggbb")
+
+
+def _parse_panel(raw: dict[str, Any], path: Path) -> PanelConfig:
+    panel = raw.get("panel", {})
+    if not isinstance(panel, dict):
+        _invalid("PANEL_INVALID", path, "panel must be a table")
+    try:
+        return PanelConfig(**panel)
+    except (TypeError, ValueError) as exc:
+        _invalid("PANEL_INVALID", path, str(exc))
+
+
+@dataclass(frozen=True)
 class ProjectConfig:
     path: Path
     project: ProjectIdentity
@@ -217,6 +245,7 @@ class ProjectConfig:
     markets: tuple[MarketConfig, ...] = ()
     credential_source: CredentialSource = CredentialSource()
     channels: ChannelsConfig = ChannelsConfig()
+    panel: PanelConfig = PanelConfig()
 
 
 def observer_home() -> Path:
@@ -288,6 +317,7 @@ def load_project_config(path: Path) -> ProjectConfig:
         markets=markets,
         credential_source=credential_source,
         channels=channels,
+        panel=_parse_panel(raw, config_path),
     )
 
 

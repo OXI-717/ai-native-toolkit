@@ -17,13 +17,16 @@ import os
 import shutil
 import stat
 import uuid
+from dataclasses import asdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from seo_observer.channels import ChannelsConfig
+from seo_observer.config import PanelConfig, KeywordSet, MarketConfig
+from seo_observer.keyword_clusters import parse_keyword_file, clean_cluster
 from seo_observer.growth import build_growth, derive_growth
-from seo_observer.growth_render import render_brief, render_panel_html
+from seo_observer.growth_render import render_brief, render_panel_html, render_dashboard_pages
 from seo_observer.report_rendering import render_pdf_from_html
 from seo_observer.storage import SEOStorage
 
@@ -51,7 +54,7 @@ def select_finalized_week(today: date) -> tuple[date, date]:
 
 
 def growth_hash(growth: dict[str, Any]) -> str:
-    """sha256 of the canonical growth_v1 payload minus build-time fields."""
+    """sha256 of the canonical growth payload minus build-time fields."""
     stripped = _strip_time_fields(growth)
     canonical = json.dumps(stripped, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -145,6 +148,34 @@ def _link_build_name(link: Path) -> str | None:
     return Path(os.readlink(link)).name
 
 
+def _keyword_clusters(
+    keyword_sets: list[KeywordSet], markets: tuple[MarketConfig, ...],
+) -> dict[str, dict[str, str | None]]:
+    """Resolve configured markets to the search source available on dashboard rows.
+
+    Unscoped legacy sets are shared fallbacks. If multiple markets on the same
+    engine disagree, retain an explicit ambiguity instead of picking file order.
+    """
+    sources = {"google": "google_search_console", "yandex": "yandex_webmaster"}
+    market_sources = {m.id: sources.get(m.search_engine) for m in markets}
+    clusters: dict[str, dict[str, str | None]] = {}
+    for keyword_set in keyword_sets:
+        source = market_sources.get(keyword_set.market) if keyword_set.market else "*"
+        if source is None:
+            # An unresolved market must never become a cross-engine fallback.
+            continue
+        scoped = clusters.setdefault(source, {})
+        for keyword in parse_keyword_file(keyword_set.path):
+            if keyword.cluster:
+                query = " ".join(keyword.keyword.casefold().split())
+                cluster = clean_cluster(keyword.cluster)
+                if query in scoped and scoped[query] != cluster:
+                    scoped[query] = None
+                else:
+                    scoped[query] = cluster
+    return clusters
+
+
 def export_growth(
     storage: SEOStorage,
     *,
@@ -152,6 +183,9 @@ def export_growth(
     kind: str,
     out_dir: Path,
     channels: ChannelsConfig = ChannelsConfig(),
+    panel: PanelConfig = PanelConfig(),
+    keyword_sets: list[KeywordSet] | None = None,
+    markets: tuple[MarketConfig, ...] = (),
     end_date: date | None = None,
     week_start: date | None = None,
     panel_url: str | None = None,
@@ -235,12 +269,29 @@ def export_growth(
             for name, (w, p) in extra_windows.items()
         }
     growth["derived"] = derive_growth(growth, previous, history, extra_windows=extras)
+    if kind == "current" and locale == "ru":
+        # Raw comparison/detail windows are part of the immutable identity too.
+        # Each window's KPIs reuse exactly the same derive_growth calculations.
+        for wide, wide_previous in (extras or {}).values():
+            wide["derived"] = derive_growth(wide, wide_previous, history)
+        growth["dashboard"] = {
+            "previous": previous,
+            "history": history,
+            **{
+                name: {"current": wide, "previous": wide_previous}
+                for name, (wide, wide_previous) in (extras or {}).items()
+            },
+        }
+    if "dashboard" in growth:
+        growth["dashboard"]["keyword_clusters"] = _keyword_clusters(keyword_sets or [], markets)
     growth["generated_at"] = produced_at
     digest = growth_hash(growth)
     # The immutable build identity covers the render options too: an export
     # produced with --no-pdf must not satisfy a later run that wants a PDF,
     # and a changed panel_url or locale must produce a new build directory.
-    render_options: dict[str, Any] = {"locale": locale}
+    render_options: dict[str, Any] = {
+        "locale": locale, "dashboard_version": 7, "panel": asdict(panel)
+    }
     if kind == "weekly":
         render_options["pdf"] = not no_pdf
         render_options["panel_url"] = panel_url
@@ -310,10 +361,20 @@ def export_growth(
         )
         (tmp_dir / "growth.json").write_text(growth_text, encoding="utf-8")
         title = f"{project_id} growth {start.isoformat()} — {end.isoformat()}"
-        html_text = render_panel_html(
-            growth, title=title, generated_at=produced_at, locale=locale
-        )
-        (tmp_dir / "index.html").write_text(html_text, encoding="utf-8")
+        if kind == "current" and locale == "ru":
+            pages = render_dashboard_pages(
+                growth, title=panel.title, generated_at=produced_at, panel=panel
+            )
+            for name, html_text in pages.items():
+                path = tmp_dir / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(html_text, encoding="utf-8")
+            files.extend(name for name in pages if name != "index.html")
+        else:
+            html_text = render_panel_html(
+                growth, title=title, generated_at=produced_at, locale=locale
+            )
+            (tmp_dir / "index.html").write_text(html_text, encoding="utf-8")
         if kind == "weekly":
             brief_text = render_brief(growth, panel_url=panel_url, locale=locale)
             (tmp_dir / "brief.md").write_text(brief_text, encoding="utf-8")
