@@ -290,7 +290,7 @@ def export_growth(
     # produced with --no-pdf must not satisfy a later run that wants a PDF,
     # and a changed panel_url or locale must produce a new build directory.
     render_options: dict[str, Any] = {
-        "locale": locale, "dashboard_version": 7, "panel": asdict(panel)
+        "locale": locale, "dashboard_version": 8, "panel": asdict(panel)
     }
     if kind == "weekly":
         render_options["pdf"] = not no_pdf

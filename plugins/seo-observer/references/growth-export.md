@@ -227,3 +227,12 @@ Unknown or absent currency codes produce an explicit localized unsupported-curre
 message instead of assuming cents. A money chart with an unknown series currency
 is withheld. Current cards omit decimals for integral amounts; legacy reports
 retain fixed native precision. This is unit scaling, not currency conversion.
+
+Russian reports use a decimal comma for percentages, CTR, percentage-point
+changes and money, including weekly HTML/PDF and brief. Money display units are
+₽ (RUB), $ (USD), € (EUR), ⭐ (XTR), and TON; English reports retain currency
+codes and decimal points. Daily server outcomes omit the channel column only
+when every row has `unassigned`; totals and known channels remain visible.
+Cluster annotations are stripped only when all comma-separated fields are
+recognized phrase counts or YWS/volume/frequency metadata. Product descriptions
+such as `iPhone (15 Pro, 256)` remain intact.
