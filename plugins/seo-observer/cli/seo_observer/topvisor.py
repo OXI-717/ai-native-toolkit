@@ -77,8 +77,7 @@ class TopvisorHttp(Protocol):
         *,
         body: dict[str, Any],
         headers: dict[str, str],
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -118,7 +117,9 @@ def device_key(device: str) -> int:
     try:
         return DEVICE_KEYS[device]
     except KeyError:
-        raise TopvisorError(f"Topvisor has no device key for device {device!r}") from None
+        raise TopvisorError(
+            f"Topvisor has no device key for device {device!r}"
+        ) from None
 
 
 class PostJsonHttp:
@@ -184,13 +185,19 @@ class TopvisorClient:
         result = self._call(
             "GET",
             TOPVISOR_REGIONS_ENDPOINT,
-            {"searcher_key": searcher_key(search_engine), "search": search, "limit": 10},
+            {
+                "searcher_key": searcher_key(search_engine),
+                "search": search,
+                "limit": 10,
+            },
         )
         if not isinstance(result, list) or not result:
             raise TopvisorError(f"Topvisor knows no region matching {search!r}")
         return dict(result[0])
 
-    def estimate_price(self, *, project_id: int | str, do_snapshots: bool = True) -> float:
+    def estimate_price(
+        self, *, project_id: int | str, do_snapshots: bool = True
+    ) -> float:
         """Free pre-flight. The budget guard must ask the vendor rather than
         model the price itself: depth multiplies the cost linearly."""
 
@@ -204,14 +211,28 @@ class TopvisorClient:
                 "do_snapshots": int(bool(do_snapshots)),
             },
         )
-        prices = (result or {}).get("pricesByUsers", {}) if isinstance(result, dict) else {}
+        prices = result.get("pricesByUsers") if isinstance(result, dict) else None
+        if not isinstance(prices, dict) or not prices:
+            raise TopvisorError("Topvisor price response has no pricesByUsers")
         total = 0.0
         for entry in prices.values():
-            if isinstance(entry, dict) and entry.get("price") is not None:
-                total += float(entry["price"])
+            value = entry.get("price") if isinstance(entry, dict) else None
+            if isinstance(value, bool):
+                raise TopvisorError("Topvisor returned an invalid price")
+            try:
+                price = float(value)
+            except (TypeError, ValueError):
+                raise TopvisorError("Topvisor returned an invalid price") from None
+            if not math.isfinite(price) or price < 0:
+                raise TopvisorError("Topvisor returned an invalid price")
+            total += price
+        if not math.isfinite(total):
+            raise TopvisorError("Topvisor returned an invalid total price")
         return total
 
-    def run_check(self, *, project_id: int | str, do_snapshots: bool = True) -> list[str]:
+    def run_check(
+        self, *, project_id: int | str, do_snapshots: bool = True
+    ) -> list[str]:
         """Paid. Callers own the budget guard and the live-mode confirmation."""
 
         result = self._call(
@@ -224,8 +245,143 @@ class TopvisorClient:
                 "do_snapshots": int(bool(do_snapshots)),
             },
         )
-        ids = (result or {}).get("projectIds", []) if isinstance(result, dict) else []
+        ids = (
+            result.get("projectsIds", result.get("projectIds", []))
+            if isinstance(result, dict)
+            else []
+        )
+        if not isinstance(ids, list) or str(project_id) not in [str(i) for i in ids]:
+            raise TopvisorError("Topvisor did not acknowledge the requested project")
         return [str(item) for item in ids]
+
+    def project_state(self, *, project_id: int | str) -> dict[str, Any]:
+        """Free readiness/date read. No stored snapshots are treated as a run."""
+        result = self._call(
+            "POST",
+            "/v2/json/get/projects_2/projects",
+            {
+                "filters": [
+                    {"name": "id", "operator": "EQUALS", "values": [str(project_id)]}
+                ],
+                "fields": ["id", "status_positions", "positions_time"],
+                "show_searchers_and_regions": 1,
+            },
+        )
+        if (
+            not isinstance(result, list)
+            or len(result) != 1
+            or str(result[0].get("id")) != str(project_id)
+        ):
+            raise TopvisorError("Topvisor project state is missing")
+        return result[0]
+
+    def keyword_inventory(self, *, project_id):
+        """Free inventory retaining IDs for explicit operator synchronization."""
+        inventory = []
+        for offset in range(0, SNAPSHOT_MAX_KEYWORDS, SNAPSHOT_PAGE_SIZE):
+            rows = self._call(
+                "POST",
+                "/v2/json/get/keywords_2/keywords",
+                {
+                    "project_id": int(project_id),
+                    "fields": ["id", "name"],
+                    "orders": [{"name": "id", "direction": "ASC"}],
+                    "limit": SNAPSHOT_PAGE_SIZE,
+                    "offset": offset,
+                },
+            )
+            if not isinstance(rows, list) or any(
+                not isinstance(r, dict)
+                or not isinstance(r.get("name"), str)
+                or not str(r.get("id", "")).isdigit()
+                for r in rows
+            ):
+                raise TopvisorError("Invalid TopVisor keyword inventory")
+            inventory.extend(rows)
+            if len(rows) < SNAPSHOT_PAGE_SIZE:
+                if len({str(r["id"]) for r in inventory}) != len(inventory):
+                    raise TopvisorError("Duplicate IDs in TopVisor inventory")
+                return inventory
+        raise TopvisorError("Keyword inventory exceeds pagination limit")
+
+    def keyword_names(self, *, project_id):
+        return [
+            " ".join(row["name"].casefold().split())
+            for row in self.keyword_inventory(project_id=project_id)
+        ]
+
+    def rename_keyword(self, *, project_id, keyword_id, name):
+        return self._call(
+            "POST",
+            "/v2/json/edit/keywords_2/keywords/rename",
+            {
+                "project_id": int(project_id),
+                "id": int(keyword_id),
+                "name": name,
+            },
+        )
+
+    def delete_keyword(self, *, project_id, keyword_id):
+        return self._call(
+            "POST",
+            "/v2/json/del/keywords_2/keywords",
+            {
+                "project_id": int(project_id),
+                "filters": [
+                    {"name": "id", "operator": "EQUALS", "values": [int(keyword_id)]}
+                ],
+            },
+        )
+
+    def import_keywords(self, *, project_id, names):
+        import csv
+        import io
+
+        output = io.StringIO(newline="")
+        writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+        writer.writerow(["name"])
+        writer.writerows([name] for name in names)
+        return self._call(
+            "POST",
+            "/v2/json/add/keywords_2/keywords/import",
+            {
+                "project_id": int(project_id),
+                "keywords": output.getvalue(),
+            },
+        )
+
+    def fetch_positions(self, *, project_id, region_index, date):
+        """Free position history; '--' means outside the checked depth, not missing."""
+        positions = {}
+        for offset in range(0, SNAPSHOT_MAX_KEYWORDS, SNAPSHOT_PAGE_SIZE):
+            result = self._call(
+                "POST",
+                "/v2/json/get/positions_2/history",
+                {
+                    "project_id": int(project_id),
+                    "regions_indexes": [int(region_index)],
+                    "dates": [date],
+                    "type_range": 100,
+                    "limit": SNAPSHOT_PAGE_SIZE,
+                    "offset": offset,
+                    "positions_fields": ["position", "relevant_url"],
+                },
+            )
+            keywords = result.get("keywords") if isinstance(result, dict) else None
+            if not isinstance(keywords, list):
+                raise TopvisorError("Invalid position history")
+            for row in keywords:
+                value = (row.get("positionsData") or {}).get(
+                    f"{date}:{project_id}:{region_index}", {}
+                )
+                rank = value.get("position")
+                if rank == "--":
+                    positions[row["name"]] = "outside_top10"
+                elif str(rank).isdigit() and int(rank) > 0:
+                    positions[row["name"]] = int(rank)
+            if len(keywords) < SNAPSHOT_PAGE_SIZE:
+                return positions
+        raise TopvisorError("Position history exceeds pagination limit")
 
     def fetch_snapshots(
         self,
@@ -236,6 +392,7 @@ class TopvisorClient:
         region_lang: str,
         device: str,
         date: str,
+        require_date: bool = False,
     ) -> dict[str, list[dict[str, Any]]]:
         """Read the stored SERP for one engine/region/device/date.
 
@@ -266,14 +423,16 @@ class TopvisorClient:
         snapshot: dict[str, list[dict[str, Any]]] = {}
         offset = 0
         while True:
-            page = parse_snapshots(
-                self._call(
-                    "POST",
-                    TOPVISOR_SNAPSHOTS_ENDPOINT,
-                    {**request, "limit": SNAPSHOT_PAGE_SIZE, "offset": offset},
-                ),
-                date=date,
+            result = self._call(
+                "POST",
+                TOPVISOR_SNAPSHOTS_ENDPOINT,
+                {**request, "limit": SNAPSHOT_PAGE_SIZE, "offset": offset},
             )
+            if require_date and (
+                not isinstance(result, dict) or date not in (result.get("dates") or [])
+            ):
+                return {}
+            page = parse_snapshots(result, date=date)
             if not page:
                 break
             snapshot.update(page)
@@ -329,13 +488,18 @@ def parse_snapshots(result: Any, *, date: str) -> dict[str, list[dict[str, Any]]
                 if not isinstance(value, dict):
                     continue
                 url = str(value.get("url") or "")
+                known = bool(url)
+                domain = str(value.get("domain") or _host(url)).lower()
                 if not url:
-                    continue
+                    if not domain or any(c in domain for c in "/:@?# " + chr(92)):
+                        continue
+                    url = f"https://{domain}/"
                 rows.append(
                     {
                         "position": parsed[1],
                         "url": url,
-                        "domain": str(value.get("domain") or _host(url)),
+                        "domain": domain,
+                        **({"url_known": False} if not known else {}),
                     }
                 )
         rows.sort(key=lambda row: row["position"])
@@ -351,7 +515,7 @@ def _parse_snapshot_key(key: str) -> tuple[str, int] | None:
         rank = int(parts[1])
     except ValueError:
         return None
-    return parts[0], rank
+    return (parts[0], rank) if rank >= 1 else None
 
 
 def _host(url: str) -> str:
@@ -459,7 +623,9 @@ class TopvisorSerpProviderAdapter:
         }
         try:
             page = self._transport.post_json("", json=payload, headers={})
-        except Exception as exc:  # network/vendor — degrade to a status, not a traceback
+        except (
+            Exception
+        ) as exc:  # network/vendor — degrade to a status, not a traceback
             return {
                 "rows": [],
                 "quality": "unsupported",

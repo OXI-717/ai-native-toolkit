@@ -440,3 +440,19 @@ Position clusters use the configured `[[keyword_sets]]` paths, including
 markup is supported. Matching ignores case and repeated whitespace. The first
 marked cluster in config order wins duplicate labels; unmarked keywords do not
 overwrite a marked cluster. Queries outside marked sets appear as «без кластера».
+
+### Недельный бюджет TopVisor
+
+В `[[markets]]` с `provider = "topvisor_google_organic"` (или TopVisor/Yandex)
+поле `weekly_budget_rub = 0` выключает платную проверку; положительное конечное
+число разрешает одну проверку всего TopVisor-проекта за ISO-неделю по МСК,
+только если бесплатная оценка не выше лимита. `project_id`, `credential_env` и
+`user_id_env` определяют проект и имена переменных окружения; секреты не хранятся
+в TOML. Расписание, цена, импорт истории и health описаны в [growth-export.md](growth-export.md#регулярная-выдача-topvisor-и-конкуренты).
+
+`competitor_markets = ["ru"]` optionally maps a SERP market such as `ru_google`
+to competitor `markets` labels. It must be a non-empty list of market identifiers.
+Without it, roster selection uses the market's language/locale and IDs of markets
+with the same language. Owned domains always remain in scope. Use `serp rebuild`
+to recalculate previously saved measurements after changing this mapping; it
+only reads local snapshots. See [growth export](growth-export.md#рынки-конкурентов-и-сохранённые-замеры).

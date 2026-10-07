@@ -291,6 +291,13 @@ def load_project_config(path: Path) -> ProjectConfig:
     providers = _parse_providers(raw, config_path)
     markets = _parse_markets(raw, config_path)
     competitors = _parse_competitors(raw, config_path, markets)
+    known_competitor_markets = {market.id for market in markets} | {
+        scope for competitor in competitors.items for scope in competitor.markets
+    }
+    for market in markets:
+        for scope in market.fields.get("competitor_markets", []):
+            if scope not in known_competitor_markets:
+                _invalid("MARKET_COMPETITOR_MARKETS_UNKNOWN", config_path, scope)
     sources = _parse_sources(raw, providers, config_path)
     bindings = _parse_source_bindings(raw, properties, sources, config_path)
     keyword_sets = _parse_keyword_sets(raw, config_path, markets)
@@ -586,6 +593,19 @@ def _parse_markets(raw: dict[str, Any], path: Path) -> tuple[MarketConfig, ...]:
         regions = _required_str_list(item, "regions", path, "MARKET_REGIONS_INVALID")
         locale = _required_str(item, "locale", path, "MARKET_LOCALE_INVALID")
         language = _required_str(item, "language", path, "MARKET_LANGUAGE_INVALID")
+        if "competitor_markets" in item:
+            scopes = item["competitor_markets"]
+            if (
+                not isinstance(scopes, list)
+                or not scopes
+                or not all(isinstance(s, str) and MARKET_ID_RE.fullmatch(s) for s in scopes)
+            ):
+                _invalid("MARKET_COMPETITOR_MARKETS_INVALID", path, market_id)
+        if "weekly_budget_rub" in item:
+            import math
+            budget = item["weekly_budget_rub"]
+            if not _is_number(budget) or not math.isfinite(budget) or budget < 0:
+                _invalid("MARKET_WEEKLY_BUDGET_INVALID", path, market_id)
         devices_raw = item.get("devices", [])
         if not isinstance(devices_raw, list) or not all(
             isinstance(device, str) and device in KNOWN_MARKET_DEVICES for device in devices_raw

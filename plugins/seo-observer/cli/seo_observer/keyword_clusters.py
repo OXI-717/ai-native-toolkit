@@ -42,6 +42,12 @@ class ClusteredKeyword:
     yws_exact: int | None = None
 
 
+def split_keyword_comment(line: str) -> tuple[str, str]:
+    """Only whitespace followed by # starts an inline comment; c# stays literal."""
+    parts = re.split(r"\s+#", line, maxsplit=1)
+    return parts[0].strip(), parts[1].strip() if len(parts) > 1 else ""
+
+
 def parse_keyword_file(path: Path) -> list[ClusteredKeyword]:
     """Reads a keyword file, preserving cluster and volume markup if present."""
     keywords: list[ClusteredKeyword] = []
@@ -55,7 +61,7 @@ def parse_keyword_file(path: Path) -> list[ClusteredKeyword]:
             if cluster is not None:
                 current_cluster = cluster
             continue
-        keyword, _, comment = line.partition("#")
+        keyword, comment = split_keyword_comment(line)
         keyword = keyword.strip()
         if not keyword:
             continue

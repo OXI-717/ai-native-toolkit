@@ -58,3 +58,32 @@
     document.querySelector('.filters')?.scrollIntoView({block:'center', behavior:'smooth'});
   }));
 })();
+
+(() => {
+  document.querySelectorAll('.serp-view').forEach(view => {
+    const selects = ['engine','device','region','market'].map(k => view.querySelector(`select[data-serp-${k}]`));
+    function apply() {
+      let visible = 0;
+      view.querySelectorAll('[data-serp-panel]').forEach(panel => {
+        panel.hidden = selects.some((select, i) => select && panel.dataset[['serpEngine','serpDevice','serpRegion','serpMarket'][i]] !== select.value);
+        if (!panel.hidden) visible++;
+      });
+      const empty = view.querySelector('[data-serp-empty]');
+      if (empty) empty.hidden = visible > 0;
+    }
+    selects.filter(Boolean).forEach(select => select.addEventListener('change', () => {
+      if (select === selects[3]) {
+        const first = [...view.querySelectorAll('[data-serp-panel]')].find(panel => panel.dataset.serpMarket === select.value);
+        if (first) ['serpEngine','serpDevice','serpRegion'].forEach((key, i) => {
+          if (selects[i]) selects[i].value = first.dataset[key];
+        });
+      }
+      apply();
+    }));
+    apply();
+  });
+  document.querySelectorAll('[data-serp-domain]').forEach(link => link.addEventListener('click', () => {
+    const details = document.getElementById(link.hash.slice(1));
+    if (details) details.open = true;
+  }));
+})();
