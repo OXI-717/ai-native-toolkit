@@ -473,6 +473,9 @@ def build_parser() -> argparse.ArgumentParser:
         subparser = subparsers.add_parser(command, parents=[common, selectors])
         subparser.set_defaults(handler=_handle_not_implemented)
 
+    from seo_observer.serp_cli import register_serp
+    register_serp(subparsers, common, selectors)
+
     actions = subparsers.add_parser("actions", parents=[common, selectors])
     actions_subparsers = actions.add_subparsers(dest="actions_command", required=True)
     actions_add = actions_subparsers.add_parser("add", parents=[common, selectors])

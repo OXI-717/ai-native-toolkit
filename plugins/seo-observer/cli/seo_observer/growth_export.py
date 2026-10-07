@@ -284,13 +284,15 @@ def export_growth(
         }
     if "dashboard" in growth:
         growth["dashboard"]["keyword_clusters"] = _keyword_clusters(keyword_sets or [], markets)
+    from seo_observer.serp_storage import load_measurements
+    growth["serp"] = load_measurements(storage, project_id, through=end.isoformat())
     growth["generated_at"] = produced_at
     digest = growth_hash(growth)
     # The immutable build identity covers the render options too: an export
     # produced with --no-pdf must not satisfy a later run that wants a PDF,
     # and a changed panel_url or locale must produce a new build directory.
     render_options: dict[str, Any] = {
-        "locale": locale, "dashboard_version": 8, "panel": asdict(panel)
+        "locale": locale, "dashboard_version": 14, "panel": asdict(panel)
     }
     if kind == "weekly":
         render_options["pdf"] = not no_pdf

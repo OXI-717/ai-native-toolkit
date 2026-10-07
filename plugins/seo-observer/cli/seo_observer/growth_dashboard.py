@@ -571,7 +571,13 @@ def positions(growth: dict, previous: dict, history: list[dict], clusters: dict)
                     group["count"],
                 ]
             )
-    body = '<div class="columns">' + "".join(distribution) + "</div>"
+    from seo_observer import growth_serp
+    measurements = growth.get("serp") or []
+    body = growth_serp.positions(measurements, growth)
+    body += '<div class="columns">' + "".join(distribution) + "</div>"
+    if measurements:
+        for _, cells, attrs in all_rows:
+            cells.insert(7, growth_serp.position_cell(measurements, attrs["query"], attrs["engine"]))
     body += _t("positions_note")
     body += filters(clusters, True)
     all_rows.sort(key=lambda item: -item[0])
@@ -584,6 +590,8 @@ def positions(growth: dict, previous: dict, history: list[dict], clusters: dict)
         _t("change"),
         _t("after"),
     ] + [human_date(w.get("window", {}).get("start")) for w in history]
+    if measurements:
+        headers.insert(7, _t('serp_position'))
     note = ""
     for source in search:
         if _detail_comparable(growth, previous, source):
@@ -1083,8 +1091,13 @@ def render_dashboard_pages(
     windows = [("", growth, dashboard.get("previous") or {})]
     if wide:
         windows.append(("28/", wide["current"], wide.get("previous") or {}))
+    measurements = growth.get("serp") or []
+    pages = list(PAGES)
+    if measurements:
+        pages.insert(2, ("competitors.html", _t('page_competitors')))
     result = {}
     for prefix, window, previous in windows:
+        window = {**window, "serp": measurements}
         content = {
             "index.html": kpis(
                 window, ("organic_visits", "registrations", "payments", "revenue_minor")
@@ -1098,6 +1111,9 @@ def render_dashboard_pages(
             "money.html": money(window),
             "status.html": status(window, generated_at),
         }
+        if measurements:
+            from seo_observer.growth_serp import competitors
+            content["competitors.html"] = competitors(measurements)
         chips = []
         for name in sorted(
             _dashboard_sources(window) & set(window.get("sources") or {})
@@ -1117,14 +1133,14 @@ def render_dashboard_pages(
                 )
             )
         freshness = '<div class="chips">' + "".join(chips) + "</div>"
-        for filename, page_name in PAGES:
+        for filename, page_name in pages:
             nav = (
                 _t("nav")
                 + "".join(
                     f'<a href="{name}"'
                     + (' aria-current="page"' if name == filename else "")
                     + f">{label}</a>"
-                    for name, label in PAGES
+                    for name, label in pages
                 )
                 + "</nav>"
             )
@@ -1139,6 +1155,12 @@ def render_dashboard_pages(
                     + (' aria-current="page"' if prefix else "")
                     + _t("month_link")
                 )
+            serp_page = filename == "competitors.html"
+            display_window = (
+                {"start": min(m["check_date"] for m in measurements),
+                 "end": max(m["check_date"] for m in measurements)}
+                if serp_page else window.get("window", {})
+            )
             result[prefix + filename] = _t("document").format(
                 esc(theme.title),
                 page_name,
@@ -1146,16 +1168,17 @@ def render_dashboard_pages(
                 css,
                 esc(theme.title),
                 nav,
-                periods,
+                _t("serp_all_measurements") if serp_page else periods,
                 page_name,
-                esc(window.get("window", {}).get("start", "")),
-                esc(window.get("window", {}).get("end", "")),
-                esc(date_range(window.get("window", {}))),
-                esc(date_range(previous.get("window", {}))),
+                esc(display_window.get("start", "")),
+                esc(display_window.get("end", "")),
+                esc(date_range(display_window)),
+                esc(_t('serp_comparison') if filename == "competitors.html" else date_range(previous.get("window", {}))),
                 esc(generated_at),
                 esc(moscow_stamp(generated_at)),
                 freshness,
                 content[filename],
                 script,
+                "" if serp_page else _t("comparison_suffix").format(esc(date_range(previous.get("window", {})))),
             )
     return result

@@ -6,3 +6,5 @@
 .matrix th:nth-child(3),.matrix td:nth-child(3){text-align:left}
 
 .unsupported-money{display:inline-block;max-width:100%;white-space:normal;font-size:12px;line-height:1.5;letter-spacing:normal;color:#efbd56}
+
+.serp-stack span{display:flex;align-items:center;justify-content:center;background:#354866;min-width:2px}.serp-stack span[data-tone="0"]{background:#159861}.serp-stack span[data-tone="1"]{background:#4372a9}.serp-stack span[data-tone="2"]{background:#564858}.serp-trend{width:100%;max-height:260px;margin-top:12px}.serp-trend text{fill:#929aad;font-size:10px}.serp-view tr[data-owned="true"]{background:#07ff810c}.heat{display:block;padding:6px;border-radius:4px}.serp-heat th{font-size:10px}.serp-heat td:first-child{white-space:normal;min-width:160px;text-align:left}.serp-view [hidden]{display:none!important}.serp-view .legend{flex-wrap:wrap}.serp-view .legend span{margin-right:12px}

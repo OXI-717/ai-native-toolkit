@@ -204,4 +204,43 @@ def _evaluate_health(*, state_file: Path, exports_dir: Path, now: datetime) -> t
         "latest_weekly_export_at": _iso(latest_weekly_export_at) if latest_weekly_export_at is not None else None,
         "sources": sources,
     }
-    return (200 if not reasons else 503), body
+    http_status = 200 if not reasons else 503
+    # Optional SERP freshness must never take the core runtime down.
+    try:
+        serp = json.loads(state_file.with_name("serp.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        serp = {"markets": []}
+    except (OSError, ValueError):
+        serp = None
+    try:
+        if not isinstance(serp, dict) or not isinstance(serp.get("markets"), list):
+            raise ValueError("Invalid SERP markets structure")
+        if any(
+            not isinstance(m, dict) or not isinstance(m.get("enabled"), bool)
+            for m in serp["markets"]
+        ):
+            raise ValueError("Invalid SERP market structure")
+        enabled = [m for m in serp["markets"] if m["enabled"]]
+        if enabled:
+            stale = False
+            for market in enabled:
+                timestamps = []
+                if market.get("latest"):
+                    timestamps.append(_parse_iso(market["latest"] + "T00:00:00+03:00"))
+                if market.get("enabled_at"):
+                    timestamps.append(_parse_iso(market["enabled_at"]))
+                if not timestamps:
+                    raise ValueError("Enabled SERP market has no timestamp")
+                if now_utc - max(timestamps) > timedelta(days=10):
+                    stale = True
+            body["sources"]["serp"] = {"live": not stale, "required": False}
+            if stale:
+                body["reasons"].append("serp_stale")
+                if http_status == 200:
+                    body["status"] = "degraded"
+    except (AttributeError, TypeError, ValueError):
+        body["reasons"].append("serp_state_unreadable")
+        body["sources"]["serp"] = {"live": False, "required": False}
+        if http_status == 200:
+            body["status"] = "degraded"
+    return http_status, body
