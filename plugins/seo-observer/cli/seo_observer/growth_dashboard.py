@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 from seo_observer import growth_render as legacy
 from seo_observer.config import PanelConfig
-from seo_observer.money import CURRENCY_EXPONENTS, format_minor
+from seo_observer.money import CURRENCY_EXPONENTS, currency_symbol, format_minor
 from seo_observer.keyword_clusters import clean_cluster
 from seo_observer.growth_locale import text as _t
 from seo_observer.growth import _fully_covered, _kpi_source_sets, _SEARCH_LAG_GAP_DAYS
@@ -201,11 +201,11 @@ def money_number(minor: int, currency: str | None) -> Cell:
     return Cell(esc(text), minor)
 
 
-def money_value(minor: int, currency: str | None, *, symbol: bool = True) -> Cell:
+def money_value(minor: int, currency: str | None) -> Cell:
     amount = money_number(minor, currency)
     if currency not in CURRENCY_EXPONENTS:
         return amount
-    unit = {"RUB": "₽"}.get(currency, currency) if symbol else currency
+    unit = currency_symbol(currency)
     return Cell(amount.html + " " + esc(unit), amount.sort)
 
 
@@ -890,13 +890,15 @@ def money(growth: dict) -> str:
     dates = [(start + timedelta(days=i)).isoformat() for i in range(days)]
     daily = {}
     rows = []
-    for row in outcomes.get("server") or []:
+    server_rows = outcomes.get("server") or []
+    show_channel = not server_rows or any(row["channel"] != "unassigned" for row in server_rows)
+    for row in server_rows:
         key = (row["date"], row["outcome_id"])
         daily[key] = daily.get(key, 0) + row["count"]
         amount = (
             number(None)
             if row.get("value_minor") is None
-            else money_value(row["value_minor"], row.get("currency"), symbol=False)
+            else money_value(row["value_minor"], row.get("currency"))
         )
         rows.append(
             [
@@ -915,6 +917,11 @@ def money(growth: dict) -> str:
                 amount,
             ]
         )
+    headers = [_t("date"), _t("outcome"), _t("channel"), _t("count"), _t("amount")]
+    if not show_channel:
+        headers.pop(2)
+        for row in rows:
+            row.pop(2)
     charts = []
     source_sets = _kpi_source_sets(growth)
     for metric, outcome, title in [
@@ -938,9 +945,7 @@ def money(growth: dict) -> str:
     body += '<div class="columns">' + "".join(charts) + "</div>"
     body += section(
         _t("server_daily"),
-        table(
-            [_t("date"), _t("outcome"), _t("channel"), _t("count"), _t("amount")], rows
-        )
+        table(headers, rows)
         + _t("payments_warning"),
     )
     split = (growth.get("derived") or {}).get("signup_channels") or {}

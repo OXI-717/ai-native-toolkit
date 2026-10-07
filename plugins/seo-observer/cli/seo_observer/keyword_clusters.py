@@ -97,4 +97,7 @@ def _match_frequency(comment: str) -> tuple[int | None, int | None]:
 
 def clean_cluster(name: str) -> str:
     """Remove numeric keyword-set annotations, retaining meaningful parentheses."""
-    return re.sub(r"\s+\(\d+\s+[^(),]+,\s*[^()]*\d+\)\s*$", "", name)
+    count = r"\d+\s+(?:\u0444\u0440\u0430\u0437(?:\u0430|\u044b)?|phrases?)"
+    frequency = r"(?:YWS|\u043e\u0431\u044a[\u0435\u0451]\u043c|volume|\u0447\u0430\u0441\u0442\u043e\u0442\u043d\u043e\u0441\u0442\u044c)\s+\d+"
+    field = rf"(?:{count}|{frequency})"
+    return re.sub(rf"\s+\({field}(?:,\s*{field})*\)\s*$", "", name, flags=re.IGNORECASE)

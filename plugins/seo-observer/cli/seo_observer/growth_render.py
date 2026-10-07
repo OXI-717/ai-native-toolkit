@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any
 
 from seo_observer.growth import _fully_covered, _kpi_source_sets
-from seo_observer.money import format_minor
+from seo_observer.money import currency_symbol, format_minor
 
 
 _KPI_ORDER = (
@@ -31,6 +31,8 @@ _TOP_PAGES = 10
 
 _STRINGS = {
     "ru": {
+        "decimal_separator": ",",
+        "percentage_points": "п.п.",
         "section_summary": "Итог",
         "section_channels": "Каналы и воронка",
         "section_search": "Поиск",
@@ -209,6 +211,8 @@ _STRINGS = {
         "dashboard_document": "<!doctype html><html lang=\"ru\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>{0} · {1}</title><style>{2}{3}</style></head><body><main><div class=\"brand\">{4} · Рост</div>{5}<div class=\"periods\">{6}</div><h1>{7}</h1><p class=\"meta\">{8} · Собрано {9}</p>{10}{11}</main>{12}</body></html>",
     },
     "en": {
+        "decimal_separator": ".",
+        "percentage_points": "pp",
         "section_summary": "Summary",
         "section_channels": "Channels & funnel",
         "section_search": "Search",
@@ -431,27 +435,29 @@ def _fmt_int(value: int | float) -> str:
     return f"{int(round(value)):,}".replace(",", " ")
 
 
-def _fmt_pct(value: float) -> str:
-    return f"{value * 100:.1f}%"
+def _fmt_pct(value: float, s: dict[str, str]) -> str:
+    return f"{value * 100:.1f}%".replace(".", s["decimal_separator"])
 
 
 def _fmt_delta(value: float | None, s: dict[str, str]) -> str:
     if value is None:
         return "—"
     sign = "+" if value > 0 else ""
-    return f"{sign}{value:.1f}%"
+    return f"{sign}{value:.1f}%".replace(".", s["decimal_separator"])
 
 
 def _fmt_abs_change(name: str, diff: int | float, kpi: dict[str, Any], s: dict[str, str]) -> str:
     sign = "+" if diff > 0 else ""
     if name == "revenue_minor":
         currency = kpi.get("currency") or kpi.get("previous_currency")
-        amount = format_minor(diff, currency)
+        amount = format_minor(diff, currency, decimal_separator=s["decimal_separator"])
         if amount is None:
             return _esc(s["unsupported_currency"].format(currency=currency or "—"))
-        return s["revenue_currency"].format(amount=sign + amount, currency=_esc(currency))
+        unit = currency_symbol(currency) if s["decimal_separator"] == "," else currency
+        return s["revenue_currency"].format(amount=sign + amount, currency=_esc(unit))
     if name == "visit_to_signup":
-        return f"{sign}{diff * 100:.1f} pp"
+        amount = f"{sign}{diff * 100:.1f}".replace(".", s["decimal_separator"])
+        return amount + " " + s["percentage_points"]
     return f"{sign}{_fmt_int(diff)}"
 
 
@@ -499,13 +505,14 @@ def _fmt_kpi(name: str, kpi: dict[str, Any], s: dict[str, str]) -> str:
     if value is None:
         return _esc(s["no_data"])
     if name == "visit_to_signup":
-        return _fmt_pct(float(value))
+        return _fmt_pct(float(value), s)
     if name == "revenue_minor":
         currency = kpi.get("currency")
-        amount = format_minor(value, currency)
+        amount = format_minor(value, currency, decimal_separator=s["decimal_separator"])
         if amount is None:
             return _esc(s["unsupported_currency"].format(currency=currency or "—"))
-        return s["revenue_currency"].format(amount=amount, currency=_esc(currency))
+        unit = currency_symbol(currency) if s["decimal_separator"] == "," else currency
+        return s["revenue_currency"].format(amount=amount, currency=_esc(unit))
     if isinstance(value, float):
         return _fmt_int(value)
     return _fmt_int(int(value))
@@ -975,7 +982,7 @@ def _actions_section(growth: dict[str, Any], s: dict[str, str]) -> str:
     rows = []
     for action in actions:
         delta = action.get("relative_delta")
-        delta_text = _fmt_pct(float(delta)) if delta is not None else _esc(s["no_data"])
+        delta_text = _fmt_pct(float(delta), s) if delta is not None else _esc(s["no_data"])
         verdict = action.get("verdict")
         verdict_text = (
             _esc(_label(s, "verdict", verdict)) if verdict else _esc(s["no_data"])

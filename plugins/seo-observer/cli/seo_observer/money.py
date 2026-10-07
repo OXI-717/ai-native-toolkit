@@ -17,6 +17,11 @@ CURRENCY_EXPONENTS = {
 }
 
 
+def currency_symbol(currency: str) -> str:
+    """Display unit; unlisted currencies retain their ISO code."""
+    return {"RUB": "₽", "USD": "$", "EUR": "€", "XTR": "⭐"}.get(currency, currency)
+
+
 def format_minor(
     value: int | float | Decimal,
     currency: str | None,
